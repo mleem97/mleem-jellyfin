@@ -85,10 +85,10 @@ jobs:
           mkdir -p release-assets
           cp "${ZIP_NAME}" release-assets/
           cat > release-assets/changelog.md <<EOF
-# ${PLUGIN_NAME} ${TAG_NAME}
+          # ${PLUGIN_NAME} ${TAG_NAME}
 
-${CHANGELOG_TEXT}
-EOF
+          ${CHANGELOG_TEXT}
+          EOF
 
           CHECKSUM="$CHECKSUM" python - <<'PY'
           import json
