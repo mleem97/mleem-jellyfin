@@ -1,8 +1,8 @@
 [
   {
     "guid": "eb5d7894-8eef-4b36-aa6f-5d124e828ce1",
-    "name": "Template",
-    "description": "Jellyfin Plugin Template",
+    "name": "HDD Display",
+    "description": "HDD und so",
     "overview": "Template plugin for Jellyfin.",
     "owner": "mleem97",
     "category": "General",
