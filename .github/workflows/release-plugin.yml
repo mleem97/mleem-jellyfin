@@ -1,0 +1,101 @@
+name: Build and Release Jellyfin Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore Jellyfin.Plugin.Template/Jellyfin.Plugin.Template.csproj
+
+      - name: Build
+        run: dotnet build Jellyfin.Plugin.Template/Jellyfin.Plugin.Template.csproj -c Release --no-restore
+
+      - name: Publish
+        run: dotnet publish Jellyfin.Plugin.Template/Jellyfin.Plugin.Template.csproj -c Release -o ./publish --no-build
+
+      - name: Prepare zip name
+        shell: bash
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          if [ -z "$TAG_NAME" ] || [ "$TAG_NAME" = "" ]; then
+            TAG_NAME="manual-${GITHUB_RUN_NUMBER}"
+          fi
+          VERSION="${TAG_NAME#v}"
+          ZIP_NAME="HDDDisplay_${VERSION}.zip"
+          RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/${ZIP_NAME}"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+          echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "RELEASE_URL=$RELEASE_URL" >> "$GITHUB_ENV"
+
+      - name: Create zip package
+        run: |
+          cd publish
+          zip -r "../${ZIP_NAME}" .
+
+      - name: Generate release manifest with checksum
+        shell: bash
+        run: |
+          CHECKSUM="$(sha256sum "${ZIP_NAME}" | awk '{print $1}')"
+          mkdir -p release-assets
+          cp "${ZIP_NAME}" release-assets/
+
+          CHECKSUM="$CHECKSUM" python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          import os
+
+          with open('manifest.json', 'r', encoding='utf-8') as f:
+              manifest = json.load(f)
+
+          plugin = manifest[0]
+          existing_version = plugin.get('versions', [{}])[0]
+
+          plugin['versions'] = [
+              {
+                  'version': os.environ['VERSION'],
+                  'changelog': f"Release {os.environ['TAG_NAME']}",
+                  'targetAbi': existing_version.get('targetAbi', '10.10.0.0'),
+                  'sourceUrl': os.environ['RELEASE_URL'],
+                  'checksum': os.environ['CHECKSUM'],
+                  'timestamp': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+              }
+          ]
+
+          with open('release-assets/manifest.json', 'w', encoding='utf-8') as f:
+              json.dump(manifest, f, indent=2, ensure_ascii=False)
+              f.write('\n')
+          PY
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-package
+          path: release-assets/
+
+      - name: Create GitHub release and upload package
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/${{ env.ZIP_NAME }}
+            release-assets/manifest.json
+          generate_release_notes: true
