@@ -12,6 +12,10 @@ permissions:
 jobs:
   build-release:
     runs-on: ubuntu-latest
+    env:
+      PLUGIN_GUID: eb5d7894-8eef-4b36-aa6f-5d124e828ce1
+      PLUGIN_NAME: HDD Display
+      PLUGIN_PACKAGE_PREFIX: HDDDisplay
 
     steps:
       - name: Checkout
@@ -41,12 +45,33 @@ jobs:
             TAG_NAME="manual-${GITHUB_RUN_NUMBER}"
           fi
           VERSION="${TAG_NAME#v}"
-          ZIP_NAME="HDDDisplay_${VERSION}.zip"
+          ZIP_NAME="${PLUGIN_PACKAGE_PREFIX}_${VERSION}.zip"
           RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/${ZIP_NAME}"
           echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
           echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "RELEASE_URL=$RELEASE_URL" >> "$GITHUB_ENV"
+
+      - name: Generate detailed changelog
+        shell: bash
+        run: |
+          PREV_TAG="$(git tag --sort=-creatordate | grep -Fxv "${TAG_NAME}" | head -n1 || true)"
+          if [ -n "${PREV_TAG}" ]; then
+            RANGE="${PREV_TAG}..${TAG_NAME}"
+          else
+            RANGE="${TAG_NAME}"
+          fi
+
+          CHANGES="$(git log ${RANGE} --pretty=format:'- %s (%h)' -- . ':(exclude).github/upgrades/*' || true)"
+          if [ -z "${CHANGES}" ]; then
+            CHANGES='- Maintenance updates.'
+          fi
+
+          {
+            echo 'CHANGELOG_TEXT<<EOF'
+            echo "${CHANGES}"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
 
       - name: Create zip package
         run: |
@@ -59,6 +84,11 @@ jobs:
           CHECKSUM="$(md5sum "${ZIP_NAME}" | awk '{print toupper($1)}')"
           mkdir -p release-assets
           cp "${ZIP_NAME}" release-assets/
+          cat > release-assets/changelog.md <<EOF
+# ${PLUGIN_NAME} ${TAG_NAME}
+
+${CHANGELOG_TEXT}
+EOF
 
           CHECKSUM="$CHECKSUM" python - <<'PY'
           import json
@@ -68,19 +98,37 @@ jobs:
           with open('manifest.json', 'r', encoding='utf-8') as f:
               manifest = json.load(f)
 
-          plugin = manifest[0]
-          existing_version = plugin.get('versions', [{}])[0]
+          plugin_guid = os.environ['PLUGIN_GUID']
+          plugin_name = os.environ['PLUGIN_NAME']
 
-          plugin['versions'] = [
-              {
-                  'version': os.environ['VERSION'],
-                  'changelog': f"Release {os.environ['TAG_NAME']}",
-                  'targetAbi': existing_version.get('targetAbi', '10.10.0.0'),
-                  'sourceUrl': os.environ['RELEASE_URL'],
-                  'checksum': os.environ['CHECKSUM'],
-                  'timestamp': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+          plugin = next((p for p in manifest if p.get('guid') == plugin_guid), None)
+          if plugin is None:
+              plugin = {
+                  'guid': plugin_guid,
+                  'name': plugin_name,
+                  'description': plugin_name,
+                  'overview': plugin_name,
+                  'owner': os.environ.get('GITHUB_REPOSITORY_OWNER', ''),
+                  'category': 'General',
+                  'versions': []
               }
-          ]
+              manifest.append(plugin)
+
+          existing_versions = plugin.get('versions') or []
+          target_abi = (existing_versions[0].get('targetAbi') if existing_versions else None) or '10.10.0.0'
+          now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+
+          new_version = {
+              'version': os.environ['VERSION'],
+              'changelog': os.environ.get('CHANGELOG_TEXT', f"Release {os.environ['TAG_NAME']}"),
+              'targetAbi': target_abi,
+              'sourceUrl': os.environ['RELEASE_URL'],
+              'checksum': os.environ['CHECKSUM'],
+              'timestamp': now
+          }
+
+          filtered_versions = [v for v in existing_versions if v.get('version') != os.environ['VERSION']]
+          plugin['versions'] = [new_version] + filtered_versions
 
           with open('release-assets/manifest.json', 'w', encoding='utf-8') as f:
               json.dump(manifest, f, indent=2, ensure_ascii=False)
@@ -97,10 +145,12 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          body: ${{ env.CHANGELOG_TEXT }}
           files: |
             release-assets/${{ env.ZIP_NAME }}
             release-assets/manifest.json
-          generate_release_notes: true
+            release-assets/changelog.md
+          generate_release_notes: false
 
       - name: Update repository manifest.json on master
         if: startsWith(github.ref, 'refs/tags/v')

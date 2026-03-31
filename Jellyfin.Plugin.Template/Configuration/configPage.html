@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Template</title>
+    <title>HDD Display</title>
 </head>
 <body>
-    <div id="TemplateConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+    <div id="HddDisplayConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
         <div data-role="content">
             <div class="content-primary">
-                <form id="TemplateConfigForm">
+                <h2>Plugin Settings</h2>
+                <form id="HddDisplayConfigForm">
                     <div class="selectContainer">
                         <label class="selectLabel" for="Options">Several Options</label>
                         <select is="emby-select" id="Options" name="Options" class="emby-select-withcolor emby-select">
@@ -28,7 +29,7 @@
                         </label>
                     </div>
                     <div class="inputContainer">
-                        <label class="inputeLabel inputLabelUnfocused" for="AString">A String</label>
+                        <label class="inputLabel inputLabelUnfocused" for="AString">A String</label>
                         <input id="AString" name="AString" type="text" is="emby-input" />
                         <div class="fieldDescription">Another Description</div>
                     </div>
@@ -38,40 +39,131 @@
                         </button>
                     </div>
                 </form>
+
+                <hr />
+
+                <h2>Storage usage of Jellyfin library disks</h2>
+                <p>Shows capacity and usage for mounted disks that contain configured Jellyfin library folders.</p>
+
+                <div id="hddDisplayLoading">Loading disk usage...</div>
+                <div id="hddDisplayError" style="display:none;color:#ff6b6b;"></div>
+
+                <table class="tbl" id="hddDisplayTable" style="display:none;width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Drive</th>
+                            <th>Volume Label</th>
+                            <th>Total</th>
+                            <th>Used</th>
+                            <th>Free</th>
+                            <th>Usage</th>
+                            <th>Jellyfin Paths</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hddDisplayBody"></tbody>
+                </table>
             </div>
         </div>
-        <script type="text/javascript">
-            var TemplateConfig = {
-                pluginUniqueId: 'eb5d7894-8eef-4b36-aa6f-5d124e828ce1'
-            };
 
-            document.querySelector('#TemplateConfigPage')
-                .addEventListener('pageshow', function() {
-                    Dashboard.showLoadingMsg();
-                    ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+        <script type="text/javascript">
+            (function () {
+                var HddDisplayConfig = {
+                    pluginUniqueId: 'eb5d7894-8eef-4b36-aa6f-5d124e828ce1'
+                };
+
+                function formatBytes(bytes) {
+                    if (bytes === 0) {
+                        return '0 B';
+                    }
+
+                    var units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+                    var i = Math.floor(Math.log(bytes) / Math.log(1024));
+                    return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + units[i];
+                }
+
+                function escapeHtml(value) {
+                    return String(value)
+                        .replaceAll('&', '&amp;')
+                        .replaceAll('<', '&lt;')
+                        .replaceAll('>', '&gt;')
+                        .replaceAll('"', '&quot;')
+                        .replaceAll("'", '&#39;');
+                }
+
+                function renderRows(items) {
+                    var body = document.querySelector('#hddDisplayBody');
+                    body.innerHTML = '';
+
+                    items.forEach(function (item) {
+                        var paths = (item.LibraryPaths || []).map(escapeHtml).join('<br/>');
+                        var row = document.createElement('tr');
+                        row.innerHTML = ''
+                            + '<td>' + escapeHtml(item.DriveName || '-') + '</td>'
+                            + '<td>' + escapeHtml(item.VolumeLabel || '-') + '</td>'
+                            + '<td>' + formatBytes(item.TotalBytes || 0) + '</td>'
+                            + '<td>' + formatBytes(item.UsedBytes || 0) + '</td>'
+                            + '<td>' + formatBytes(item.FreeBytes || 0) + '</td>'
+                            + '<td>' + (item.UsedPercent || 0).toFixed(2) + '%</td>'
+                            + '<td>' + (paths || '-') + '</td>';
+                        body.appendChild(row);
+                    });
+                }
+
+                function loadConfig() {
+                    return ApiClient.getPluginConfiguration(HddDisplayConfig.pluginUniqueId).then(function (config) {
                         document.querySelector('#Options').value = config.Options;
                         document.querySelector('#AnInteger').value = config.AnInteger;
                         document.querySelector('#TrueFalseSetting').checked = config.TrueFalseSetting;
                         document.querySelector('#AString').value = config.AString;
+                    });
+                }
+
+                function loadUsage() {
+                    var loading = document.querySelector('#hddDisplayLoading');
+                    var error = document.querySelector('#hddDisplayError');
+                    var table = document.querySelector('#hddDisplayTable');
+
+                    loading.style.display = 'block';
+                    error.style.display = 'none';
+                    table.style.display = 'none';
+
+                    return ApiClient.getJSON(ApiClient.getUrl('Plugins/HddDisplay/Storage/Usage'))
+                        .then(function (result) {
+                            renderRows(result || []);
+                            table.style.display = 'table';
+                        })
+                        .catch(function () {
+                            error.textContent = 'Failed to load storage usage data.';
+                            error.style.display = 'block';
+                        })
+                        .finally(function () {
+                            loading.style.display = 'none';
+                        });
+                }
+
+                document.querySelector('#HddDisplayConfigPage').addEventListener('pageshow', function () {
+                    Dashboard.showLoadingMsg();
+                    Promise.all([loadConfig(), loadUsage()]).finally(function () {
                         Dashboard.hideLoadingMsg();
-                    });    
-                });
-            
-            document.querySelector('#TemplateConfigForm')
-                .addEventListener('submit', function() {
-                Dashboard.showLoadingMsg();
-                ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
-                    config.Options = document.querySelector('#Options').value;
-                    config.AnInteger = document.querySelector('#AnInteger').value;
-                    config.TrueFalseSetting = document.querySelector('#TrueFalseSetting').checked;
-                    config.AString = document.querySelector('#AString').value;
-                    ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
-                        Dashboard.processPluginConfigurationUpdateResult(result);
                     });
                 });
 
-                return false;
-            });
+                document.querySelector('#HddDisplayConfigForm').addEventListener('submit', function () {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(HddDisplayConfig.pluginUniqueId).then(function (config) {
+                        config.Options = document.querySelector('#Options').value;
+                        config.AnInteger = document.querySelector('#AnInteger').value;
+                        config.TrueFalseSetting = document.querySelector('#TrueFalseSetting').checked;
+                        config.AString = document.querySelector('#AString').value;
+
+                        ApiClient.updatePluginConfiguration(HddDisplayConfig.pluginUniqueId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
+
+                    return false;
+                });
+            })();
         </script>
     </div>
 </body>
