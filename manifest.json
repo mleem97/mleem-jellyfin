@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.0.18",
+        "changelog": "- Pin Jellyfin package references to 10.11.6 for runtime compatibility (0a7f516)\n- Update manifest for v1.0.0.17 release (8907fcd)",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/v1.0.0.18/HDDDisplay_1.0.0.18.zip",
+        "checksum": "7A3730B4C20358F2AB2C460D61F96F78",
+        "timestamp": "2026-04-01T01:05:22Z"
+      },
+      {
         "version": "1.0.0.17",
         "changelog": "- Handle drive fallback safely to avoid NotSupported on Linux (5a74376)\n- Update manifest for v1.0.0.16 release (2566169)",
         "targetAbi": "10.10.0.0",
