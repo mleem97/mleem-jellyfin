@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.0.20",
+        "changelog": "- Inline dashboard widget script to fix FileTransformation injection (95bbb40)\n- Update manifest for v1.0.0.19 release (690a727)",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/v1.0.0.20/HDDDisplay_1.0.0.20.zip",
+        "checksum": "723202DB716CE8B3CD36EC03EAF811C5",
+        "timestamp": "2026-04-01T01:19:00Z"
+      },
+      {
         "version": "1.0.0.19",
         "changelog": "- Add dashboard widget with FileTransformation injection for admin homepage display (01990a1)\n- Update manifest for v1.0.0.18 release (c0cfcbf)",
         "targetAbi": "10.10.0.0",
