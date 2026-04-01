@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.0.16",
+        "changelog": "- Fix release action by passing explicit tag_name (d3a53f3)",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/v1.0.0.16/HDDDisplay_1.0.0.16.zip",
+        "checksum": "31842F2928D1A1B7B2C5A3F4411C57D1",
+        "timestamp": "2026-04-01T00:56:09Z"
+      },
+      {
         "version": "1.0.0.10",
         "changelog": "- Fix plugin packaging to include only plugin assembly (f15f26e)\n- Improve plugin UI diagnostics and empty-state handling for usage views (adb995d)\n- Update manifest for v1.0.0.8 release (ae12b90)",
         "targetAbi": "10.10.0.0",
