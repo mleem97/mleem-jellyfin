@@ -21,29 +21,35 @@ Nach Installation im Admin → **Plugins** → **FileTransformation** konfigurie
 **Replace Pattern:** `</head>`  
 **Replace With:**
 ```html
+<script src="/web/Dashboard.html?page=StorageDashboard" id="storage-widget"></script>
+</head>
+```
+
+**ODER (empfohlen für direkte Injection):**
+
+**Match Path:** `/jellyfin/jellyfin-web/index.html`  
+**Replace Pattern:** `</head>`  
+**Replace With (COMPLETE INLINE):**
+```html
 <script>
-(function() {
-    const scriptUrl = '/web/plugins/Jellyfin.Plugin.Template/dashboard-widget.js';
-    const script = document.createElement('script');
-    script.src = scriptUrl;
-    script.async = true;
-    if (document.head) {
-        document.head.appendChild(script);
-    } else {
-        document.body.appendChild(script);
-    }
-})();
+(function(){var s=document.createElement('script');s.textContent=`... widget code here ...`;document.head.appendChild(s);})();
 </script>
 </head>
 ```
 
-**Enabled:** `Yes`
+**Einfacher Weg (kopiere die gesamte `dashboard-widget-injection.html` ins Replace-Feld):**
 
-## 4. Jellyfin neustarten
+1. Öffne `dashboard-widget-injection.html`
+2. Kopiere den kompletten `<script>...</script>` Block (von `<script>` bis `</script>`)
+3. In FileTransformation:
+   - **Match Path:** `/jellyfin/jellyfin-web/index.html`
+   - **Replace Pattern:** `</head>`
+   - **Replace With:** [hier den kompletten `<script>` Block einfügen]
+   - **Enabled:** `Yes`
 
-- Oder Admin → **Restart** klicken
+4. **Jellyfin neustarten** (wichtig!)
 
-## 5. Dashboard aufrufen
+## 4. Dashboard aufrufen
 
 - Geh zu **Admin → Dashboard** (oder nur **Admin** wenn du dort landest)
 - Oben sollte jetzt die **Storage Dashboard** Karte sichtbar sein mit:
@@ -61,12 +67,16 @@ Wenn die Injection nicht funktioniert, ist die vollständige Seite immer verfüg
 - **Widget taucht nicht auf:** 
   - FileTransformation-Log prüfen (`/config/log/...`)
   - Browser-Console: `F12` → Console auf Fehler prüfen
-  - URL des Widgets testen: `http://jellyfin:8096/web/plugins/Jellyfin.Plugin.Template/dashboard-widget.js`
+  - Browser-Cache löschen (`Shift+F5`)
+  - Jellyfin neu starten
 
 - **Nur weiße Karte, keine Daten:**
   - API antwortet nicht: `/Plugins/StorageDashboard/Storage` in URL-Bar testen
   - CORS/Auth-Fehler in Browser Console prüfen
+  - Im Console `fetch('/Plugins/StorageDashboard/Storage').then(r=>r.json()).then(console.log)` probieren
 
-- **Script lädt nicht:**
-  - Plugin muss neu installiert werden (Widget-Files sind neu)
-  - Cache löschen: Browser-Cache + Browser-Reload (`Shift+F5`)
+- **Transformation wird nicht angewendet:**
+  - FileTransformation ist aktiv? (Admin → Plugins prüfen)
+  - Jellyfin nach Änderung neu gestartet?
+  - Match Path genau `/jellyfin/jellyfin-web/index.html`?
+  - Replac ement Pattern `</head>` exakt geschrieben?
