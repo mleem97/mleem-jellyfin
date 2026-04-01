@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Storage Dashboard Widget Injection</title>
+</head>
+<body>
+    <h2>Storage Dashboard Widget for Jellyfin Admin</h2>
+    <p>Diese Datei wird von FileTransformation in die Jellyfin-Web Admin-Seite injiziert.</p>
+
+    <script>
+        // Dieses Script wird durch FileTransformation in dashboard.html injiziert
+        // und lädt das eigentliche Storage-Widget-Script
+        (function() {
+            // Sichere die Widget-JS in der Plugin-Ressourcen
+            const scriptUrl = '/web/plugins/Jellyfin.Plugin.Template/dashboard-widget.js';
+
+            const script = document.createElement('script');
+            script.src = scriptUrl;
+            script.async = true;
+
+            script.onerror = function() {
+                console.warn('Storage Dashboard Widget konnte nicht geladen werden');
+            };
+
+            // Injiziere in den head oder body
+            if (document.head) {
+                document.head.appendChild(script);
+            } else {
+                document.body.appendChild(script);
+            }
+        })();
+    </script>
+</body>
+</html>
