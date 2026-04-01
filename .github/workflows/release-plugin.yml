@@ -34,9 +34,6 @@ jobs:
       - name: Build
         run: dotnet build Jellyfin.Plugin.Template/Jellyfin.Plugin.Template.csproj -c Release --no-restore
 
-      - name: Publish
-        run: dotnet publish Jellyfin.Plugin.Template/Jellyfin.Plugin.Template.csproj -c Release -o ./publish --no-build
-
       - name: Prepare zip name
         shell: bash
         run: |
@@ -74,8 +71,14 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Create zip package
+        shell: bash
         run: |
-          cd publish
+          mkdir -p package
+          cp "Jellyfin.Plugin.Template/bin/Release/net9.0/Jellyfin.Plugin.Template.dll" package/
+          if [ -f "Jellyfin.Plugin.Template/bin/Release/net9.0/Jellyfin.Plugin.Template.pdb" ]; then
+            cp "Jellyfin.Plugin.Template/bin/Release/net9.0/Jellyfin.Plugin.Template.pdb" package/
+          fi
+          cd package
           zip -r "../${ZIP_NAME}" .
 
       - name: Generate release manifest with checksum
