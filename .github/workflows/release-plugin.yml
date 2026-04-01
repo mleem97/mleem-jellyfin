@@ -2,10 +2,6 @@ name: Build and Release Jellyfin Plugin
 
 on:
   push:
-    branches:
-      - master
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:
