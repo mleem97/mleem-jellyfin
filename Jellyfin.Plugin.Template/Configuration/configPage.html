@@ -52,6 +52,7 @@
 
                 <div id="hddDisplayLoading">Loading disk usage...</div>
                 <div id="hddDisplayError" style="display:none;color:#ff6b6b;"></div>
+                <div id="hddDisplayEmpty" style="display:none;">No matching mounted drives found for current Jellyfin library paths.</div>
 
                 <table class="tbl" id="hddDisplayTable" style="display:none;width:100%;">
                     <thead>
@@ -75,6 +76,7 @@
 
                 <div id="hddTypeLoading">Loading media type usage...</div>
                 <div id="hddTypeError" style="display:none;color:#ff6b6b;"></div>
+                <div id="hddTypeEmpty" style="display:none;">No media usage data found yet. Try running a library scan first.</div>
 
                 <table class="tbl" id="hddTypeTable" style="display:none;width:100%;">
                     <thead>
@@ -109,11 +111,11 @@
 
                 function escapeHtml(value) {
                     return String(value)
-                        .replaceAll('&', '&amp;')
-                        .replaceAll('<', '&lt;')
-                        .replaceAll('>', '&gt;')
-                        .replaceAll('"', '&quot;')
-                        .replaceAll("'", '&#39;');
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
                 }
 
                 function renderRows(items) {
@@ -156,19 +158,27 @@
                 function loadMediaTypeUsage() {
                     var loading = document.querySelector('#hddTypeLoading');
                     var error = document.querySelector('#hddTypeError');
+                    var empty = document.querySelector('#hddTypeEmpty');
                     var table = document.querySelector('#hddTypeTable');
 
                     loading.style.display = 'block';
                     error.style.display = 'none';
+                    empty.style.display = 'none';
                     table.style.display = 'none';
 
                     return ApiClient.getJSON(ApiClient.getUrl('Plugins/HddDisplay/Storage/MediaTypeUsage'))
                         .then(function (result) {
-                            renderTypeRows(result || []);
+                            var items = result || [];
+                            if (!items.length) {
+                                empty.style.display = 'block';
+                                return;
+                            }
+
+                            renderTypeRows(items);
                             table.style.display = 'table';
                         })
-                        .catch(function () {
-                            error.textContent = 'Failed to load media type usage.';
+                        .catch(function (e) {
+                            error.textContent = 'Failed to load media type usage: ' + ((e && e.message) ? e.message : 'Unknown error');
                             error.style.display = 'block';
                         })
                         .finally(function () {
@@ -188,19 +198,27 @@
                 function loadUsage() {
                     var loading = document.querySelector('#hddDisplayLoading');
                     var error = document.querySelector('#hddDisplayError');
+                    var empty = document.querySelector('#hddDisplayEmpty');
                     var table = document.querySelector('#hddDisplayTable');
 
                     loading.style.display = 'block';
                     error.style.display = 'none';
+                    empty.style.display = 'none';
                     table.style.display = 'none';
 
                     return ApiClient.getJSON(ApiClient.getUrl('Plugins/HddDisplay/Storage/Usage'))
                         .then(function (result) {
-                            renderRows(result || []);
+                            var items = result || [];
+                            if (!items.length) {
+                                empty.style.display = 'block';
+                                return;
+                            }
+
+                            renderRows(items);
                             table.style.display = 'table';
                         })
-                        .catch(function () {
-                            error.textContent = 'Failed to load storage usage data.';
+                        .catch(function (e) {
+                            error.textContent = 'Failed to load storage usage data: ' + ((e && e.message) ? e.message : 'Unknown error');
                             error.style.display = 'block';
                         })
                         .finally(function () {
