@@ -74,14 +74,11 @@ public class StorageController : ControllerBase
         {
             foreach (var driveInfo in DriveInfo.GetDrives().Where(d => d.IsReady))
             {
-                drives.Add(new DriveEntry
+                var safeDrive = TryReadDrive(driveInfo.Name);
+                if (safeDrive is not null)
                 {
-                    Name = driveInfo.Name,
-                    Label = string.IsNullOrWhiteSpace(driveInfo.VolumeLabel) ? driveInfo.Name : driveInfo.VolumeLabel,
-                    TotalBytes = driveInfo.TotalSize,
-                    FreeBytes = driveInfo.AvailableFreeSpace,
-                    UsedBytes = Math.Max(0, driveInfo.TotalSize - driveInfo.AvailableFreeSpace)
-                });
+                    drives.Add(safeDrive);
+                }
             }
         }
 
