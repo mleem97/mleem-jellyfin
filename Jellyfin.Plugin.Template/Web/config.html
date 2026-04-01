@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Storage Dashboard</title>
+    <style>
+        :root {
+            --bg: #101010;
+            --surface: #181818;
+            --surface2: #1f1f1f;
+            --surface3: #272727;
+            --border: rgba(255,255,255,0.08);
+            --text: #e0e0e0;
+            --muted: #888;
+            --faint: #555;
+            --radius: 10px;
+            --space: 16px;
+
+            --col-movies:    #5591c7;
+            --col-tvshows:   #4f98a3;
+            --col-music:     #fdab43;
+            --col-books:     #a86fdf;
+            --col-photos:    #e8af34;
+            --col-homevideos:#6daa45;
+            --col-mixed:     #dd6974;
+            --col-free:      rgba(255,255,255,0.06);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 14px;
+            padding: var(--space);
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .page-header svg { color: var(--col-movies); flex-shrink: 0; }
+
+        .page-title { font-size: 20px; font-weight: 600; color: #fff; }
+        .page-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+        .refresh-btn {
+            margin-left: auto;
+            background: var(--surface3);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .refresh-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
+
+        .dashboard-grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+        @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .card-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            margin-bottom: 16px;
+        }
+
+        .donut-wrap { position: relative; width: 180px; height: 180px; margin: 0 auto 16px; }
+
+        .donut-ring {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(#5591c7 0%, rgba(255,255,255,0.06) 0%);
+            position: relative;
+        }
+
+        .donut-ring::after {
+            content: "";
+            position: absolute;
+            inset: 24px;
+            border-radius: 50%;
+            background: var(--surface);
+        }
+
+        .donut-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .donut-center-value { font-size: 22px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+        .donut-center-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+        .legend { display: flex; flex-direction: column; gap: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .legend-name { color: var(--text); flex: 1; }
+        .legend-size { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+        .drives-list { display: flex; flex-direction: column; gap: 12px; }
+
+        .drive-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .drive-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+        .drive-name { font-size: 14px; font-weight: 600; color: #fff; }
+        .drive-path { font-size: 11px; color: var(--faint); margin-top: 2px; font-family: monospace; }
+        .drive-meta { text-align: right; }
+        .drive-total { font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+        .drive-free { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+        .progress-track {
+            height: 8px;
+            background: var(--surface3);
+            border-radius: 99px;
+            overflow: hidden;
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .progress-segment { height: 100%; transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
+
+        .drive-libs { display: flex; flex-wrap: wrap; gap: 6px; }
+
+        .lib-pill {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--surface3);
+            border-radius: 99px;
+            padding: 3px 9px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .lib-pill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .lib-pill-name { color: var(--text); }
+
+        .libs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .lib-card {
+            background: var(--surface2);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 3px solid transparent;
+            transition: background 0.15s;
+        }
+
+        .lib-card:hover { background: var(--surface3); }
+        .lib-card-icon { font-size: 18px; margin-bottom: 6px; }
+        .lib-card-name { font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 2px; }
+        .lib-card-type { font-size: 10px; color: var(--muted); text-transform: capitalize; }
+        .lib-card-paths { font-size: 10px; color: var(--faint); font-family: monospace; margin-top: 6px; word-break: break-all; }
+
+        .state-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-top-color: var(--col-movies);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .section-header {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            margin: 20px 0 12px;
+        }
+
+        .kpi-row { display: flex; gap: 12px; margin-bottom: 16px; }
+
+        .kpi {
+            flex: 1;
+            background: var(--surface2);
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+
+        .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .kpi-value { font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+        .kpi-sub { font-size: 10px; color: var(--faint); margin-top: 2px; }
+    </style>
+</head>
+<body>
+    <div id="StorageDashboardConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="content">
+            <div class="page-header">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <rect x="2" y="2" width="20" height="8" rx="2"/>
+                    <rect x="2" y="14" width="20" height="8" rx="2"/>
+                    <line x1="6" y1="6" x2="6.01" y2="6" stroke-width="2.5" stroke-linecap="round"/>
+                    <line x1="6" y1="18" x2="6.01" y2="18" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+                <div>
+                    <div class="page-title">Storage Dashboard</div>
+                    <div class="page-subtitle" id="lastUpdate">Wird geladen…</div>
+                </div>
+                <button class="refresh-btn" id="refreshBtn">↻ Aktualisieren</button>
+            </div>
+
+            <div id="loadingState" class="state-box">
+                <div class="spinner"></div> Festplattendaten werden geladen…
+            </div>
+
+            <div id="errorState" class="state-box" style="display:none; color:#dd6974;">
+                ⚠ Fehler beim Laden der Daten.
+            </div>
+
+            <div id="mainContent" style="display:none;">
+                <div class="kpi-row" id="kpiRow"></div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-title">Gesamtspeicher</div>
+                        <div class="donut-wrap">
+                            <div id="donutRing" class="donut-ring"></div>
+                            <div class="donut-center">
+                                <div class="donut-center-value" id="donutValue">—</div>
+                                <div class="donut-center-label">gesamt</div>
+                            </div>
+                        </div>
+                        <div class="legend" id="donutLegend"></div>
+                    </div>
+
+                    <div>
+                        <div class="section-header">Festplatten</div>
+                        <div class="drives-list" id="drivesList"></div>
+
+                        <div class="section-header" style="margin-top:20px;">Medienbibliotheken</div>
+                        <div class="libs-grid" id="libsGrid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                const TYPE_CONFIG = {
+                    movies:     { label: 'Filme', color: '#5591c7', icon: '🎬' },
+                    tvshows:    { label: 'Serien', color: '#4f98a3', icon: '📺' },
+                    music:      { label: 'Musik', color: '#fdab43', icon: '🎵' },
+                    books:      { label: 'Bücher', color: '#a86fdf', icon: '📚' },
+                    photos:     { label: 'Fotos', color: '#e8af34', icon: '📷' },
+                    homevideos: { label: 'Heimvideos', color: '#6daa45', icon: '🎥' },
+                    mixed:      { label: 'Gemischt', color: '#dd6974', icon: '📁' },
+                    other:      { label: 'Sonstiges', color: '#888', icon: '📂' }
+                };
+
+                function typeInfo(t) {
+                    const key = String(t || '').toLowerCase().replace(/\s/g, '');
+                    return TYPE_CONFIG[key] || TYPE_CONFIG.other;
+                }
+
+                function fmtBytes(b) {
+                    if (b <= 0) return '0 B';
+                    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+                    const i = Math.floor(Math.log(b) / Math.log(1024));
+                    return (b / Math.pow(1024, i)).toFixed(i > 1 ? 1 : 0) + ' ' + units[i];
+                }
+
+                function pct(used, total) {
+                    return total > 0 ? Math.round((used / total) * 100) : 0;
+                }
+
+                function apiGet(url) {
+                    if (window.ApiClient && ApiClient.getJSON && ApiClient.getUrl) {
+                        return ApiClient.getJSON(ApiClient.getUrl(url));
+                    }
+
+                    return fetch(url).then(function (r) {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.json();
+                    });
+                }
+
+                function render(data) {
+                    const drives = data.drives || [];
+                    const libraries = data.libraries || [];
+
+                    const totalBytes = drives.reduce((s, d) => s + (d.totalBytes || 0), 0);
+                    const usedBytes = drives.reduce((s, d) => s + (d.usedBytes || 0), 0);
+                    const freeBytes = drives.reduce((s, d) => s + (d.freeBytes || 0), 0);
+                    const usedPct = pct(usedBytes, totalBytes);
+
+                    document.querySelector('#kpiRow').innerHTML = ''
+                        + '<div class="kpi"><div class="kpi-label">Gesamt</div><div class="kpi-value">' + fmtBytes(totalBytes) + '</div><div class="kpi-sub">' + drives.length + ' Laufwerke</div></div>'
+                        + '<div class="kpi"><div class="kpi-label">Belegt</div><div class="kpi-value">' + fmtBytes(usedBytes) + '</div><div class="kpi-sub">' + usedPct + '% genutzt</div></div>'
+                        + '<div class="kpi"><div class="kpi-label">Frei</div><div class="kpi-value">' + fmtBytes(freeBytes) + '</div><div class="kpi-sub">' + (100 - usedPct) + '% verfügbar</div></div>'
+                        + '<div class="kpi"><div class="kpi-label">Bibliotheken</div><div class="kpi-value">' + libraries.length + '</div><div class="kpi-sub">Medienbibliotheken</div></div>';
+
+                    document.querySelector('#donutValue').textContent = fmtBytes(totalBytes);
+                    document.querySelector('#donutRing').style.background =
+                        'conic-gradient(#5591c7 0% ' + usedPct + '%, rgba(255,255,255,0.06) ' + usedPct + '% 100%)';
+
+                    const libTypes = Array.from(new Set(libraries.map(l => String(l.type || 'mixed').toLowerCase().replace(/\s/g, ''))));
+                    document.querySelector('#donutLegend').innerHTML = libTypes.map(function (key) {
+                        const info = typeInfo(key);
+                        const count = libraries.filter(l => String(l.type || 'mixed').toLowerCase().replace(/\s/g, '') === key).length;
+                        return '<div class="legend-item"><div class="legend-dot" style="background:' + info.color + '"></div><span class="legend-name">' + info.label + '</span><span class="legend-size">' + count + ' Bib.</span></div>';
+                    }).join('')
+                    + '<div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.12)"></div><span class="legend-name">Frei</span><span class="legend-size">' + fmtBytes(freeBytes) + '</span></div>';
+
+                    document.querySelector('#drivesList').innerHTML = drives.map(function (drive) {
+                        const usedPctDrive = pct(drive.usedBytes || 0, drive.totalBytes || 0);
+                        const drivePath = drive.name || '/';
+                        const matchedLibs = libraries.filter(lib => (lib.paths || []).some(p => String(p).startsWith(drivePath)));
+
+                        const libSegments = matchedLibs.length > 0
+                            ? matchedLibs.map(function (lib) {
+                                const segPct = usedPctDrive / matchedLibs.length;
+                                const info = typeInfo(lib.type);
+                                return '<div class="progress-segment" style="width:' + segPct + '%;background:' + info.color + ';opacity:0.85"></div>';
+                            }).join('')
+                            : '<div class="progress-segment" style="width:' + usedPctDrive + '%;background:#5591c7"></div>';
+
+                        const libPills = matchedLibs.map(function (lib) {
+                            const info = typeInfo(lib.type);
+                            return '<div class="lib-pill"><div class="lib-pill-dot" style="background:' + info.color + '"></div><span class="lib-pill-name">' + lib.name + '</span></div>';
+                        }).join('');
+
+                        return '<div class="drive-card">'
+                            + '<div class="drive-header"><div><div class="drive-name">' + (drive.label || drive.name) + '</div><div class="drive-path">' + drive.name + '</div></div>'
+                            + '<div class="drive-meta"><div class="drive-total">' + fmtBytes(drive.totalBytes || 0) + '</div><div class="drive-free">' + fmtBytes(drive.freeBytes || 0) + ' frei · ' + usedPctDrive + '% belegt</div></div></div>'
+                            + '<div class="progress-track">' + libSegments + '</div>'
+                            + '<div class="drive-libs">' + (libPills || '<span style="font-size:11px;color:var(--faint)">Keine Bibliotheken zugeordnet</span>') + '</div>'
+                            + '</div>';
+                    }).join('');
+
+                    document.querySelector('#libsGrid').innerHTML = libraries.map(function (lib) {
+                        const info = typeInfo(lib.type);
+                        return '<div class="lib-card" style="border-left-color:' + info.color + '">'
+                            + '<div class="lib-card-icon">' + info.icon + '</div>'
+                            + '<div class="lib-card-name">' + lib.name + '</div>'
+                            + '<div class="lib-card-type">' + info.label + '</div>'
+                            + '<div class="lib-card-paths">' + (lib.paths || []).join('<br>') + '</div>'
+                            + '</div>';
+                    }).join('');
+                }
+
+                function loadData() {
+                    const loading = document.querySelector('#loadingState');
+                    const error = document.querySelector('#errorState');
+                    const content = document.querySelector('#mainContent');
+
+                    loading.style.display = 'flex';
+                    error.style.display = 'none';
+                    content.style.display = 'none';
+
+                    return apiGet('Plugins/StorageDashboard/Storage')
+                        .then(function (data) {
+                            render(data || { drives: [], libraries: [] });
+                            document.querySelector('#lastUpdate').textContent = 'Zuletzt aktualisiert: ' + new Date().toLocaleTimeString('de-DE');
+                            loading.style.display = 'none';
+                            content.style.display = 'block';
+                        })
+                        .catch(function (e) {
+                            console.error(e);
+                            loading.style.display = 'none';
+                            error.style.display = 'flex';
+                        });
+                }
+
+                document.querySelector('#StorageDashboardConfigPage').addEventListener('pageshow', function () {
+                    loadData();
+                });
+
+                document.querySelector('#refreshBtn').addEventListener('click', function () {
+                    loadData();
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>

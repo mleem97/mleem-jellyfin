@@ -43,8 +43,8 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         {
             new PluginPageInfo
             {
-                Name = this.Name,
-                EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.configPage.html", GetType().Namespace)
+                Name = "StorageDashboard",
+                EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Web.config.html", GetType().Namespace)
             }
         };
     }

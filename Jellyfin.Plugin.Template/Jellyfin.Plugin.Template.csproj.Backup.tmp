@@ -15,8 +15,12 @@
   <ItemGroup>
     <PackageReference Include="Jellyfin.Common" Version="10.11.7" />
     <PackageReference Include="Jellyfin.Controller" Version="10.11.7" />
+    <PackageReference Include="Jellyfin.Data" Version="10.11.7" />
+    <PackageReference Include="Jellyfin.Database.Implementations" Version="10.11.7" />
+    <PackageReference Include="Jellyfin.Extensions" Version="10.11.7" />
+    <PackageReference Include="Jellyfin.MediaEncoding.Keyframes" Version="10.11.7" />
     <PackageReference Include="Jellyfin.Model" Version="10.11.7" />
-    <PackageReference Include="Jellyfin.Sdk" Version="2025.10.21" />
+    <PackageReference Include="Jellyfin.Naming" Version="10.11.7" />
     <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.376" PrivateAssets="All" />
     <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" PrivateAssets="All" />
@@ -24,8 +28,11 @@
 
   <ItemGroup>
     <None Remove="Configuration\configPage.html" />
-    <None Remove="Web\config.html" />
-    <EmbeddedResource Include="Web\config.html" />
+    <EmbeddedResource Include="Configuration\configPage.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Api\" />
   </ItemGroup>
 
 </Project>
