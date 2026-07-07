@@ -46,6 +46,7 @@ mleem-jellyfin/
 │       └── Web/
 ├── docs/
 ├── .github/
+│   ├── scripts/
 │   └── workflows/
 ├── manifest.json
 ├── build.yaml
@@ -63,9 +64,41 @@ dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release
 dotnet build plugins/MusicDashboard/MusicDashboard.csproj -c Release
 ```
 
-## Release Tags
+## Automatic Releases
 
-Each plugin uses its own tag namespace:
+Plugin releases are automated from `main`.
+
+When a commit changes files under `plugins/<PluginSlug>/`, the `Auto Publish Plugins` workflow:
+
+1. detects the changed plugin folder;
+2. creates a changelog from commits since the last `<PluginSlug>-v*` tag;
+3. bumps the version in `plugin.json` and the plugin `.csproj`;
+4. builds the plugin;
+5. creates a ZIP package;
+6. updates `manifest.json`;
+7. commits the release metadata back to `main`;
+8. creates a GitHub release with the package and manifest.
+
+Manual releases can also be started from GitHub Actions with a selected plugin and bump type.
+
+## Versioning
+
+The release script uses four-part Jellyfin-compatible versions:
+
+```text
+major.minor.patch.revision
+```
+
+Automatic bump rules:
+
+| Commit style | Bump |
+|--------------|------|
+| `BREAKING CHANGE` or `type!:` | major |
+| `feat:` | minor |
+| `fix:`, `perf:`, `refactor:` | patch |
+| everything else | revision |
+
+Each plugin has its own tag namespace:
 
 ```text
 HddDisplay-v1.0.0.0
