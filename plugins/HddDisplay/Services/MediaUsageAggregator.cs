@@ -20,16 +20,22 @@ public static class MediaUsageAggregator
     /// </summary>
     /// <param name="inputs">Scan inputs.</param>
     /// <param name="cacheMinutes">Cache lifetime in minutes. Use zero to disable cache.</param>
+    /// <param name="forceRefresh">Whether the current cache should be bypassed.</param>
     /// <returns>Media usage aggregation result.</returns>
-    public static MediaUsageAggregationResult Calculate(IReadOnlyList<MediaUsageScanInput> inputs, int cacheMinutes)
+    public static MediaUsageAggregationResult Calculate(IReadOnlyList<MediaUsageScanInput> inputs, int cacheMinutes, bool forceRefresh)
     {
         var cacheKey = BuildCacheKey(inputs);
-        if (TryGetCached(cacheKey, cacheMinutes, out var cached))
+        if (!forceRefresh && TryGetCached(cacheKey, cacheMinutes, out var cached))
         {
             return cached;
         }
 
         var diagnostics = new List<string>();
+        if (forceRefresh)
+        {
+            diagnostics.Add("Storage scan cache was bypassed by request.");
+        }
+
         var usage = new Dictionary<string, MediaUsageEntry>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var input in inputs)
@@ -54,6 +60,7 @@ public static class MediaUsageAggregator
         {
             GeneratedAtUtc = DateTimeOffset.UtcNow,
             CacheHit = false,
+            ForcedRefresh = forceRefresh,
             Entries = usage.Values
                 .OrderBy(entry => entry.MountPath, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(entry => entry.MediaType, StringComparer.OrdinalIgnoreCase)
@@ -63,6 +70,17 @@ public static class MediaUsageAggregator
 
         StoreCache(cacheKey, result);
         return result;
+    }
+
+    /// <summary>
+    /// Clears the in-memory storage scan cache.
+    /// </summary>
+    public static void ClearCache()
+    {
+        lock (CacheLock)
+        {
+            CachedResult = null;
+        }
     }
 
     private static bool TryGetCached(string cacheKey, int cacheMinutes, out MediaUsageAggregationResult result)
@@ -85,7 +103,7 @@ public static class MediaUsageAggregator
                 return false;
             }
 
-            result = CachedResult.Result.Clone(cacheHit: true);
+            result = CachedResult.Result.Clone(cacheHit: true, forcedRefresh: false);
             return true;
         }
     }
@@ -98,7 +116,7 @@ public static class MediaUsageAggregator
             {
                 CacheKey = cacheKey,
                 CreatedAtUtc = DateTimeOffset.UtcNow,
-                Result = result.Clone(cacheHit: false)
+                Result = result.Clone(cacheHit: false, forcedRefresh: false)
             };
         }
     }
@@ -221,6 +239,11 @@ public class MediaUsageAggregationResult
     public bool CacheHit { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the cache was bypassed for this result.
+    /// </summary>
+    public bool ForcedRefresh { get; set; }
+
+    /// <summary>
     /// Gets or sets usage entries.
     /// </summary>
     public IReadOnlyList<MediaUsageEntry> Entries { get; set; } = Array.Empty<MediaUsageEntry>();
@@ -231,16 +254,18 @@ public class MediaUsageAggregationResult
     public IReadOnlyList<string> Diagnostics { get; set; } = Array.Empty<string>();
 
     /// <summary>
-    /// Clones the result and applies cache hit state.
+    /// Clones the result and applies cache state.
     /// </summary>
     /// <param name="cacheHit">Cache hit state.</param>
+    /// <param name="forcedRefresh">Forced refresh state.</param>
     /// <returns>Cloned result.</returns>
-    public MediaUsageAggregationResult Clone(bool cacheHit)
+    public MediaUsageAggregationResult Clone(bool cacheHit, bool forcedRefresh)
     {
         return new MediaUsageAggregationResult
         {
             GeneratedAtUtc = GeneratedAtUtc,
             CacheHit = cacheHit,
+            ForcedRefresh = forcedRefresh,
             Entries = Entries.Select(entry => entry.Clone()).ToArray(),
             Diagnostics = Diagnostics.ToArray()
         };
