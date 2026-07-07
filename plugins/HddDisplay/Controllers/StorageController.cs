@@ -43,11 +43,10 @@ public class StorageController : ControllerBase
             })
             .ToArray();
 
-        var mountResolver = new MountResolver();
         var mountResolutions = libraries
             .SelectMany(library => library.Paths)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(mountResolver.Resolve)
+            .Select(MountResolver.Resolve)
             .ToArray();
 
         var drives = mountResolutions
