@@ -2,24 +2,26 @@
 
 > Jellyfin Admin Dashboard plugin for mount-level disk usage and NVIDIA `jellyfin-ffmpeg` telemetry.
 
-[![Jellyfin](https://img.shields.io/badge/Jellyfin-10.10%2B-blue?style=for-the-badge)](https://jellyfin.org)
-[![.NET](https://img.shields.io/badge/.NET-9.0-purple?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com)
-[![GPU](https://img.shields.io/badge/NVIDIA-GTX%201060%206GB-green?style=for-the-badge&logo=nvidia)]()
+## Purpose
 
-## Overview
+HDD Display is the storage and transcoding plugin in this Jellyfin plugin library. Its target surface is the Jellyfin Admin Dashboard, not the plugin settings area.
 
-HDD Display is intended to show the information that matters directly on the Jellyfin Admin Dashboard:
+## Current Functionality
 
-- all Jellyfin library paths grouped by physical mount/disk;
-- total, used, and free capacity per mount;
-- stacked usage bars by supported media type: Video, Filme, Serien, Musik;
-- live NVIDIA telemetry for active `jellyfin-ffmpeg` transcoding.
+- Adds a Jellyfin plugin page named **HDD Display**.
+- Exposes `GET /Plugins/HddDisplay/Storage`.
+- Reads Jellyfin virtual folders.
+- Groups configured Jellyfin library paths by detected drive or mount.
+- Displays total, used and free bytes for detected drives.
 
-The existing settings-page experiment has been retained only as a diagnostics fallback. The actual feature target is the Admin Dashboard.
+## Target Dashboard Functionality
+
+- Replace or augment the Admin Dashboard `Pfade` panel.
+- Show all Jellyfin media mounts in a compact card.
+- Show colored usage segments for Filme, Serien, Musik and Video.
+- Show live NVIDIA usage while `jellyfin-ffmpeg` is active.
 
 ## Target Hardware
-
-Initial implementation target:
 
 | Component | Target |
 |-----------|--------|
@@ -27,28 +29,6 @@ Initial implementation target:
 | GPU | NVIDIA GeForce GTX 1060 6 GB |
 | Memory | DDR3 |
 | Transcoder | `jellyfin-ffmpeg` |
-
-## Planned Dashboard Layout
-
-The Jellyfin Admin Dashboard currently has a right-side `Pfade` / `Paths` panel. This plugin should replace or augment that area with a compact hardware/storage panel:
-
-```text
-Storage & Transcoding
-├── GPU: GTX 1060 6GB
-│   ├── ffmpeg processes: 1
-│   ├── GPU: 37%
-│   ├── Encoder: 61%
-│   └── VRAM: 0.8 / 6.0 GB
-├── /mnt/media-a
-│   ├── 7.4 / 10.9 TB used
-│   └── [ Filme | Serien | Musik | Video | Free ]
-├── /mnt/media-b
-└── /mnt/media-c
-```
-
-## Release Metadata
-
-This plugin is described by [`plugin.json`](./plugin.json). The repository release workflow reads that file to build the project and update the shared Jellyfin `manifest.json`.
 
 ## Build
 
