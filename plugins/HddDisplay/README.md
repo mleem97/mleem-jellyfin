@@ -11,7 +11,10 @@ HDD Display is the storage and transcoding plugin in this Jellyfin plugin librar
 - Adds a Jellyfin plugin page named **HDD Display**.
 - Exposes `GET /Plugins/HddDisplay/Storage`.
 - Reads Jellyfin virtual folders.
+- Resolves configured Jellyfin library paths through Linux mount information when available.
+- Uses `DriveInfo` fallback for Windows paths or restricted environments.
 - Groups configured Jellyfin library paths by detected drive or mount.
+- Returns per-path mount diagnostics for troubleshooting.
 - Displays total, used and free bytes for detected drives.
 
 ## Target Dashboard Functionality
@@ -38,4 +41,4 @@ dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release
 
 ## Feature Plan
 
-See [`../../docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md`](../../docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md).
+See [`../../docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md`](../../docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md) and [`../../docs/PLUGIN_BATCH_PLAN.md`](../../docs/PLUGIN_BATCH_PLAN.md).
