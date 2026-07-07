@@ -19,6 +19,11 @@ Better MusicDisplay is the second plugin in this Jellyfin plugin library. It ext
 - Buildable Jellyfin plugin project.
 - Plugin configuration page.
 - `GET /Plugins/BetterMusicDisplay/Overview` endpoint.
+- `GET /Plugins/BetterMusicDisplay/Users/{userId}/Settings` endpoint.
+- `PUT /Plugins/BetterMusicDisplay/Users/{userId}/Settings` endpoint.
+- `DELETE /Plugins/BetterMusicDisplay/Users/{userId}/Settings` endpoint.
+- Per-user settings persistence in the plugin data folder.
+- Header-based self-user guard for user settings access.
 
 ## Build
 
