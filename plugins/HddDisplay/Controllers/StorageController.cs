@@ -19,9 +19,41 @@ public class StorageController : ControllerBase
     /// <summary>
     /// Gets storage and library data for the dashboard UI.
     /// </summary>
+    /// <param name="refresh">Whether the storage scan cache should be bypassed.</param>
     /// <returns>Dashboard data.</returns>
     [HttpGet("Storage")]
-    public ActionResult<StorageDashboardResponse> GetStorage()
+    public ActionResult<StorageDashboardResponse> GetStorage([FromQuery] bool refresh = false)
+    {
+        return BuildStorageResponse(refresh);
+    }
+
+    /// <summary>
+    /// Gets storage and GPU data for the Admin Dashboard widget.
+    /// </summary>
+    /// <param name="refresh">Whether the storage scan cache should be bypassed.</param>
+    /// <returns>Admin Dashboard overview data.</returns>
+    [HttpGet("AdminDashboard/Overview")]
+    public ActionResult<StorageDashboardResponse> GetAdminDashboardOverview([FromQuery] bool refresh = false)
+    {
+        return BuildStorageResponse(refresh);
+    }
+
+    /// <summary>
+    /// Clears the in-memory storage scan cache.
+    /// </summary>
+    /// <returns>Cache clear result.</returns>
+    [HttpPost("Storage/Cache/Clear")]
+    public ActionResult<CacheClearResponse> ClearStorageCache()
+    {
+        MediaUsageAggregator.ClearCache();
+        return Ok(new CacheClearResponse
+        {
+            ClearedAtUtc = DateTimeOffset.UtcNow,
+            Message = "HDD Display storage scan cache cleared."
+        });
+    }
+
+    private ActionResult<StorageDashboardResponse> BuildStorageResponse(bool refresh)
     {
         var libraryManager = HttpContext.RequestServices.GetService<ILibraryManager>();
         if (libraryManager is null)
@@ -55,7 +87,7 @@ public class StorageController : ControllerBase
             .Cast<MediaUsageScanInput>()
             .ToArray();
 
-        var usage = MediaUsageAggregator.Calculate(usageInputs, Plugin.Instance?.Configuration.StorageScanCacheMinutes ?? 15);
+        var usage = MediaUsageAggregator.Calculate(usageInputs, Plugin.Instance?.Configuration.StorageScanCacheMinutes ?? 15, refresh);
         var gpu = new NvidiaSmiGpuUsageProvider().GetSnapshot();
 
         var drives = mountResolutions
@@ -76,16 +108,6 @@ public class StorageController : ControllerBase
             Gpu = gpu,
             Note = "Library paths are resolved through /proc/self/mountinfo where available. Media usage is aggregated from real file sizes. NVIDIA telemetry is read through nvidia-smi when available."
         });
-    }
-
-    /// <summary>
-    /// Gets storage and GPU data for the Admin Dashboard widget.
-    /// </summary>
-    /// <returns>Admin Dashboard overview data.</returns>
-    [HttpGet("AdminDashboard/Overview")]
-    public ActionResult<StorageDashboardResponse> GetAdminDashboardOverview()
-    {
-        return GetStorage();
     }
 
     private static MediaUsageScanInput? CreateUsageInput(LibraryEntry library, string path, IReadOnlyList<MountResolution> resolutions)
@@ -220,6 +242,22 @@ public class StorageDashboardResponse
     /// Gets or sets a diagnostic note.
     /// </summary>
     public string Note { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Cache clear response.
+/// </summary>
+public class CacheClearResponse
+{
+    /// <summary>
+    /// Gets or sets clear timestamp.
+    /// </summary>
+    public DateTimeOffset ClearedAtUtc { get; set; }
+
+    /// <summary>
+    /// Gets or sets response message.
+    /// </summary>
+    public string Message { get; set; } = string.Empty;
 }
 
 /// <summary>
