@@ -9,12 +9,21 @@
     "versions": []
   },
   {
-    "guid": "4a88e030-4b75-4f2b-a43f-5b4c1b797d2b",
-    "name": "Music Dashboard",
-    "description": "Music library overview for Jellyfin.",
-    "overview": "Music library overview for Jellyfin.",
+    "guid": "6b6c96ac-3f60-4ac3-8b8a-0d0cb8acb9dd",
+    "name": "Better MusicDisplay",
+    "description": "Enhanced Jellyfin music UI with endless scroll, live search and per-user layouts.",
+    "overview": "Modern music views for Jellyfin.",
     "owner": "mleem97",
     "category": "General",
+    "versions": []
+  },
+  {
+    "guid": "f8d74b1c-3c97-4481-a3b3-6eb622d6ad58",
+    "name": "MusicHoarderz Cover & Metadata Provider",
+    "description": "Music cover and metadata provider using MusicHoarderz/COV with optional Spotify and YouTube fallback.",
+    "overview": "Music cover and metadata provider for Jellyfin.",
+    "owner": "mleem97",
+    "category": "Metadata",
     "versions": []
   }
 ]
