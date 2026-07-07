@@ -10,6 +10,7 @@ HDD Display is the storage and transcoding plugin in this Jellyfin plugin librar
 
 - Adds a Jellyfin plugin page named **HDD Display**.
 - Exposes `GET /Plugins/HddDisplay/Storage`.
+- Exposes `GET /Plugins/HddDisplay/AdminDashboard/Overview` for the dashboard widget.
 - Reads Jellyfin virtual folders.
 - Resolves configured Jellyfin library paths through Linux mount information when available.
 - Uses `DriveInfo` fallback for Windows paths or restricted environments.
