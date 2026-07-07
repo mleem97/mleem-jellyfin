@@ -102,6 +102,7 @@ MusicHoarderzProvider-v0.1.0.0
 - [`docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md`](./docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md)
 - [`docs/PLUGIN_ROADMAP.md`](./docs/PLUGIN_ROADMAP.md)
 - [`docs/PLUGIN_BATCH_PLAN.md`](./docs/PLUGIN_BATCH_PLAN.md)
+- [`docs/COV_INTEGRATION_POLICY.md`](./docs/COV_INTEGRATION_POLICY.md)
 
 ## License
 
