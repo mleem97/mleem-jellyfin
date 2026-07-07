@@ -116,7 +116,7 @@ jobs:
                   github_env.write(f'{key}={value}\n')
           PY
 
-      - name: Ensure release tag exists
+      - name: Create local release tag for manual dispatch
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
@@ -125,7 +125,6 @@ jobs:
             echo "Tag already exists: ${TAG_NAME}"
           else
             git tag "${TAG_NAME}"
-            git push origin "${TAG_NAME}"
           fi
 
       - name: Restore plugin
@@ -229,6 +228,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
+          target_commitish: ${{ github.sha }}
           name: ${{ env.PLUGIN_NAME }} ${{ env.VERSION }}
           body: ${{ env.CHANGELOG_TEXT }}
           files: |
