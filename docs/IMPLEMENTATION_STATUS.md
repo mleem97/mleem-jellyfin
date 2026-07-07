@@ -47,11 +47,14 @@ The repository is a three-plugin Jellyfin plugin library:
 - Plugin page.
 - Basic overview endpoint.
 - Initial global and user settings models.
+- B1 user settings persistence service.
+- Per-user settings endpoints for get, save and reset.
+- Header-based self-user guard for settings access.
+- User customization blocking when global customization is disabled.
 
 ### Open
 
-- User settings persistence service.
-- Admin and user permission checks.
+- Strong Jellyfin admin-role integration for cross-user management.
 - Music query API layer.
 - Album endless-scroll MVP.
 - Artists and album artists.
