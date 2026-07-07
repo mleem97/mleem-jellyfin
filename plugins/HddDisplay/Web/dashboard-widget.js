@@ -54,7 +54,7 @@
         widget.style.cssText = 'background:#181818;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px;margin:0 0 16px;color:#e0e0e0;';
         widget.innerHTML = '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px">'
             + '<div><h3 style="margin:0;color:#fff;font-size:16px">HDD Display</h3><div style="font-size:12px;color:#888">Storage and GPU overview</div></div>'
-            + '<div id="hdd-display-widget-state" style="font-size:12px;color:#888">Loading...</div>'
+            + '<div style="display:flex;align-items:center;gap:8px"><button id="hdd-display-refresh" type="button" style="font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:#222;color:#ddd">Refresh scan</button><div id="hdd-display-widget-state" style="font-size:12px;color:#888">Loading...</div></div>'
             + '</div><div id="hdd-display-widget-content"></div><div id="hdd-display-widget-gpu" style="margin-top:14px"></div>';
         return widget;
     }
@@ -107,7 +107,8 @@
         if (!state || !content || !gpu) return;
 
         const drives = data.drives || [];
-        state.textContent = drives.length + ' mounts';
+        const cacheState = data.usage && data.usage.cacheHit ? 'cached' : 'fresh';
+        state.textContent = drives.length + ' mounts · ' + cacheState;
         content.innerHTML = drives.map(function (drive) {
             const usedPct = pct(drive.usedBytes || 0, drive.totalBytes || 0);
             return '<div style="margin-top:10px">'
@@ -119,8 +120,9 @@
         gpu.innerHTML = renderGpu(data.gpu);
     }
 
-    function load() {
-        apiGet('Plugins/HddDisplay/AdminDashboard/Overview')
+    function load(refresh) {
+        const suffix = refresh ? '?refresh=true' : '';
+        apiGet('Plugins/HddDisplay/AdminDashboard/Overview' + suffix)
             .then(render)
             .catch(function (error) {
                 const state = document.querySelector('#hdd-display-widget-state');
@@ -128,6 +130,16 @@
                 const content = document.querySelector('#hdd-display-widget-content');
                 if (content) content.innerHTML = '<div style="color:#dd6974;font-size:12px">' + esc(error.message) + '</div>';
             });
+    }
+
+    function bindRefresh() {
+        const button = document.querySelector('#hdd-display-refresh');
+        if (!button) return;
+        button.addEventListener('click', function () {
+            const state = document.querySelector('#hdd-display-widget-state');
+            if (state) state.textContent = 'Refreshing...';
+            load(true);
+        });
     }
 
     function inject() {
@@ -140,8 +152,9 @@
 
         const widget = createWidget();
         target.insertBefore(widget, target.firstChild);
-        load();
-        window.setInterval(load, 5000);
+        bindRefresh();
+        load(false);
+        window.setInterval(function () { load(false); }, 5000);
     }
 
     document.addEventListener('pageshow', function () {
