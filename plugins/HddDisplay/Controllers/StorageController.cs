@@ -49,10 +49,18 @@ public class StorageController : ControllerBase
             .Select(MountResolver.Resolve)
             .ToArray();
 
+        var usageInputs = libraries
+            .SelectMany(library => library.Paths.Select(path => CreateUsageInput(library, path, mountResolutions)))
+            .Where(input => input is not null)
+            .Cast<MediaUsageScanInput>()
+            .ToArray();
+
+        var usage = MediaUsageAggregator.Calculate(usageInputs, Plugin.Instance?.Configuration.StorageScanCacheMinutes ?? 15);
+
         var drives = mountResolutions
             .Where(resolution => resolution.IsResolved && !string.IsNullOrWhiteSpace(resolution.MountPath))
             .GroupBy(resolution => resolution.MountPath, StringComparer.OrdinalIgnoreCase)
-            .Select(group => TryReadDrive(group.Key, group.ToArray()))
+            .Select(group => TryReadDrive(group.Key, group.ToArray(), usage.Entries))
             .Where(drive => drive is not null)
             .Cast<DriveEntry>()
             .OrderBy(drive => drive.Name, StringComparer.OrdinalIgnoreCase)
@@ -63,18 +71,36 @@ public class StorageController : ControllerBase
             Drives = drives,
             Libraries = libraries,
             Mounts = mountResolutions,
-            Note = "Library paths are resolved through /proc/self/mountinfo where available, with DriveInfo fallback for non-Linux paths."
+            Usage = usage,
+            Note = "Library paths are resolved through /proc/self/mountinfo where available. Media usage is aggregated from real file sizes and cached by plugin configuration."
         });
     }
 
-    private static DriveEntry? TryReadDrive(string root, IReadOnlyList<MountResolution> resolutions)
+    private static MediaUsageScanInput? CreateUsageInput(LibraryEntry library, string path, IReadOnlyList<MountResolution> resolutions)
+    {
+        var resolution = resolutions.FirstOrDefault(item => string.Equals(item.LibraryPath, path, StringComparison.OrdinalIgnoreCase));
+        if (resolution is null || !resolution.IsResolved)
+        {
+            return null;
+        }
+
+        return new MediaUsageScanInput
+        {
+            LibraryName = library.Name,
+            LibraryType = library.Type,
+            LibraryPath = path,
+            MountPath = resolution.MountPath
+        };
+    }
+
+    private static DriveEntry? TryReadDrive(string root, IReadOnlyList<MountResolution> resolutions, IReadOnlyList<MediaUsageEntry> usageEntries)
     {
         try
         {
             var info = new DriveInfo(root);
             if (!info.IsReady)
             {
-                return CreateUnavailableDrive(root, resolutions, "DriveInfo reports the mount as not ready.");
+                return CreateUnavailableDrive(root, resolutions, usageEntries, "DriveInfo reports the mount as not ready.");
             }
 
             var total = info.TotalSize;
@@ -87,6 +113,7 @@ public class StorageController : ControllerBase
                 FileSystemType = resolutions.FirstOrDefault()?.FileSystemType ?? string.Empty,
                 ResolutionProvider = resolutions.FirstOrDefault()?.ResolutionProvider ?? string.Empty,
                 LibraryPaths = resolutions.Select(resolution => resolution.LibraryPath).OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray(),
+                Usage = UsageForMount(root, usageEntries),
                 Diagnostics = resolutions.Select(resolution => resolution.Diagnostic).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
                 TotalBytes = total,
                 FreeBytes = free,
@@ -96,11 +123,15 @@ public class StorageController : ControllerBase
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            return CreateUnavailableDrive(root, resolutions, exception.Message);
+            return CreateUnavailableDrive(root, resolutions, usageEntries, exception.Message);
         }
     }
 
-    private static DriveEntry CreateUnavailableDrive(string root, IReadOnlyList<MountResolution> resolutions, string diagnostic)
+    private static DriveEntry CreateUnavailableDrive(
+        string root,
+        IReadOnlyList<MountResolution> resolutions,
+        IReadOnlyList<MediaUsageEntry> usageEntries,
+        string diagnostic)
     {
         return new DriveEntry
         {
@@ -110,9 +141,18 @@ public class StorageController : ControllerBase
             FileSystemType = resolutions.FirstOrDefault()?.FileSystemType ?? string.Empty,
             ResolutionProvider = resolutions.FirstOrDefault()?.ResolutionProvider ?? string.Empty,
             LibraryPaths = resolutions.Select(resolution => resolution.LibraryPath).OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray(),
+            Usage = UsageForMount(root, usageEntries),
             Diagnostics = resolutions.Select(resolution => resolution.Diagnostic).Append(diagnostic).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
             IsReady = false
         };
+    }
+
+    private static IReadOnlyList<MediaUsageEntry> UsageForMount(string root, IReadOnlyList<MediaUsageEntry> usageEntries)
+    {
+        return usageEntries
+            .Where(entry => string.Equals(entry.MountPath, root, StringComparison.OrdinalIgnoreCase))
+            .Select(entry => entry.Clone())
+            .ToArray();
     }
 
     private static string NormalizeLibraryType(string? type)
@@ -155,6 +195,11 @@ public class StorageDashboardResponse
     public IReadOnlyList<MountResolution> Mounts { get; set; } = Array.Empty<MountResolution>();
 
     /// <summary>
+    /// Gets or sets real media usage aggregation.
+    /// </summary>
+    public MediaUsageAggregationResult Usage { get; set; } = new();
+
+    /// <summary>
     /// Gets or sets a diagnostic note.
     /// </summary>
     public string Note { get; set; } = string.Empty;
@@ -194,6 +239,11 @@ public class DriveEntry
     /// Gets or sets library paths on this drive.
     /// </summary>
     public IReadOnlyList<string> LibraryPaths { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Gets or sets media usage for this drive.
+    /// </summary>
+    public IReadOnlyList<MediaUsageEntry> Usage { get; set; } = Array.Empty<MediaUsageEntry>();
 
     /// <summary>
     /// Gets or sets diagnostics for this drive.
