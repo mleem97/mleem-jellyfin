@@ -56,6 +56,7 @@ public class StorageController : ControllerBase
             .ToArray();
 
         var usage = MediaUsageAggregator.Calculate(usageInputs, Plugin.Instance?.Configuration.StorageScanCacheMinutes ?? 15);
+        var gpu = new NvidiaSmiGpuUsageProvider().GetSnapshot();
 
         var drives = mountResolutions
             .Where(resolution => resolution.IsResolved && !string.IsNullOrWhiteSpace(resolution.MountPath))
@@ -72,7 +73,8 @@ public class StorageController : ControllerBase
             Libraries = libraries,
             Mounts = mountResolutions,
             Usage = usage,
-            Note = "Library paths are resolved through /proc/self/mountinfo where available. Media usage is aggregated from real file sizes and cached by plugin configuration."
+            Gpu = gpu,
+            Note = "Library paths are resolved through /proc/self/mountinfo where available. Media usage is aggregated from real file sizes. NVIDIA telemetry is read through nvidia-smi when available."
         });
     }
 
@@ -198,6 +200,11 @@ public class StorageDashboardResponse
     /// Gets or sets real media usage aggregation.
     /// </summary>
     public MediaUsageAggregationResult Usage { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets GPU usage telemetry.
+    /// </summary>
+    public GpuUsageSnapshot Gpu { get; set; } = new();
 
     /// <summary>
     /// Gets or sets a diagnostic note.
