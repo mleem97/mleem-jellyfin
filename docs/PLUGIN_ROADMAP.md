@@ -2,11 +2,11 @@
 
 ## Repository Direction
 
-This repository is the plugin library for Marvin's Jellyfin projects. Plugin folders must contain working plugin code.
+This repository is Marvin's Jellyfin plugin library. It is expanded plugin-by-plugin and does not replace earlier plugins unless explicitly decided.
 
-## HDD Display
+## Plugin 1: HDD Display
 
-Purpose: replace the Admin Dashboard `Pfade` area with a compact storage panel.
+Purpose: Admin Dashboard storage overview and NVIDIA `jellyfin-ffmpeg` telemetry.
 
 Implementation order:
 
@@ -16,19 +16,39 @@ Implementation order:
 4. Add NVIDIA usage data.
 5. Render the Admin Dashboard widget.
 
-## Music Dashboard
+## Plugin 2: Better MusicDisplay
 
-Purpose: provide a better overview of the Jellyfin music library.
+Purpose: replace and enhance Jellyfin music views with endless scroll, live search, modern layouts and per-user layout settings.
 
 Implementation order:
 
-1. Show configured music libraries and paths.
-2. Add missing metadata counters.
-3. Add missing cover counters.
-4. Add duplicate album and duplicate track detection.
-5. Add codec and bitrate overview.
-6. Add recently added music cards.
+1. Add global configuration and per-user settings.
+2. Add paged music query APIs.
+3. Build Album view MVP with endless scroll and live search.
+4. Add Artists, Album Artists, Playlists, Songs and Genres.
+5. Add Suggestions start page.
+6. Stabilize UI fallback and user layout storage.
+
+## Plugin 3: MusicHoarderz Cover & Metadata Provider
+
+Purpose: find music covers through MusicHoarderz/COV and enrich metadata through admin-configured Spotify and YouTube credentials.
+
+Implementation order:
+
+1. Add admin-only provider configuration.
+2. Add provider abstraction and COV MVP.
+3. Add matching score and review queue.
+4. Add Jellyfin-only cover apply mode.
+5. Add Spotify and YouTube fallback providers.
+6. Add scheduled task automation.
+7. Add optional folder image and audio tagging modes.
 
 ## Packaging
 
-Each plugin releases independently with plugin-scoped tags.
+Each plugin releases independently with plugin-scoped tags:
+
+```text
+HddDisplay-v1.0.0.0
+BetterMusicDisplay-v0.1.0.0
+MusicHoarderzProvider-v0.1.0.0
+```
