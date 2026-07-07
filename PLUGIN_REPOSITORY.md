@@ -6,7 +6,7 @@ This repository is Marvin's Jellyfin plugin library. It is organized for real pl
 
 - `main` is the active branch.
 - New work should target `main`.
-- Old branch names such as `master` are not referenced by the repository documentation or workflows.
+- Old branch names such as `master` are not referenced by repository documentation or workflows.
 
 ## Repository Contract
 
@@ -28,10 +28,11 @@ Required metadata lives in `plugin.json`. The root `manifest.json` contains the 
 
 ## Current Plugins
 
-| Plugin | Folder | GUID |
-|--------|--------|------|
-| HDD Display | `plugins/HddDisplay` | `eb5d7894-8eef-4b36-aa6f-5d124e828ce1` |
-| Music Dashboard | `plugins/MusicDashboard` | `4a88e030-4b75-4f2b-a43f-5b4c1b797d2b` |
+| Order | Plugin | Folder | GUID |
+|------:|--------|--------|------|
+| 1 | HDD Display | `plugins/HddDisplay` | `eb5d7894-8eef-4b36-aa6f-5d124e828ce1` |
+| 2 | Better MusicDisplay | `plugins/BetterMusicDisplay` | `6b6c96ac-3f60-4ac3-8b8a-0d0cb8acb9dd` |
+| 3 | MusicHoarderz Cover & Metadata Provider | `plugins/MusicHoarderzProvider` | `f8d74b1c-3c97-4481-a3b3-6eb622d6ad58` |
 
 ## Jellyfin Manifest URL
 
@@ -59,7 +60,8 @@ Examples:
 
 ```text
 HddDisplay-v1.0.0.0
-MusicDashboard-v0.1.0.0
+BetterMusicDisplay-v0.1.0.0
+MusicHoarderzProvider-v0.1.0.0
 ```
 
 Automatic bump rules:
