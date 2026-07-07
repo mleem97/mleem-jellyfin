@@ -1,0 +1,18 @@
+{
+  "slug": "BetterMusicDisplay",
+  "name": "Better MusicDisplay",
+  "guid": "6b6c96ac-3f60-4ac3-8b8a-0d0cb8acb9dd",
+  "version": "0.1.0.0",
+  "targetAbi": "10.10.0.0",
+  "framework": "net9.0",
+  "project": "plugins/BetterMusicDisplay/BetterMusicDisplay.csproj",
+  "packagePrefix": "BetterMusicDisplay",
+  "assembly": "Jellyfin.Plugin.BetterMusicDisplay.dll",
+  "owner": "mleem97",
+  "category": "General",
+  "overview": "Enhanced Jellyfin music UI with endless scroll, live search and per-user layouts.",
+  "description": "Replaces and extends Jellyfin music views with endless scrolling, live search, better filtering and per-user layout preferences.",
+  "artifacts": [
+    "Jellyfin.Plugin.BetterMusicDisplay.dll"
+  ]
+}
