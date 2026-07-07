@@ -8,7 +8,7 @@ namespace Jellyfin.Plugin.HddDisplay.Services;
 /// <summary>
 /// Resolves Jellyfin library paths to host/container mount points.
 /// </summary>
-public class MountResolver
+public static class MountResolver
 {
     private const string MountInfoPath = "/proc/self/mountinfo";
 
@@ -17,7 +17,7 @@ public class MountResolver
     /// </summary>
     /// <param name="path">Library path.</param>
     /// <returns>Mount resolution result.</returns>
-    public MountResolution Resolve(string path)
+    public static MountResolution Resolve(string path)
     {
         var normalizedPath = NormalizePath(path);
         if (string.IsNullOrWhiteSpace(normalizedPath))
