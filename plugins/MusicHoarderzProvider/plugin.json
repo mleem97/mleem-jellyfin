@@ -10,8 +10,8 @@
   "assembly": "Jellyfin.Plugin.MusicHoarderzProvider.dll",
   "owner": "mleem97",
   "category": "Metadata",
-  "overview": "Music cover and metadata provider for Jellyfin using MusicHoarderz/COV with optional Spotify and YouTube fallback.",
-  "description": "Finds album and single covers through MusicHoarderz/COV and can enrich music metadata with admin-configured Spotify and YouTube provider credentials.",
+  "overview": "Music cover and metadata provider baseline for Jellyfin.",
+  "description": "Provides the baseline for MusicHoarderz/COV cover lookup with admin-configured Spotify and YouTube fallback planned for later provider batches.",
   "artifacts": [
     "Jellyfin.Plugin.MusicHoarderzProvider.dll"
   ]
