@@ -16,14 +16,15 @@ https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/manifest.json
 
 ## Purpose
 
-This repository is the plugin library for my Jellyfin projects. It is not a template repository. Every plugin under `plugins/` is treated as a real plugin project with its own source code, metadata, README and release metadata.
+This repository is the plugin library for Marvin's Jellyfin projects. It is not a template repository. Every plugin under `plugins/` is treated as a real plugin project with its own source code, metadata, README and release metadata.
 
 ## Plugins
 
-| Plugin | Folder | Purpose |
-|--------|--------|---------|
-| HDD Display | [`plugins/HddDisplay`](./plugins/HddDisplay) | Admin Dashboard storage overview and NVIDIA transcoding telemetry |
-| Music Dashboard | [`plugins/MusicDashboard`](./plugins/MusicDashboard) | Music library overview and metadata checks |
+| Order | Plugin | Folder | Purpose |
+|------:|--------|--------|---------|
+| 1 | HDD Display | [`plugins/HddDisplay`](./plugins/HddDisplay) | Admin Dashboard storage overview and NVIDIA transcoding telemetry |
+| 2 | Better MusicDisplay | [`plugins/BetterMusicDisplay`](./plugins/BetterMusicDisplay) | Enhanced music UI with endless scroll, live search and per-user layouts |
+| 3 | MusicHoarderz Cover & Metadata Provider | [`plugins/MusicHoarderzProvider`](./plugins/MusicHoarderzProvider) | Music cover and metadata provider using MusicHoarderz/COV, Spotify and YouTube |
 
 ## Layout
 
@@ -31,19 +32,8 @@ This repository is the plugin library for my Jellyfin projects. It is not a temp
 mleem-jellyfin/
 ├── plugins/
 │   ├── HddDisplay/
-│   │   ├── plugin.json
-│   │   ├── HddDisplay.csproj
-│   │   ├── Plugin.cs
-│   │   ├── Configuration/
-│   │   ├── Controllers/
-│   │   └── Web/
-│   └── MusicDashboard/
-│       ├── plugin.json
-│       ├── MusicDashboard.csproj
-│       ├── Plugin.cs
-│       ├── Configuration/
-│       ├── Controllers/
-│       └── Web/
+│   ├── BetterMusicDisplay/
+│   └── MusicHoarderzProvider/
 ├── docs/
 ├── .github/
 │   ├── scripts/
@@ -61,7 +51,8 @@ Build the current plugins individually:
 
 ```bash
 dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release
-dotnet build plugins/MusicDashboard/MusicDashboard.csproj -c Release
+dotnet build plugins/BetterMusicDisplay/BetterMusicDisplay.csproj -c Release
+dotnet build plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj -c Release
 ```
 
 ## Automatic Releases
@@ -102,13 +93,15 @@ Each plugin has its own tag namespace:
 
 ```text
 HddDisplay-v1.0.0.0
-MusicDashboard-v0.1.0.0
+BetterMusicDisplay-v0.1.0.0
+MusicHoarderzProvider-v0.1.0.0
 ```
 
 ## Planning
 
 - [`docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md`](./docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md)
 - [`docs/PLUGIN_ROADMAP.md`](./docs/PLUGIN_ROADMAP.md)
+- [`docs/PLUGIN_BATCH_PLAN.md`](./docs/PLUGIN_BATCH_PLAN.md)
 
 ## License
 
