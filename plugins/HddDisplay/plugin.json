@@ -10,8 +10,8 @@
   "assembly": "Jellyfin.Plugin.HddDisplay.dll",
   "owner": "mleem97",
   "category": "General",
-  "overview": "Admin Dashboard storage and NVIDIA transcoding telemetry for Jellyfin.",
-  "description": "Displays Jellyfin library disk usage grouped by mount and prepares live NVIDIA jellyfin-ffmpeg telemetry for the Admin Dashboard.",
+  "overview": "Admin Dashboard storage, mount usage and NVIDIA telemetry for Jellyfin.",
+  "description": "Displays Jellyfin library disk usage grouped by mount, adds media-type usage segments and reads NVIDIA jellyfin-ffmpeg telemetry for the Admin Dashboard.",
   "artifacts": [
     "Jellyfin.Plugin.HddDisplay.dll"
   ]
