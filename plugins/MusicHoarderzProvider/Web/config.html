@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MusicHoarderz Provider</title>
+</head>
+<body>
+    <div id="MusicHoarderzProviderConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="content">
+            <div class="content-primary">
+                <h1>MusicHoarderz Cover & Metadata Provider</h1>
+                <p>Admin-only provider configuration for MusicHoarderz/COV, Spotify and YouTube.</p>
+                <div class="paperList" style="padding:1rem">
+                    <h2>Status</h2>
+                    <div id="musicHoarderzProviderStatus">Loading...</div>
+                    <p>No secrets are returned by the status endpoint.</p>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                function getJson(url) {
+                    if (window.ApiClient && ApiClient.getJSON && ApiClient.getUrl) {
+                        return ApiClient.getJSON(ApiClient.getUrl(url));
+                    }
+                    return fetch(url).then(function (response) {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
+                    });
+                }
+
+                function load() {
+                    getJson('Plugins/MusicHoarderzProvider/Status').then(function (data) {
+                        document.querySelector('#musicHoarderzProviderStatus').textContent = 'Enabled: ' + data.enabled + ' · Write mode: ' + data.writeMode;
+                    }).catch(function (error) {
+                        document.querySelector('#musicHoarderzProviderStatus').textContent = 'Failed to load status: ' + error.message;
+                    });
+                }
+
+                document.querySelector('#MusicHoarderzProviderConfigPage').addEventListener('pageshow', load);
+            })();
+        </script>
+    </div>
+</body>
+</html>
