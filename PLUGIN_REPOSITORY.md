@@ -39,9 +39,17 @@ Required metadata lives in `plugin.json`. The root `manifest.json` contains the 
 https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/manifest.json
 ```
 
-## Release Tags
+## Automatic Releases
 
-Each plugin has its own tag namespace:
+Automatic releases are handled by `.github/workflows/auto-publish-plugins.yml` and `.github/scripts/auto_publish_plugins.py`.
+
+On a push to `main`, changed plugin folders are detected. For each changed plugin the workflow reads `plugin.json`, creates a changelog from commits, bumps the version, builds a ZIP package, updates `manifest.json`, writes release metadata back to `main`, and creates a GitHub release.
+
+Manual release runs can be started from GitHub Actions by choosing a plugin slug and bump type.
+
+## Versioning
+
+Each plugin has its own version and tag namespace:
 
 ```text
 <PluginSlug>-v<version>
@@ -54,13 +62,22 @@ HddDisplay-v1.0.0.0
 MusicDashboard-v0.1.0.0
 ```
 
+Automatic bump rules:
+
+| Commit message | Bump |
+|----------------|------|
+| `BREAKING CHANGE` or `type!:` | major |
+| `feat:` | minor |
+| `fix:`, `perf:`, `refactor:` | patch |
+| anything else | revision |
+
 ## Add Another Plugin
 
 1. Create `plugins/<PluginSlug>/`.
 2. Add the project file, plugin entry point, configuration, controllers and web resources.
 3. Add `plugin.json`.
 4. Add an entry to `manifest.json`.
-5. Add the project to CI/build metadata.
+5. Add build coverage if the generic build workflow does not already cover it.
 6. Add a plugin README.
 
 Do not add placeholder template projects. A plugin folder should only exist when it contains actual plugin code.
