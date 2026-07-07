@@ -1,7 +1,7 @@
 ---
 repository: "mleem Jellyfin Plugins"
-layout: "multi-plugin"
-solution: "Jellyfin.Plugins.sln"
+branch: "main"
+layout: "plugin-library"
 manifest: "manifest.json"
 plugins:
   - slug: "HddDisplay"
@@ -10,5 +10,13 @@ plugins:
     project: "plugins/HddDisplay/HddDisplay.csproj"
     packagePrefix: "HDDDisplay"
     guid: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1"
+    targetAbi: "10.10.0.0"
+    framework: "net9.0"
+  - slug: "MusicDashboard"
+    folder: "plugins/MusicDashboard"
+    metadata: "plugins/MusicDashboard/plugin.json"
+    project: "plugins/MusicDashboard/MusicDashboard.csproj"
+    packagePrefix: "MusicDashboard"
+    guid: "4a88e030-4b75-4f2b-a43f-5b4c1b797d2b"
     targetAbi: "10.10.0.0"
     framework: "net9.0"
