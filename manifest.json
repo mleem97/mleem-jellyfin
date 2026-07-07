@@ -2,8 +2,8 @@
   {
     "guid": "eb5d7894-8eef-4b36-aa6f-5d124e828ce1",
     "name": "HDD Display",
-    "description": "HDD und so",
-    "overview": "Displays HDD information in Jellyfin.",
+    "description": "Displays Jellyfin library disk usage grouped by mount and prepares live NVIDIA jellyfin-ffmpeg telemetry for the Admin Dashboard.",
+    "overview": "Admin Dashboard storage and NVIDIA transcoding telemetry for Jellyfin.",
     "owner": "mleem97",
     "category": "General",
     "versions": [
