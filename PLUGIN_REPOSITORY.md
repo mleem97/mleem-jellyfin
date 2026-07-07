@@ -1,26 +1,77 @@
-# Jellyfin Plugin Repository (Multi-Plugin)
+# Jellyfin Plugin Repository
 
-This repository is configured as a Jellyfin plugin repository and can host multiple plugins in one `manifest.json`.
+This repository is configured as a multi-plugin Jellyfin plugin repository. The shared `manifest.json` can contain any number of plugins, while each plugin keeps its own source code, project file, metadata, and documentation inside `plugins/<PluginSlug>/`.
 
-## How it works
+## Repository Contract
 
-- `manifest.json` is an array of plugin entries.
-- Release workflow updates only the plugin matching `PLUGIN_GUID`.
-- Other plugin entries are preserved.
-- New releases are prepended to the plugin's `versions` list.
+```text
+plugins/
+└── <PluginSlug>/
+    ├── plugin.json
+    ├── <PluginSlug>.csproj
+    ├── Plugin.cs
+    ├── Configuration/
+    ├── Controllers/
+    ├── Web/
+    └── README.md
+```
 
-## Add another plugin
+## How Releases Work
 
-- Add another object to `manifest.json` with a unique `guid`.
-- Create a dedicated release workflow (or matrix) for that plugin.
-- Set these workflow env values per plugin:
-  - `PLUGIN_GUID`
-  - `PLUGIN_NAME`
-  - `PLUGIN_PACKAGE_PREFIX`
+- `manifest.json` is a JSON array of plugin entries.
+- Every plugin has a stable `guid`.
+- The release workflow reads `plugins/<PluginSlug>/plugin.json`.
+- The workflow updates only the manifest entry matching that plugin's GUID.
+- Other plugin entries and historical versions are preserved.
+- New releases are prepended to the matching plugin's `versions` list.
 
-## Repository URL in Jellyfin
+## Release Tags
 
-Use one of these URLs:
+Use plugin-scoped tags:
 
-- `https://raw.githubusercontent.com/mleem97/marvin-jelly-2/master/manifest.json`
-- `https://github.com/mleem97/marvin-jelly-2/releases/latest/download/manifest.json`
+```bash
+<PluginSlug>-v<version>
+```
+
+Example:
+
+```bash
+HddDisplay-v1.0.0.21
+```
+
+Plugin-scoped tags avoid collisions when several plugins live in the same repository.
+
+## Add Another Plugin
+
+1. Create `plugins/<PluginSlug>/`.
+2. Add the plugin project file.
+3. Add `plugin.json` with at least:
+   - `slug`
+   - `name`
+   - `guid`
+   - `version`
+   - `targetAbi`
+   - `framework`
+   - `project`
+   - `packagePrefix`
+   - `assembly`
+   - `owner`
+   - `category`
+   - `overview`
+   - `description`
+4. Add the project to `Jellyfin.Plugins.sln`.
+5. Add an entry to `manifest.json`.
+6. Push a plugin-scoped release tag.
+
+## Jellyfin Repository URL
+
+Use one of these URLs in Jellyfin's plugin repository settings:
+
+- `https://raw.githubusercontent.com/mleem97/mleem-jellyfin/master/manifest.json`
+- `https://github.com/mleem97/mleem-jellyfin/releases/latest/download/manifest.json`
+
+## Current Plugins
+
+| Plugin | Folder | GUID |
+|--------|--------|------|
+| HDD Display | `plugins/HddDisplay` | `eb5d7894-8eef-4b36-aa6f-5d124e828ce1` |
