@@ -78,6 +78,16 @@ public class StorageController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Gets storage and GPU data for the Admin Dashboard widget.
+    /// </summary>
+    /// <returns>Admin Dashboard overview data.</returns>
+    [HttpGet("AdminDashboard/Overview")]
+    public ActionResult<StorageDashboardResponse> GetAdminDashboardOverview()
+    {
+        return GetStorage();
+    }
+
     private static MediaUsageScanInput? CreateUsageInput(LibraryEntry library, string path, IReadOnlyList<MountResolution> resolutions)
     {
         var resolution = resolutions.FirstOrDefault(item => string.Equals(item.LibraryPath, path, StringComparison.OrdinalIgnoreCase));
