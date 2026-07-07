@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HDD Display</title>
+    <style>
+        .hdd-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 1.25rem; margin: 1rem 0; }
+        .hdd-muted { color: #aaa; }
+        .hdd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+        .hdd-code { font-family: monospace; word-break: break-all; }
+        .hdd-bar { height: 8px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,.08); }
+        .hdd-bar-used { height: 100%; background: #5591c7; }
+    </style>
+</head>
+<body>
+    <div id="HddDisplayConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="content">
+            <div class="content-primary">
+                <h1>HDD Display</h1>
+                <p class="hdd-muted">This page is only a diagnostics fallback. The target UI for this plugin is the Jellyfin Admin Dashboard.</p>
+
+                <div class="hdd-card">
+                    <h2>Planned Admin Dashboard widget</h2>
+                    <p>The next implementation will replace the dashboard <strong>Paths</strong> area with a compact disk and NVIDIA transcoding overview.</p>
+                    <ul>
+                        <li>One card per mount/disk.</li>
+                        <li>Stacked usage bar by media type: Filme, Serien, Musik, Video.</li>
+                        <li>Live NVIDIA GTX 1060 telemetry for active <code>jellyfin-ffmpeg</code> transcoding.</li>
+                        <li>Fallback diagnostics when GPU telemetry is unavailable.</li>
+                    </ul>
+                </div>
+
+                <div class="hdd-card">
+                    <h2>Current storage endpoint</h2>
+                    <div id="hddStatus" class="hdd-muted">Loading...</div>
+                    <div id="hddDrives" class="hdd-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                function fmtBytes(bytes) {
+                    if (!bytes || bytes <= 0) return '0 B';
+                    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+                    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+                    return (bytes / Math.pow(1024, i)).toFixed(i > 1 ? 1 : 0) + ' ' + units[i];
+                }
+
+                function pct(used, total) {
+                    return total > 0 ? Math.round((used / total) * 100) : 0;
+                }
+
+                function getJson(url) {
+                    if (window.ApiClient && ApiClient.getJSON && ApiClient.getUrl) {
+                        return ApiClient.getJSON(ApiClient.getUrl(url));
+                    }
+
+                    return fetch(url).then(function (response) {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
+                    });
+                }
+
+                function render(data) {
+                    const drives = data.drives || [];
+                    const status = document.querySelector('#hddStatus');
+                    const grid = document.querySelector('#hddDrives');
+                    status.textContent = data.note || (drives.length + ' drives detected.');
+                    grid.innerHTML = drives.map(function (drive) {
+                        const used = drive.usedBytes || 0;
+                        const total = drive.totalBytes || 0;
+                        const usedPct = pct(used, total);
+                        return '<div class="hdd-card">'
+                            + '<h3>' + (drive.label || drive.name) + '</h3>'
+                            + '<div class="hdd-code hdd-muted">' + drive.name + '</div>'
+                            + '<p>' + fmtBytes(used) + ' / ' + fmtBytes(total) + ' used · ' + usedPct + '%</p>'
+                            + '<div class="hdd-bar"><div class="hdd-bar-used" style="width:' + usedPct + '%"></div></div>'
+                            + '</div>';
+                    }).join('');
+                }
+
+                function load() {
+                    getJson('Plugins/HddDisplay/Storage')
+                        .then(render)
+                        .catch(function (error) {
+                            document.querySelector('#hddStatus').textContent = 'Failed to load diagnostics: ' + error.message;
+                        });
+                }
+
+                document.querySelector('#HddDisplayConfigPage').addEventListener('pageshow', load);
+            })();
+        </script>
+    </div>
+</body>
+</html>

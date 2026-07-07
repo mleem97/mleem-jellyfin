@@ -1,155 +1,120 @@
-# HDD Display Plugin Repository
+# mleem Jellyfin Plugins
 
-Dieses Repository ist ein Jellyfin-Plugin-Repository mit automatischem Release-Flow, Manifest-Update und Changelog-Erzeugung.
+> Multi-plugin Jellyfin repository for self-hosted admin dashboard extensions, media server utilities, and hardware telemetry plugins.
 
-Derzeit ist ein Plugin enthalten:
+[![License](https://img.shields.io/badge/License-GPLv3-green?style=for-the-badge)](./LICENSE)
+[![Jellyfin](https://img.shields.io/badge/Jellyfin-10.10%2B-blue?style=for-the-badge)](https://jellyfin.org)
+[![.NET](https://img.shields.io/badge/.NET-9.0-purple?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com)
+[![Plugins](https://img.shields.io/badge/Plugins-Multi--Plugin-orange?style=for-the-badge)](./plugins)
 
-- `HDD Display`
-- GUID: `eb5d7894-8eef-4b36-aa6f-5d124e828ce1`
+## Links
 
-## Was das Plugin macht
+- **Repository:** https://github.com/mleem97/mleem-jellyfin
+- **Jellyfin repository manifest:** `https://raw.githubusercontent.com/mleem97/mleem-jellyfin/master/manifest.json`
+- **Latest release manifest:** `https://github.com/mleem97/mleem-jellyfin/releases/latest/download/manifest.json`
 
-`HDD Display` zeigt auf der Plugin-Konfigurationsseite den Speicherplatz für gemountete Laufwerke an, die von Jellyfin-Bibliothekspfaden genutzt werden.
+## Overview
 
-Die Ansicht enthält:
+This repository is structured as a Jellyfin plugin catalog. Each plugin lives in its own folder under [`plugins/`](./plugins), has its own metadata file, can be built independently, and is published into the shared Jellyfin `manifest.json` so it can be installed through Jellyfin's plugin repository UI.
 
-- Laufwerk/Mountpoint
-- Volume Label
-- Gesamtgröße
-- Belegt
-- Frei
-- Auslastung in Prozent
-- Zugeordnete Jellyfin-Library-Pfade
+The first plugin in this repository is **HDD Display**. Its current code has been moved into `plugins/HddDisplay`; future work will replace the previous settings-page focused approach with an Admin Dashboard widget for disk usage, media-type allocation, and NVIDIA transcoding telemetry.
 
-## Repository-Struktur
+## Plugins
 
-Wichtige Ordner und Dateien im Repo:
+| Plugin | Folder | Status | Purpose |
+|--------|--------|--------|---------|
+| HDD Display | [`plugins/HddDisplay`](./plugins/HddDisplay) | Planned dashboard rewrite | Admin Dashboard storage overview and NVIDIA `jellyfin-ffmpeg` telemetry |
 
-- `.github/workflows/`
-  - `release-plugin.yml` (Build, Paketierung, Release, Manifest-Update)
-  - weitere CI-Workflows (`build-dotnet.yml`, `test-dotnet.yml`, `codeql-analysis.yml`)
-- `Jellyfin.Plugin.Template/`
-  - `Plugin.cs` (Haupteinstieg des Plugins)
-  - `Jellyfin.Plugin.Template.csproj` (Projektdatei, aktuell `net9.0`)
-  - `Api/StorageUsageController.cs` (API für Speicherverbrauch)
-  - `Configuration/PluginConfiguration.cs` (persistierte Plugin-Einstellungen)
-  - `Configuration/configPage.html` (Jellyfin-Pluginseite)
-- `manifest.json` (Plugin-Repository-Manifest)
-- `PLUGIN_REPOSITORY.md` (Kurzinfo Multi-Plugin-Betrieb)
+## Repository Layout
 
-## Naming-Konvention pro Plugin
+```text
+mleem-jellyfin/
+├── plugins/
+│   └── HddDisplay/
+│       ├── plugin.json              # plugin metadata used by CI/release
+│       ├── HddDisplay.csproj         # plugin project
+│       ├── Plugin.cs                 # Jellyfin plugin entry point
+│       ├── Configuration/            # plugin configuration model
+│       ├── Controllers/              # plugin API endpoints
+│       └── Web/                      # embedded Jellyfin web resources
+├── docs/
+│   └── ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md
+├── .github/
+│   ├── workflows/release-plugin.yml  # build/release pipeline
+│   └── FUNDING.yml
+├── manifest.json                     # Jellyfin plugin repository manifest
+├── Jellyfin.Plugins.sln              # solution including all plugin projects
+├── PLUGIN_REPOSITORY.md              # multi-plugin repository guide
+├── LICENSE
+└── README.md
+```
 
-Wenn du mehrere Plugins in diesem Repo pflegen willst, nutze pro Plugin ein konsistentes Schema.
+## Add another plugin
 
-Empfohlene Namensfelder pro Plugin:
+1. Create a new folder under `plugins/<PluginSlug>/`.
+2. Add a `<PluginSlug>.csproj` in that folder.
+3. Add a `plugin.json` file next to the project.
+4. Add the project to `Jellyfin.Plugins.sln`.
+5. Add a new object to `manifest.json` with a unique `guid` and an empty or initial `versions` array.
+6. Release it with a tag in this format:
 
-- `Plugin Name`: Anzeigename in Jellyfin (z. B. `HDD Display`)
-- `Plugin Slug`: Dateisystem-/Paketname ohne Leerzeichen (z. B. `HDDDisplay`)
-- `Project Namespace`: C#-Namespace (z. B. `Jellyfin.Plugin.HddDisplay`)
-- `Plugin GUID`: eindeutige GUID
+```bash
+git tag <PluginSlug>-v1.0.0
+git push origin <PluginSlug>-v1.0.0
+```
 
-Empfohlene Datei-/Ordnernamen pro Plugin:
+Example:
 
-- Projektordner: `src/<PluginSlug>/` (oder bestehend unter eigenem Ordner)
-- Projektdatei: `<PluginSlug>.csproj`
-- Plugin-Klasse: `Plugin.cs`
-- Konfiguration: `Configuration/PluginConfiguration.cs`
-- Config-Seite: `Configuration/configPage.html`
-- API-Controller: `Api/*Controller.cs`
-- Release-ZIP: `<PluginSlug>_<Version>.zip`
+```bash
+git tag HddDisplay-v1.0.0.21
+git push origin HddDisplay-v1.0.0.21
+```
 
-Beispiel für `HDD Display`:
+The release workflow reads `plugins/<PluginSlug>/plugin.json`, builds only that plugin, creates `<PackagePrefix>_<version>.zip`, uploads the ZIP plus `manifest.json`, and updates the matching plugin entry in the repository manifest.
 
-- Plugin Name: `HDD Display`
-- Plugin Slug: `HDDDisplay`
-- ZIP-Datei: `HDDDisplay_1.0.0.5.zip`
+## Build from Source
 
-## Manifest (`manifest.json`)
+Requirements:
 
-`manifest.json` ist ein JSON-Array. Jeder Eintrag entspricht einem Plugin.
+- .NET 9 SDK
+- Jellyfin package dependencies restored from NuGet
 
-Pro Plugin enthält der Eintrag u. a.:
+Build all plugins:
 
-- `guid`
-- `name`
-- `description`
-- `overview`
-- `owner`
-- `category`
-- `versions` (Liste von Releases)
+```bash
+git clone https://github.com/mleem97/mleem-jellyfin.git
+cd mleem-jellyfin
+dotnet restore Jellyfin.Plugins.sln
+dotnet build Jellyfin.Plugins.sln -c Release
+```
 
-Pro Version werden gespeichert:
+Build one plugin:
 
-- `version`
-- `changelog`
-- `targetAbi`
-- `sourceUrl`
-- `checksum`
-- `timestamp`
+```bash
+dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release
+```
 
-## Release-Automation
+## Feature Planning
 
-Der Workflow `.github/workflows/release-plugin.yml` läuft bei Tags `v*`.
+The HDD Display plugin is being redesigned for the Admin Dashboard, not for the plugin settings page. The planning document is here:
 
-Ablauf:
+- [`docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md`](./docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md)
 
-- Build und Publish des Plugins
-- Erstellung des ZIP-Artefakts
-- Berechnung der Checksum (Jellyfin-kompatibel)
-- Generierung eines detaillierten Changelogs aus Git-Commits
-- Upload von ZIP + `manifest.json` + `changelog.md` ins GitHub Release
-- Update von `manifest.json` auf `master`
+Target hardware for the first implementation pass:
 
-Damit werden automatisch gepflegt:
+- Intel Xeon E3-1220 class CPU
+- NVIDIA GeForce GTX 1060 6 GB
+- DDR3 system memory
+- Jellyfin using `jellyfin-ffmpeg` for transcoding
 
-- Versionsnummer
-- Download-URL
-- Checksum
-- Timestamp
-- Changelog
+## Contributing
 
-## Detaillierte Changelogs
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
-Der Changelog wird pro Release aus den Commit-Messages seit dem vorherigen Tag erzeugt.
+## License
 
-Er landet an drei Stellen:
+This project is licensed under the **GNU General Public License v3.0**. See [`LICENSE`](./LICENSE).
 
-- als `body` im GitHub Release
-- in `release-assets/changelog.md`
-- in `manifest.json` im Feld `versions[].changelog`
+---
 
-## Jellyfin Repository-URL
-
-In Jellyfin muss auf die direkte Manifest-URL gezeigt werden, nicht auf die GitHub-Repo-Hauptseite.
-
-Nutze eine dieser URLs:
-
-- `https://raw.githubusercontent.com/mleem97/marvin-jelly-2/master/manifest.json`
-- `https://github.com/mleem97/marvin-jelly-2/releases/latest/download/manifest.json`
-
-## Neues Plugin hinzufügen (Mehrfach-Repo)
-
-Für ein weiteres Plugin:
-
-- neuen Plugin-Eintrag in `manifest.json` anlegen (eigene GUID)
-- eigenes Projekt mit eigenem `Plugin Slug` hinzufügen
-- Workflow-Konfiguration pro Plugin setzen:
-  - `PLUGIN_GUID`
-  - `PLUGIN_NAME`
-  - `PLUGIN_PACKAGE_PREFIX`
-- Tag für Release erzeugen
-
-Hinweis: Der Workflow aktualisiert gezielt den Manifest-Eintrag anhand der GUID und überschreibt keine anderen Plugin-Einträge.
-
-## Lokale Entwicklung
-
-Build lokal:
-
-- `dotnet restore`
-- `dotnet build -c Release`
-
-Plugin-Ausgabe liegt im Build-/Publish-Output des jeweiligen Projekts.
-
-## Lizenz
-
-Siehe `LICENSE` im Repository.
+**mleem Jellyfin Plugins — small, focused extensions for self-hosted Jellyfin servers.**

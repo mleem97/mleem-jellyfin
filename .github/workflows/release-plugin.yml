@@ -1,21 +1,51 @@
-name: Build and Release Jellyfin Plugin
+name: Jellyfin Plugin Repository
 
 on:
   push:
+    branches:
+      - master
+      - main
+    tags:
+      - '*-v*'
+  pull_request:
   workflow_dispatch:
+    inputs:
+      plugin:
+        description: 'Plugin folder slug, for example HddDisplay'
+        required: true
+        default: 'HddDisplay'
+      version:
+        description: 'Release version without v. Defaults to plugins/<slug>/plugin.json version.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
 
 jobs:
-  build-release:
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
+  build:
     runs-on: ubuntu-latest
-    env:
-      PLUGIN_GUID: eb5d7894-8eef-4b36-aa6f-5d124e828ce1
-      PLUGIN_NAME: HDD Display
-      PLUGIN_PACKAGE_PREFIX: HDDDisplay
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore Jellyfin.Plugins.sln
+
+      - name: Build all plugins
+        run: dotnet build Jellyfin.Plugins.sln -c Release --no-restore
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,71 +57,94 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Restore
-        run: dotnet restore Jellyfin.Plugin.Template/Jellyfin.Plugin.Template.csproj
-
-      - name: Build
-        run: dotnet build Jellyfin.Plugin.Template/Jellyfin.Plugin.Template.csproj -c Release --no-restore
-
-      - name: Determine release tag and zip name
-        env:
-          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      - name: Resolve plugin metadata
         shell: bash
         run: |
-          if [ "${GITHUB_REF}" = "refs/heads/master" ]; then
-            if [[ "${HEAD_COMMIT_MESSAGE}" == Update\ manifest\ for* ]]; then
-              echo "Manifest update commit detected, skipping release packaging run."
-              echo "SKIP_RELEASE=true" >> "$GITHUB_ENV"
-              exit 0
-            fi
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
 
-            git fetch --tags --force
-            LATEST_TAG="$(git tag -l 'v*' --sort=-v:refname | head -n1)"
-            if [ -z "$LATEST_TAG" ]; then
-              TAG_NAME="v1.0.0.0"
-            else
-              VERSION_RAW="${LATEST_TAG#v}"
-              IFS='.' read -r MAJOR MINOR PATCH BUILD <<< "$VERSION_RAW"
-              MAJOR="${MAJOR:-1}"
-              MINOR="${MINOR:-0}"
-              PATCH="${PATCH:-0}"
-              BUILD="${BUILD:-0}"
-              BUILD=$((BUILD + 1))
-              TAG_NAME="v${MAJOR}.${MINOR}.${PATCH}.${BUILD}"
-            fi
+          event_name = os.environ.get('GITHUB_EVENT_NAME', '')
+          ref_name = os.environ.get('GITHUB_REF_NAME', '')
+          input_plugin = '${{ github.event.inputs.plugin }}'.strip()
+          input_version = '${{ github.event.inputs.version }}'.strip()
 
-            if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-              echo "Tag already exists: $TAG_NAME"
-            else
-              git tag "$TAG_NAME"
-              git push origin "$TAG_NAME"
-            fi
-          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            TAG_NAME="${GITHUB_REF_NAME}"
+          if event_name == 'workflow_dispatch':
+              plugin_slug = input_plugin or 'HddDisplay'
+              version_override = input_version
+          else:
+              if '-v' not in ref_name:
+                  raise SystemExit(f'Release tags must use <PluginSlug>-v<version>, got: {ref_name}')
+              plugin_slug, version_override = ref_name.split('-v', 1)
+
+          metadata_path = Path('plugins') / plugin_slug / 'plugin.json'
+          if not metadata_path.exists():
+              raise SystemExit(f'Missing plugin metadata: {metadata_path}')
+
+          metadata = json.loads(metadata_path.read_text(encoding='utf-8'))
+          version = version_override or metadata.get('version')
+          if not version:
+              raise SystemExit('Version could not be resolved.')
+
+          tag_name = f'{plugin_slug}-v{version}'
+          package_prefix = metadata.get('packagePrefix') or plugin_slug
+          zip_name = f'{package_prefix}_{version}.zip'
+          release_url = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{tag_name}/{zip_name}"
+
+          env = {
+              'PLUGIN_SLUG': plugin_slug,
+              'PLUGIN_GUID': metadata['guid'],
+              'PLUGIN_NAME': metadata['name'],
+              'PLUGIN_PROJECT': metadata['project'],
+              'PLUGIN_PACKAGE_PREFIX': package_prefix,
+              'PLUGIN_ASSEMBLY': metadata['assembly'],
+              'PLUGIN_FRAMEWORK': metadata['framework'],
+              'PLUGIN_TARGET_ABI': metadata['targetAbi'],
+              'PLUGIN_CATEGORY': metadata.get('category', 'General'),
+              'PLUGIN_OWNER': metadata.get('owner', os.environ.get('GITHUB_REPOSITORY_OWNER', '')),
+              'PLUGIN_OVERVIEW': metadata.get('overview', metadata['name']),
+              'PLUGIN_DESCRIPTION': metadata.get('description', metadata['name']),
+              'VERSION': version,
+              'TAG_NAME': tag_name,
+              'ZIP_NAME': zip_name,
+              'RELEASE_URL': release_url,
+          }
+
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as github_env:
+              for key, value in env.items():
+                  github_env.write(f'{key}={value}\n')
+          PY
+
+      - name: Ensure release tag exists
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          git fetch --tags --force
+          if git rev-parse "${TAG_NAME}" >/dev/null 2>&1; then
+            echo "Tag already exists: ${TAG_NAME}"
           else
-            TAG_NAME="manual-${GITHUB_RUN_NUMBER}"
+            git tag "${TAG_NAME}"
+            git push origin "${TAG_NAME}"
           fi
 
-          VERSION="${TAG_NAME#v}"
-          ZIP_NAME="${PLUGIN_PACKAGE_PREFIX}_${VERSION}.zip"
-          RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}/${ZIP_NAME}"
-          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
-          echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "RELEASE_URL=$RELEASE_URL" >> "$GITHUB_ENV"
+      - name: Restore plugin
+        run: dotnet restore "${PLUGIN_PROJECT}"
 
-      - name: Generate detailed changelog
-        if: env.SKIP_RELEASE != 'true'
+      - name: Build plugin
+        run: dotnet build "${PLUGIN_PROJECT}" -c Release --no-restore
+
+      - name: Generate changelog
         shell: bash
         run: |
-          PREV_TAG="$(git tag --sort=-creatordate | grep -Fxv "${TAG_NAME}" | head -n1 || true)"
+          PREV_TAG="$(git tag --sort=-creatordate | grep "^${PLUGIN_SLUG}-v" | grep -Fxv "${TAG_NAME}" | head -n1 || true)"
           if [ -n "${PREV_TAG}" ]; then
             RANGE="${PREV_TAG}..${TAG_NAME}"
           else
             RANGE="${TAG_NAME}"
           fi
 
-          CHANGES="$(git log ${RANGE} --pretty=format:'- %s (%h)' -- . ':(exclude).github/upgrades/*' || true)"
+          CHANGES="$(git log ${RANGE} --pretty=format:'- %s (%h)' -- "plugins/${PLUGIN_SLUG}" .github/workflows/release-plugin.yml manifest.json || true)"
           if [ -z "${CHANGES}" ]; then
             CHANGES='- Maintenance updates.'
           fi
@@ -103,26 +156,23 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Create zip package
-        if: env.SKIP_RELEASE != 'true'
         shell: bash
         run: |
-          mkdir -p package
-          cp "Jellyfin.Plugin.Template/bin/Release/net9.0/Jellyfin.Plugin.Template.dll" package/
-          rm -f "${ZIP_NAME}"
-          FILES=("package/Jellyfin.Plugin.Template.dll")
-          if [ -f "Jellyfin.Plugin.Template/bin/Release/net9.0/Jellyfin.Plugin.Template.pdb" ]; then
-            cp "Jellyfin.Plugin.Template/bin/Release/net9.0/Jellyfin.Plugin.Template.pdb" package/
-            FILES+=("package/Jellyfin.Plugin.Template.pdb")
+          rm -rf package release-assets
+          mkdir -p package release-assets
+          OUTPUT_DIR="$(dirname "${PLUGIN_PROJECT}")/bin/Release/${PLUGIN_FRAMEWORK}"
+          cp "${OUTPUT_DIR}/${PLUGIN_ASSEMBLY}" package/
+          if [ -f "${OUTPUT_DIR}/${PLUGIN_ASSEMBLY%.dll}.pdb" ]; then
+            cp "${OUTPUT_DIR}/${PLUGIN_ASSEMBLY%.dll}.pdb" package/
           fi
-          zip -j "${ZIP_NAME}" "${FILES[@]}"
+          rm -f "${ZIP_NAME}"
+          zip -j "${ZIP_NAME}" package/*
+          cp "${ZIP_NAME}" release-assets/
 
-      - name: Generate release manifest with checksum
-        if: env.SKIP_RELEASE != 'true'
+      - name: Generate release manifest
         shell: bash
         run: |
           CHECKSUM="$(md5sum "${ZIP_NAME}" | awk '{print toupper($1)}')"
-          mkdir -p release-assets
-          cp "${ZIP_NAME}" release-assets/
           cat > release-assets/changelog.md <<EOF
           # ${PLUGIN_NAME} ${TAG_NAME}
 
@@ -131,43 +181,38 @@ jobs:
 
           CHECKSUM="$CHECKSUM" python - <<'PY'
           import json
-          from datetime import datetime, timezone
           import os
+          from datetime import datetime, timezone
 
           with open('manifest.json', 'r', encoding='utf-8') as f:
               manifest = json.load(f)
 
           plugin_guid = os.environ['PLUGIN_GUID']
-          plugin_name = os.environ['PLUGIN_NAME']
-
           plugin = next((p for p in manifest if p.get('guid') == plugin_guid), None)
           if plugin is None:
-              plugin = {
-                  'guid': plugin_guid,
-                  'name': plugin_name,
-                  'description': plugin_name,
-                  'overview': plugin_name,
-                  'owner': os.environ.get('GITHUB_REPOSITORY_OWNER', ''),
-                  'category': 'General',
-                  'versions': []
-              }
+              plugin = {'guid': plugin_guid, 'versions': []}
               manifest.append(plugin)
 
+          plugin['name'] = os.environ['PLUGIN_NAME']
+          plugin['description'] = os.environ['PLUGIN_DESCRIPTION']
+          plugin['overview'] = os.environ['PLUGIN_OVERVIEW']
+          plugin['owner'] = os.environ['PLUGIN_OWNER']
+          plugin['category'] = os.environ['PLUGIN_CATEGORY']
+
           existing_versions = plugin.get('versions') or []
-          target_abi = (existing_versions[0].get('targetAbi') if existing_versions else None) or '10.10.0.0'
           now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+          version = os.environ['VERSION']
 
           new_version = {
-              'version': os.environ['VERSION'],
+              'version': version,
               'changelog': os.environ.get('CHANGELOG_TEXT', f"Release {os.environ['TAG_NAME']}"),
-              'targetAbi': target_abi,
+              'targetAbi': os.environ['PLUGIN_TARGET_ABI'],
               'sourceUrl': os.environ['RELEASE_URL'],
               'checksum': os.environ['CHECKSUM'],
               'timestamp': now
           }
 
-          filtered_versions = [v for v in existing_versions if v.get('version') != os.environ['VERSION']]
-          plugin['versions'] = [new_version] + filtered_versions
+          plugin['versions'] = [new_version] + [v for v in existing_versions if v.get('version') != version]
 
           with open('release-assets/manifest.json', 'w', encoding='utf-8') as f:
               json.dump(manifest, f, indent=2, ensure_ascii=False)
@@ -175,18 +220,16 @@ jobs:
           PY
 
       - name: Upload build artifact
-        if: env.SKIP_RELEASE != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: plugin-package
+          name: ${{ env.PLUGIN_SLUG }}-plugin-package
           path: release-assets/
 
-      - name: Create GitHub release and upload package
-        if: env.SKIP_RELEASE != 'true' && startsWith(env.TAG_NAME, 'v')
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: ${{ env.TAG_NAME }}
+          name: ${{ env.PLUGIN_NAME }} ${{ env.VERSION }}
           body: ${{ env.CHANGELOG_TEXT }}
           files: |
             release-assets/${{ env.ZIP_NAME }}
@@ -194,12 +237,11 @@ jobs:
             release-assets/changelog.md
           generate_release_notes: false
 
-      - name: Update repository manifest.json on master
-        if: env.SKIP_RELEASE != 'true' && startsWith(env.TAG_NAME, 'v')
+      - name: Update repository manifest
         shell: bash
         run: |
-          git fetch origin master
-          git checkout master
+          git fetch origin "${DEFAULT_BRANCH}"
+          git checkout "${DEFAULT_BRANCH}"
           cp release-assets/manifest.json manifest.json
 
           if git diff --quiet -- manifest.json; then
@@ -210,5 +252,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add manifest.json
-          git commit -m "Update manifest for ${TAG_NAME} release"
-          git push origin master
+          git commit -m "Update ${PLUGIN_SLUG} manifest for ${TAG_NAME} release"
+          git push origin "${DEFAULT_BRANCH}"

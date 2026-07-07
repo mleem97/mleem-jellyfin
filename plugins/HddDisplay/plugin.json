@@ -1,0 +1,18 @@
+{
+  "slug": "HddDisplay",
+  "name": "HDD Display",
+  "guid": "eb5d7894-8eef-4b36-aa6f-5d124e828ce1",
+  "version": "1.0.0.20",
+  "targetAbi": "10.10.0.0",
+  "framework": "net9.0",
+  "project": "plugins/HddDisplay/HddDisplay.csproj",
+  "packagePrefix": "HDDDisplay",
+  "assembly": "Jellyfin.Plugin.HddDisplay.dll",
+  "owner": "mleem97",
+  "category": "General",
+  "overview": "Admin Dashboard storage and NVIDIA transcoding telemetry for Jellyfin.",
+  "description": "Displays Jellyfin library disk usage grouped by mount and prepares live NVIDIA jellyfin-ffmpeg telemetry for the Admin Dashboard.",
+  "artifacts": [
+    "Jellyfin.Plugin.HddDisplay.dll"
+  ]
+}

@@ -6,17 +6,17 @@ using MediaBrowser.Controller.Library;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Jellyfin.Plugin.Template.Controllers;
+namespace Jellyfin.Plugin.HddDisplay.Controllers;
 
 /// <summary>
-/// Storage dashboard endpoint.
+/// Storage endpoints for HDD Display.
 /// </summary>
 [ApiController]
-[Route("Plugins/StorageDashboard")]
+[Route("Plugins/HddDisplay")]
 public class StorageController : ControllerBase
 {
     /// <summary>
-    /// Gets storage and library data for dashboard UI.
+    /// Gets storage and library data for the dashboard UI.
     /// </summary>
     /// <returns>Dashboard data.</returns>
     [HttpGet("Storage")]
@@ -60,25 +60,10 @@ public class StorageController : ControllerBase
         var drives = new List<DriveEntry>();
         foreach (var kv in pathDriveMap)
         {
-            var key = kv.Key;
-            var drive = TryReadDrive(key);
-            if (drive is null)
+            var drive = TryReadDrive(kv.Key);
+            if (drive is not null)
             {
-                continue;
-            }
-
-            drives.Add(drive);
-        }
-
-        if (drives.Count == 0)
-        {
-            foreach (var driveInfo in DriveInfo.GetDrives().Where(d => d.IsReady))
-            {
-                var safeDrive = TryReadDrive(driveInfo.Name);
-                if (safeDrive is not null)
-                {
-                    drives.Add(safeDrive);
-                }
+                drives.Add(drive);
             }
         }
 
@@ -87,7 +72,8 @@ public class StorageController : ControllerBase
             Drives = drives
                 .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
-            Libraries = libraries
+            Libraries = libraries,
+            Note = "Temporary compatibility endpoint. The next implementation will aggregate real usage per mount and expose NVIDIA jellyfin-ffmpeg telemetry for the Admin Dashboard."
         });
     }
 
@@ -130,9 +116,7 @@ public class StorageController : ControllerBase
             "movies" => "movies",
             "tvshows" => "tvshows",
             "music" => "music",
-            "books" => "books",
-            "photos" => "photos",
-            "homevideos" => "homevideos",
+            "homevideos" => "video",
             "mixed" => "mixed",
             _ => "other"
         };
@@ -146,7 +130,7 @@ public class StorageController : ControllerBase
 
             if (full.Length >= 2 && full[1] == ':')
             {
-                return full.Substring(0, 3);
+                return full[..3];
             }
 
             if (full.StartsWith("/mnt/", StringComparison.OrdinalIgnoreCase)
@@ -161,7 +145,7 @@ public class StorageController : ControllerBase
 
             return "/";
         }
-        catch
+        catch (Exception)
         {
             return string.Empty;
         }
@@ -182,6 +166,11 @@ public class StorageDashboardResponse
     /// Gets or sets libraries.
     /// </summary>
     public IReadOnlyList<LibraryEntry> Libraries { get; set; } = Array.Empty<LibraryEntry>();
+
+    /// <summary>
+    /// Gets or sets a diagnostic note.
+    /// </summary>
+    public string Note { get; set; } = string.Empty;
 }
 
 /// <summary>

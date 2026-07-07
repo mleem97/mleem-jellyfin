@@ -1,16 +1,14 @@
 ---
-name: "Template"
-guid: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1"
-version: "1.0.0.0"
-targetAbi: "10.7.0.0"
-framework: "net5.0"
-overview: "Short description about your plugin"
-description: >
-  This is a longer description that can span more than one
-  line and include details about your plugin.
-category: "General"
-owner: "jellyfin"
-artifacts:
-- "Jellyfin.Plugin.Template.dll"
-changelog: >
-  changelog
+repository: "mleem Jellyfin Plugins"
+layout: "multi-plugin"
+solution: "Jellyfin.Plugins.sln"
+manifest: "manifest.json"
+plugins:
+  - slug: "HddDisplay"
+    folder: "plugins/HddDisplay"
+    metadata: "plugins/HddDisplay/plugin.json"
+    project: "plugins/HddDisplay/HddDisplay.csproj"
+    packagePrefix: "HDDDisplay"
+    guid: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1"
+    targetAbi: "10.10.0.0"
+    framework: "net9.0"
