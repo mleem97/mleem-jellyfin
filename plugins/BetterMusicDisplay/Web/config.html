@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Better MusicDisplay</title>
+</head>
+<body>
+    <div id="BetterMusicDisplayConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="content">
+            <div class="content-primary">
+                <h1>Better MusicDisplay</h1>
+                <p>Enhanced Jellyfin music UI with endless scroll, live search and per-user layouts.</p>
+                <div class="paperList" style="padding:1rem">
+                    <h2>Status</h2>
+                    <div id="betterMusicDisplayStatus">Loading...</div>
+                </div>
+            </div>
+        </div>
+        <script>
+            (function () {
+                function getJson(url) {
+                    if (window.ApiClient && ApiClient.getJSON && ApiClient.getUrl) {
+                        return ApiClient.getJSON(ApiClient.getUrl(url));
+                    }
+                    return fetch(url).then(function (response) {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
+                    });
+                }
+
+                function load() {
+                    getJson('Plugins/BetterMusicDisplay/Overview').then(function (data) {
+                        document.querySelector('#betterMusicDisplayStatus').textContent = data.libraryCount + ' music libraries detected.';
+                    }).catch(function (error) {
+                        document.querySelector('#betterMusicDisplayStatus').textContent = 'Failed to load status: ' + error.message;
+                    });
+                }
+
+                document.querySelector('#BetterMusicDisplayConfigPage').addEventListener('pageshow', load);
+            })();
+        </script>
+    </div>
+</body>
+</html>
