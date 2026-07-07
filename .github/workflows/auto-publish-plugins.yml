@@ -1,0 +1,44 @@
+name: Auto Publish Plugins
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'plugins/**'
+      - 'manifest.json'
+      - 'build.yaml'
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: 'Plugin slug to publish, or auto'
+        required: false
+        default: 'auto'
+      bump:
+        description: 'Version bump: auto, major, minor, patch, or revision'
+        required: false
+        default: 'auto'
+
+permissions:
+  contents: write
+
+jobs:
+  auto-publish:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Auto version, changelog and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLUGIN: ${{ github.event.inputs.plugin || 'auto' }}
+          VERSION_BUMP: ${{ github.event.inputs.bump || 'auto' }}
+        run: python .github/scripts/auto_publish_plugins.py
