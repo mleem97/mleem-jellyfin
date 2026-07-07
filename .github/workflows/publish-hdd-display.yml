@@ -1,0 +1,33 @@
+name: Publish HDD Display
+
+on:
+  push:
+    tags:
+      - 'HddDisplay-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build
+        run: dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release
+      - name: Package
+        run: |
+          VERSION="${GITHUB_REF_NAME#HddDisplay-v}"
+          mkdir -p release-assets package
+          cp plugins/HddDisplay/bin/Release/net9.0/Jellyfin.Plugin.HddDisplay.dll package/
+          if [ -f plugins/HddDisplay/bin/Release/net9.0/Jellyfin.Plugin.HddDisplay.pdb ]; then cp plugins/HddDisplay/bin/Release/net9.0/Jellyfin.Plugin.HddDisplay.pdb package/; fi
+          zip -j "release-assets/HDDDisplay_${VERSION}.zip" package/*
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" release-assets/* --title "HDD Display ${GITHUB_REF_NAME#HddDisplay-v}" --generate-notes
