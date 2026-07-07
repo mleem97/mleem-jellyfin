@@ -1,0 +1,38 @@
+name: Build Plugins
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  hdd-display:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Restore
+        run: dotnet restore plugins/HddDisplay/HddDisplay.csproj
+      - name: Build
+        run: dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release --no-restore
+
+  music-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Restore
+        run: dotnet restore plugins/MusicDashboard/MusicDashboard.csproj
+      - name: Build
+        run: dotnet build plugins/MusicDashboard/MusicDashboard.csproj -c Release --no-restore
