@@ -1,5 +1,7 @@
 using System;
 using System.Linq;
+using Jellyfin.Plugin.BetterMusicDisplay.Configuration;
+using Jellyfin.Plugin.BetterMusicDisplay.Services;
 using MediaBrowser.Controller.Library;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +45,140 @@ public class MusicDisplayController : ControllerBase
             Libraries = musicLibraries
         });
     }
+
+    /// <summary>
+    /// Gets persisted Better MusicDisplay settings for one user.
+    /// </summary>
+    /// <param name="userId">Jellyfin user id.</param>
+    /// <returns>User settings response.</returns>
+    [HttpGet("Users/{userId:guid}/Settings")]
+    public ActionResult<UserMusicSettingsResponse> GetUserSettings(Guid userId)
+    {
+        if (!CanAccessUserSettings(userId))
+        {
+            return StatusCode(403, "The current user may not access settings for the requested user id.");
+        }
+
+        return Ok(new UserMusicSettingsResponse
+        {
+            GeneratedAtUtc = DateTimeOffset.UtcNow,
+            UserId = userId,
+            CanCustomize = Plugin.Instance?.Configuration.AllowUserCustomization ?? true,
+            Settings = UserMusicSettingsStore.Get(userId)
+        });
+    }
+
+    /// <summary>
+    /// Saves Better MusicDisplay settings for one user.
+    /// </summary>
+    /// <param name="userId">Jellyfin user id.</param>
+    /// <param name="settings">User settings.</param>
+    /// <returns>Saved user settings response.</returns>
+    [HttpPut("Users/{userId:guid}/Settings")]
+    public ActionResult<UserMusicSettingsResponse> SaveUserSettings(Guid userId, [FromBody] UserMusicViewSettings settings)
+    {
+        if (!CanAccessUserSettings(userId))
+        {
+            return StatusCode(403, "The current user may not update settings for the requested user id.");
+        }
+
+        if (!(Plugin.Instance?.Configuration.AllowUserCustomization ?? true))
+        {
+            return StatusCode(403, "User customization is disabled by the Better MusicDisplay configuration.");
+        }
+
+        var saved = UserMusicSettingsStore.Save(userId, settings);
+        return Ok(new UserMusicSettingsResponse
+        {
+            GeneratedAtUtc = DateTimeOffset.UtcNow,
+            UserId = userId,
+            CanCustomize = true,
+            Settings = saved
+        });
+    }
+
+    /// <summary>
+    /// Resets Better MusicDisplay settings for one user.
+    /// </summary>
+    /// <param name="userId">Jellyfin user id.</param>
+    /// <returns>Reset response.</returns>
+    [HttpDelete("Users/{userId:guid}/Settings")]
+    public ActionResult<UserMusicSettingsResetResponse> ResetUserSettings(Guid userId)
+    {
+        if (!CanAccessUserSettings(userId))
+        {
+            return StatusCode(403, "The current user may not reset settings for the requested user id.");
+        }
+
+        if (!(Plugin.Instance?.Configuration.AllowUserCustomization ?? true))
+        {
+            return StatusCode(403, "User customization is disabled by the Better MusicDisplay configuration.");
+        }
+
+        var deleted = UserMusicSettingsStore.Delete(userId);
+        return Ok(new UserMusicSettingsResetResponse
+        {
+            GeneratedAtUtc = DateTimeOffset.UtcNow,
+            UserId = userId,
+            Deleted = deleted,
+            Settings = UserMusicSettingsStore.Get(userId)
+        });
+    }
+
+    private bool CanAccessUserSettings(Guid requestedUserId)
+    {
+        return !TryGetRequestUserId(out var requestUserId) || requestUserId == requestedUserId;
+    }
+
+    private bool TryGetRequestUserId(out Guid userId)
+    {
+        var candidates = new[]
+        {
+            "X-Emby-User-Id",
+            "X-MediaBrowser-UserId",
+            "X-Jellyfin-UserId"
+        };
+
+        foreach (var headerName in candidates)
+        {
+            if (Request.Headers.TryGetValue(headerName, out var value)
+                && Guid.TryParse(value.ToString(), out userId))
+            {
+                return true;
+            }
+        }
+
+        if (Request.Headers.TryGetValue("X-Emby-Authorization", out var authorization)
+            && TryParseAuthorizationUserId(authorization.ToString(), out userId))
+        {
+            return true;
+        }
+
+        userId = Guid.Empty;
+        return false;
+    }
+
+    private static bool TryParseAuthorizationUserId(string authorization, out Guid userId)
+    {
+        userId = Guid.Empty;
+        if (string.IsNullOrWhiteSpace(authorization))
+        {
+            return false;
+        }
+
+        const string key = "UserId=";
+        var index = authorization.IndexOf(key, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        var start = index + key.Length;
+        var end = authorization.IndexOf(',', start);
+        var raw = end >= 0 ? authorization[start..end] : authorization[start..];
+        raw = raw.Trim().Trim('"');
+        return Guid.TryParse(raw, out userId);
+    }
 }
 
 /// <summary>
@@ -64,6 +200,58 @@ public class MusicDisplayOverview
     /// Gets or sets libraries.
     /// </summary>
     public MusicLibrarySummary[] Libraries { get; set; } = Array.Empty<MusicLibrarySummary>();
+}
+
+/// <summary>
+/// Better MusicDisplay user settings response.
+/// </summary>
+public class UserMusicSettingsResponse
+{
+    /// <summary>
+    /// Gets or sets generation timestamp.
+    /// </summary>
+    public DateTimeOffset GeneratedAtUtc { get; set; }
+
+    /// <summary>
+    /// Gets or sets Jellyfin user id.
+    /// </summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this user may customize the enhanced music view.
+    /// </summary>
+    public bool CanCustomize { get; set; }
+
+    /// <summary>
+    /// Gets or sets user settings.
+    /// </summary>
+    public UserMusicViewSettings Settings { get; set; } = new();
+}
+
+/// <summary>
+/// Better MusicDisplay user settings reset response.
+/// </summary>
+public class UserMusicSettingsResetResponse
+{
+    /// <summary>
+    /// Gets or sets generation timestamp.
+    /// </summary>
+    public DateTimeOffset GeneratedAtUtc { get; set; }
+
+    /// <summary>
+    /// Gets or sets Jellyfin user id.
+    /// </summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether a persisted settings file was deleted.
+    /// </summary>
+    public bool Deleted { get; set; }
+
+    /// <summary>
+    /// Gets or sets reset user settings.
+    /// </summary>
+    public UserMusicViewSettings Settings { get; set; } = new();
 }
 
 /// <summary>
