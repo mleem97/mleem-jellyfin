@@ -2,7 +2,7 @@
 
 > Personal Jellyfin plugin library for Marvin's Jellyfin projects.
 
-[![License](https://img.shields.io/badge/License-GPLv3-green?style=for-the-badge)](./LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](./LICENSE)
 [![Jellyfin](https://img.shields.io/badge/Jellyfin-10.10%2B-blue?style=for-the-badge)](https://jellyfin.org)
 [![.NET](https://img.shields.io/badge/.NET-9.0-purple?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com)
 
@@ -105,4 +105,4 @@ MusicHoarderzProvider-v0.1.0.0
 
 ## License
 
-This project is licensed under the **GNU General Public License v3.0**. See [`LICENSE`](./LICENSE).
+This project is licensed under the **Apache License 2.0**. See [`LICENSE`](./LICENSE).
