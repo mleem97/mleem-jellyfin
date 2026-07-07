@@ -19,19 +19,21 @@ The repository is a three-plugin Jellyfin plugin library:
 - H2 media usage aggregation backend.
 - Real file-size aggregation by resolved mount and media type.
 - Configurable storage scan cache.
+- Forced storage scan refresh through `refresh=true`.
+- Explicit cache clear endpoint.
 - H3 NVIDIA telemetry provider.
 - `nvidia-smi` GPU usage snapshot.
 - GPU memory usage and process list.
 - Jellyfin ffmpeg process detection.
 - H4 dashboard data endpoint.
 - Dashboard widget rendering for storage, media segments and GPU status.
+- Manual dashboard refresh button.
 
 ### Open
 
 - Validate build results from GitHub Actions.
 - Test on Docker, LXC and native Linux.
 - Test on NVIDIA and non-NVIDIA hosts.
-- Add forced refresh endpoint for storage scan cache.
 - Improve large-library scan performance if needed.
 - Add final Admin Dashboard placement tuning against a real Jellyfin dashboard.
 - Add screenshots and release notes.
