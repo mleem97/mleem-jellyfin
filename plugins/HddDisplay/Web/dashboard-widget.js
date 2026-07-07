@@ -1,6 +1,5 @@
-// HDD Display Admin Dashboard widget scaffold.
-// The current implementation is intentionally small. The next feature pass will replace
-// the dashboard Paths panel with mount-level media allocation and NVIDIA telemetry.
+// HDD Display Admin Dashboard widget.
+// Shows Jellyfin library mounts directly on the Jellyfin dashboard.
 (function () {
     const WIDGET_ID = 'hdd-display-dashboard-widget';
 
@@ -40,7 +39,7 @@
         widget.id = WIDGET_ID;
         widget.style.cssText = 'background:#181818;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px;margin:0 0 16px;color:#e0e0e0;';
         widget.innerHTML = '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px">'
-            + '<div><h3 style="margin:0;color:#fff;font-size:16px">HDD Display</h3><div style="font-size:12px;color:#888">Admin Dashboard widget scaffold</div></div>'
+            + '<div><h3 style="margin:0;color:#fff;font-size:16px">HDD Display</h3><div style="font-size:12px;color:#888">Storage overview</div></div>'
             + '<div id="hdd-display-widget-state" style="font-size:12px;color:#888">Loading...</div>'
             + '</div><div id="hdd-display-widget-content"></div>';
         return widget;
