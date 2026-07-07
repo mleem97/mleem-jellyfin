@@ -2,75 +2,19 @@
   {
     "guid": "eb5d7894-8eef-4b36-aa6f-5d124e828ce1",
     "name": "HDD Display",
-    "description": "Displays Jellyfin library disk usage grouped by mount and prepares live NVIDIA jellyfin-ffmpeg telemetry for the Admin Dashboard.",
-    "overview": "Admin Dashboard storage and NVIDIA transcoding telemetry for Jellyfin.",
+    "description": "Admin Dashboard storage and GPU overview for Jellyfin.",
+    "overview": "Admin Dashboard storage overview for Jellyfin.",
     "owner": "mleem97",
     "category": "General",
-    "versions": [
-      {
-        "version": "1.0.0.20",
-        "changelog": "- Inline dashboard widget script to fix FileTransformation injection (95bbb40)\n- Update manifest for v1.0.0.19 release (690a727)",
-        "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/v1.0.0.20/HDDDisplay_1.0.0.20.zip",
-        "checksum": "723202DB716CE8B3CD36EC03EAF811C5",
-        "timestamp": "2026-04-01T01:19:00Z"
-      },
-      {
-        "version": "1.0.0.19",
-        "changelog": "- Add dashboard widget with FileTransformation injection for admin homepage display (01990a1)\n- Update manifest for v1.0.0.18 release (c0cfcbf)",
-        "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/v1.0.0.19/HDDDisplay_1.0.0.19.zip",
-        "checksum": "9C52490037A24257B7AA8448850EA73B",
-        "timestamp": "2026-04-01T01:13:08Z"
-      },
-      {
-        "version": "1.0.0.18",
-        "changelog": "- Pin Jellyfin package references to 10.11.6 for runtime compatibility (0a7f516)\n- Update manifest for v1.0.0.17 release (8907fcd)",
-        "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/v1.0.0.18/HDDDisplay_1.0.0.18.zip",
-        "checksum": "7A3730B4C20358F2AB2C460D61F96F78",
-        "timestamp": "2026-04-01T01:05:22Z"
-      },
-      {
-        "version": "1.0.0.17",
-        "changelog": "- Handle drive fallback safely to avoid NotSupported on Linux (5a74376)\n- Update manifest for v1.0.0.16 release (2566169)",
-        "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/v1.0.0.17/HDDDisplay_1.0.0.17.zip",
-        "checksum": "EA08CE99071BFD791A872F9898112A56",
-        "timestamp": "2026-04-01T01:01:51Z"
-      },
-      {
-        "version": "1.0.0.16",
-        "changelog": "- Fix release action by passing explicit tag_name (d3a53f3)",
-        "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/v1.0.0.16/HDDDisplay_1.0.0.16.zip",
-        "checksum": "31842F2928D1A1B7B2C5A3F4411C57D1",
-        "timestamp": "2026-04-01T00:56:09Z"
-      },
-      {
-        "version": "1.0.0.10",
-        "changelog": "- Fix plugin packaging to include only plugin assembly (f15f26e)\n- Improve plugin UI diagnostics and empty-state handling for usage views (adb995d)\n- Update manifest for v1.0.0.8 release (ae12b90)",
-        "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mleem97/marvin-jelly-2/releases/download/v1.0.0.10/HDDDisplay_1.0.0.10.zip",
-        "checksum": "29FAADA766568354FF6BDE08DE6B407D",
-        "timestamp": "2026-04-01T00:23:14Z"
-      },
-      {
-        "version": "1.0.0.8",
-        "changelog": "- Add Jellyfin indexed media type usage with colored breakdown UI (c193547)",
-        "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mleem97/marvin-jelly-2/releases/download/v1.0.0.8/HDDDisplay_1.0.0.8.zip",
-        "checksum": "9FEFE96424D52A82A8C4D901273D108C",
-        "timestamp": "2026-03-31T23:58:45Z"
-      },
-      {
-        "version": "1.0.0.3",
-        "changelog": "Release v1.0.0.3",
-        "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mleem97/marvin-jelly-2/releases/download/v1.0.0.3/HDDDisplay_1.0.0.3.zip",
-        "checksum": "13DA4042E5F10E611809B3E8D8427143",
-        "timestamp": "2026-03-31T23:13:18Z"
-      }
-    ]
+    "versions": []
+  },
+  {
+    "guid": "4a88e030-4b75-4f2b-a43f-5b4c1b797d2b",
+    "name": "Music Dashboard",
+    "description": "Music library overview for Jellyfin.",
+    "overview": "Music library overview for Jellyfin.",
+    "owner": "mleem97",
+    "category": "General",
+    "versions": []
   }
 ]
