@@ -16,7 +16,9 @@ HDD Display is the storage and transcoding plugin in this Jellyfin plugin librar
 - Groups configured Jellyfin library paths by detected drive or mount.
 - Aggregates real file sizes by resolved mount and media type.
 - Caches storage scans with a configurable cache lifetime.
-- Returns per-path mount and scan diagnostics for troubleshooting.
+- Reads NVIDIA GPU telemetry through `nvidia-smi` when available.
+- Detects GPU processes that look like Jellyfin ffmpeg sessions.
+- Returns per-path mount, scan and GPU diagnostics for troubleshooting.
 - Displays total, used and free bytes for detected drives.
 
 ## Target Dashboard Functionality
