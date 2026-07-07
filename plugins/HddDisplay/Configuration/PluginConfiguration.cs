@@ -14,6 +14,7 @@ public class PluginConfiguration : BasePluginConfiguration
     {
         IncludeSystemDrive = false;
         DashboardRefreshSeconds = 5;
+        StorageScanCacheMinutes = 15;
     }
 
     /// <summary>
@@ -25,4 +26,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the Admin Dashboard widget refresh interval in seconds.
     /// </summary>
     public int DashboardRefreshSeconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets the storage scan cache lifetime in minutes.
+    /// </summary>
+    public int StorageScanCacheMinutes { get; set; }
 }
