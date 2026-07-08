@@ -10,7 +10,7 @@ The repository is a three-plugin Jellyfin plugin library:
 
 ## HDD Display
 
-### Done
+### HDD Display done
 
 - H1 mount discovery backend.
 - Linux mount resolution through `/proc/self/mountinfo`.
@@ -29,7 +29,7 @@ The repository is a three-plugin Jellyfin plugin library:
 - Dashboard widget rendering for storage, media segments and GPU status.
 - Manual dashboard refresh button.
 
-### Open
+### HDD Display open
 
 - Validate build results from GitHub Actions.
 - Test on Docker, LXC and native Linux.
@@ -40,7 +40,7 @@ The repository is a three-plugin Jellyfin plugin library:
 
 ## Better MusicDisplay
 
-### Done
+### Better MusicDisplay done
 
 - Plugin metadata.
 - Buildable baseline project.
@@ -52,7 +52,7 @@ The repository is a three-plugin Jellyfin plugin library:
 - Header-based self-user guard for settings access.
 - User customization blocking when global customization is disabled.
 
-### Open
+### Better MusicDisplay open
 
 - Strong Jellyfin admin-role integration for cross-user management.
 - Music query API layer.
@@ -65,7 +65,7 @@ The repository is a three-plugin Jellyfin plugin library:
 
 ## MusicHoarderz Cover & Metadata Provider
 
-### Done
+### MusicHoarderz Provider done
 
 - Plugin metadata.
 - Buildable baseline project.
@@ -73,7 +73,7 @@ The repository is a three-plugin Jellyfin plugin library:
 - Status endpoint that avoids returning secrets.
 - Initial configuration models for MusicHoarderz/COV, Spotify and YouTube.
 
-### Open
+### MusicHoarderz Provider open
 
 - Admin-only save/test/delete endpoints for credentials.
 - Secret masking and redaction across UI, logs and diagnostics.
