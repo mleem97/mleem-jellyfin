@@ -32,7 +32,7 @@ Implementation approach:
 
 ## Storage Model
 
-### Required Output
+### Storage output requirements
 
 Per mount/disk:
 
@@ -97,7 +97,7 @@ Preferred provider order:
 2. `nvidia-smi pmon` or process query for `jellyfin-ffmpeg` where available
 3. process table fallback: count active `jellyfin-ffmpeg` processes only
 
-### Required Output
+### GPU output requirements
 
 ```json
 {
