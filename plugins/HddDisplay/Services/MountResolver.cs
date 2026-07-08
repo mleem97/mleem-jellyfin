@@ -27,44 +27,57 @@ public static class MountResolver
 
         if (IsWindowsPath(normalizedPath))
         {
-            var root = Path.GetPathRoot(normalizedPath) ?? normalizedPath;
-            return new MountResolution
-            {
-                LibraryPath = path,
-                NormalizedPath = normalizedPath,
-                MountPath = root,
-                Source = root,
-                FileSystemType = "windows",
-                ResolutionProvider = "DriveInfo",
-                IsResolved = true,
-                Diagnostic = "Resolved from Windows drive root."
-            };
+            return ResolveWindowsPath(path, normalizedPath);
         }
 
-        var mounts = ReadMounts();
-        var match = mounts
+        var match = FindMountInfoMatch(normalizedPath);
+        return match is null ? CreateFallbackResolution(path, normalizedPath) : CreateMountInfoResolution(path, normalizedPath, match);
+    }
+
+    private static MountResolution ResolveWindowsPath(string originalPath, string normalizedPath)
+    {
+        var root = Path.GetPathRoot(normalizedPath) ?? normalizedPath;
+        return new MountResolution
+        {
+            LibraryPath = originalPath,
+            NormalizedPath = normalizedPath,
+            MountPath = root,
+            Source = root,
+            FileSystemType = "windows",
+            ResolutionProvider = "DriveInfo",
+            IsResolved = true,
+            Diagnostic = "Resolved from Windows drive root."
+        };
+    }
+
+    private static MountInfoEntry? FindMountInfoMatch(string normalizedPath)
+    {
+        return ReadMounts()
             .Where(mount => IsPathOnMount(normalizedPath, mount.MountPath))
             .OrderByDescending(mount => mount.MountPath.Length)
             .FirstOrDefault();
+    }
 
-        if (match is not null)
-        {
-            return new MountResolution
-            {
-                LibraryPath = path,
-                NormalizedPath = normalizedPath,
-                MountPath = match.MountPath,
-                Source = match.Source,
-                FileSystemType = match.FileSystemType,
-                ResolutionProvider = "mountinfo",
-                IsResolved = true,
-                Diagnostic = "Resolved from /proc/self/mountinfo."
-            };
-        }
-
+    private static MountResolution CreateMountInfoResolution(string originalPath, string normalizedPath, MountInfoEntry match)
+    {
         return new MountResolution
         {
-            LibraryPath = path,
+            LibraryPath = originalPath,
+            NormalizedPath = normalizedPath,
+            MountPath = match.MountPath,
+            Source = match.Source,
+            FileSystemType = match.FileSystemType,
+            ResolutionProvider = "mountinfo",
+            IsResolved = true,
+            Diagnostic = "Resolved from /proc/self/mountinfo."
+        };
+    }
+
+    private static MountResolution CreateFallbackResolution(string originalPath, string normalizedPath)
+    {
+        return new MountResolution
+        {
+            LibraryPath = originalPath,
             NormalizedPath = normalizedPath,
             MountPath = "/",
             Source = "/",
