@@ -22,9 +22,9 @@ public class StorageController : ControllerBase
     /// <param name="refresh">Whether the storage scan cache should be bypassed.</param>
     /// <returns>Dashboard data.</returns>
     [HttpGet("Storage")]
-    public ActionResult<StorageDashboardResponse> GetStorage([FromQuery] bool refresh = false)
+    public ActionResult<StorageDashboardResponse> GetStorage([FromQuery] bool? refresh)
     {
-        return BuildStorageResponse(refresh);
+        return BuildStorageResponse(refresh == true);
     }
 
     /// <summary>
@@ -33,9 +33,9 @@ public class StorageController : ControllerBase
     /// <param name="refresh">Whether the storage scan cache should be bypassed.</param>
     /// <returns>Admin Dashboard overview data.</returns>
     [HttpGet("AdminDashboard/Overview")]
-    public ActionResult<StorageDashboardResponse> GetAdminDashboardOverview([FromQuery] bool refresh = false)
+    public ActionResult<StorageDashboardResponse> GetAdminDashboardOverview([FromQuery] bool? refresh)
     {
-        return BuildStorageResponse(refresh);
+        return BuildStorageResponse(refresh == true);
     }
 
     /// <summary>
