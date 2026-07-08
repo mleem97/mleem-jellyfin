@@ -2,7 +2,7 @@
   "slug": "MusicHoarderzProvider",
   "name": "MusicHoarderz Cover & Metadata Provider",
   "guid": "f8d74b1c-3c97-4481-a3b3-6eb622d6ad58",
-  "version": "0.1.0.1",
+  "version": "0.1.0.2",
   "targetAbi": "10.10.0.0",
   "framework": "net9.0",
   "project": "plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj",
