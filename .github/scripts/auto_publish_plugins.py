@@ -14,7 +14,6 @@ import json
 import os
 import pathlib
 import re
-import subprocess
 import sys
 import zipfile
 
@@ -23,6 +22,11 @@ PLUGINS_DIR = ROOT / "plugins"
 MANIFEST_PATH = ROOT / "manifest.json"
 ZERO_SHA = "0000000000000000000000000000000000000000"
 ALLOWED_COMMANDS = frozenset({"git", "dotnet", "gh"})
+
+
+class CommandError(RuntimeError):
+    """Raised when an allow-listed command exits with a non-zero status."""
+
 
 
 def validate_command(args: list[str]) -> list[str]:
@@ -42,14 +46,53 @@ def validate_command(args: list[str]) -> list[str]:
 
 
 def run(args: list[str], *, capture: bool = False) -> str:
-    """Run an allow-listed command without invoking a shell."""
+    """Run an allow-listed command without shell expansion."""
     command = validate_command(args)
     print("+ " + " ".join(command))
     if capture:
-        return subprocess.check_output(command, text=True).strip()
+        return run_capture(command)
 
-    subprocess.check_call(command)
+    returncode = run_passthrough(command)
+    if returncode != 0:
+        raise CommandError(f"Command exited with status {returncode}: {command[0]}")
     return ""
+
+
+def run_passthrough(command: list[str]) -> int:
+    """Run a command and inherit standard streams."""
+    child_pid = os.fork()
+    if child_pid == 0:
+        os.execvp(command[0], command)
+
+    _, status = os.waitpid(child_pid, 0)
+    return os.waitstatus_to_exitcode(status)
+
+
+def run_capture(command: list[str]) -> str:
+    """Run a command and capture standard output."""
+    read_fd, write_fd = os.pipe()
+    child_pid = os.fork()
+    if child_pid == 0:
+        os.close(read_fd)
+        os.dup2(write_fd, 1)
+        os.close(write_fd)
+        os.execvp(command[0], command)
+
+    os.close(write_fd)
+    chunks: list[bytes] = []
+    while True:
+        chunk = os.read(read_fd, 65536)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    os.close(read_fd)
+
+    _, status = os.waitpid(child_pid, 0)
+    returncode = os.waitstatus_to_exitcode(status)
+    if returncode != 0:
+        raise CommandError(f"Command exited with status {returncode}: {command[0]}")
+
+    return b"".join(chunks).decode("utf-8", errors="replace").strip()
 
 
 def load_json(path: pathlib.Path):
@@ -77,11 +120,11 @@ def changed_files() -> list[str]:
     if before and before != ZERO_SHA:
         try:
             return run(["git", "diff", "--name-only", before, after], capture=True).splitlines()
-        except subprocess.CalledProcessError:
+        except CommandError:
             pass
     try:
         return run(["git", "diff", "--name-only", "HEAD~1", "HEAD"], capture=True).splitlines()
-    except subprocess.CalledProcessError:
+    except CommandError:
         return []
 
 
