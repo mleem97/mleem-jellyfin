@@ -23,6 +23,12 @@ MusicHoarderz Provider is the third plugin in this Jellyfin plugin library. HDD 
 - `GET /Plugins/MusicHoarderzProvider/Status` endpoint.
 - Status endpoint redacts secrets and only returns configured flags.
 
+## Release Readiness
+
+- Included in the shared plugin release workflow.
+- Release metadata is prepared in `plugin.json`.
+- Current implementation is a baseline release before the full provider stack.
+
 ## Build
 
 ```bash
