@@ -22,12 +22,34 @@ ROOT = pathlib.Path.cwd()
 PLUGINS_DIR = ROOT / "plugins"
 MANIFEST_PATH = ROOT / "manifest.json"
 ZERO_SHA = "0000000000000000000000000000000000000000"
+ALLOWED_COMMANDS = frozenset({"git", "dotnet", "gh"})
+
+
+def validate_command(args: list[str]) -> list[str]:
+    """Validate a command before execution."""
+    if not args:
+        raise ValueError("Command may not be empty.")
+
+    executable = args[0]
+    if executable not in ALLOWED_COMMANDS:
+        raise ValueError(f"Unsupported command: {executable}")
+
+    for argument in args:
+        if "\x00" in argument or "\n" in argument or "\r" in argument:
+            raise ValueError("Command arguments may not contain control characters.")
+
+    return args
 
 
 def run(args: list[str], *, capture: bool = False) -> str:
-    print("+ " + " ".join(args))
-    result = subprocess.run(args, check=True, text=True, capture_output=capture)
-    return result.stdout.strip() if capture else ""
+    """Run an allow-listed command without invoking a shell."""
+    command = validate_command(args)
+    print("+ " + " ".join(command))
+    if capture:
+        return subprocess.check_output(command, text=True).strip()
+
+    subprocess.check_call(command)
+    return ""
 
 
 def load_json(path: pathlib.Path):
@@ -164,8 +186,8 @@ def package_plugin(metadata: dict, version: str) -> pathlib.Path:
     return zip_path
 
 
-def md5_upper(path: pathlib.Path) -> str:
-    return hashlib.md5(path.read_bytes()).hexdigest().upper()
+def sha256_upper(path: pathlib.Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest().upper()
 
 
 def update_manifest(metadata: dict, version: str, changelog: str, zip_path: pathlib.Path) -> None:
@@ -187,7 +209,7 @@ def update_manifest(metadata: dict, version: str, changelog: str, zip_path: path
         "changelog": changelog,
         "targetAbi": metadata["targetAbi"],
         "sourceUrl": f"https://github.com/{repo}/releases/download/{tag_name}/{zip_path.name}",
-        "checksum": md5_upper(zip_path),
+        "checksum": sha256_upper(zip_path),
         "timestamp": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
     }
     old_versions = entry.get("versions") or []
