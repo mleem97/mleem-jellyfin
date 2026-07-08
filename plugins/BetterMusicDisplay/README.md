@@ -25,6 +25,12 @@ Better MusicDisplay is the second plugin in this Jellyfin plugin library. It ext
 - Per-user settings persistence in the plugin data folder.
 - Header-based self-user guard for user settings access.
 
+## Release Readiness
+
+- Included in the shared plugin release workflow.
+- Release metadata is prepared in `plugin.json`.
+- Current implementation is a baseline release and not the final full music UI replacement.
+
 ## Build
 
 ```bash
