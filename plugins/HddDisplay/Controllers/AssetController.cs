@@ -14,6 +14,11 @@ public class AssetController : ControllerBase
     private const string DashboardWidgetResource = "Jellyfin.Plugin.HddDisplay.Web.dashboard-widget.js";
     private const string SystemUsageResource = "Jellyfin.Plugin.HddDisplay.Web.system-usage-extension.js";
     private const string JavaScriptContentType = "application/javascript; charset=utf-8";
+    private static readonly string[] DashboardResources =
+    {
+        DashboardWidgetResource,
+        SystemUsageResource
+    };
 
     /// <summary>
     /// Gets the current dashboard widget with revalidation enabled.
@@ -71,7 +76,7 @@ public class AssetController : ControllerBase
     {
         var assembly = typeof(Plugin).Assembly;
         var output = new MemoryStream();
-        foreach (var resourceName in new[] { DashboardWidgetResource, SystemUsageResource })
+        foreach (var resourceName in DashboardResources)
         {
             using var resource = assembly.GetManifestResourceStream(resourceName);
             if (resource is null)
