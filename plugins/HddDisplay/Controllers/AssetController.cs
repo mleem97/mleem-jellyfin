@@ -1,6 +1,4 @@
 using System;
-using System.IO;
-using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jellyfin.Plugin.HddDisplay.Controllers;
@@ -63,7 +61,7 @@ public class AssetController : ControllerBase
         Response.Headers.CacheControl = immutable
             ? "private, max-age=31536000, immutable"
             : "private, no-cache";
-        Response.Headers.Append("X-Content-Type-Options", "nosniff");
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
 
         return File(stream, JavaScriptContentType, enableRangeProcessing: false);
     }
