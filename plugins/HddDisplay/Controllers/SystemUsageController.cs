@@ -131,6 +131,10 @@ public class SystemUsageController : ControllerBase
         {
             diagnostics.Add($"The configured transcode path is invalid: {exception.Message}");
         }
+        catch (InvalidOperationException exception)
+        {
+            diagnostics.Add($"The configured transcode path overlaps another Jellyfin system path: {exception.Message}");
+        }
 
         return string.Empty;
     }
