@@ -27,7 +27,7 @@ public sealed class HddHardeningTests
             },
             cacheMinutes: 15,
             forceRefresh: true,
-            cancellation.Token,
+            cancellationToken: cancellation.Token,
             timeoutSeconds: 30);
 
         Assert.False(result.Completed);
@@ -55,7 +55,7 @@ public sealed class HddHardeningTests
             },
             cacheMinutes: 30,
             forceRefresh: true,
-            cancellation.Token,
+            cancellationToken: cancellation.Token,
             timeoutSeconds: 30);
 
         Assert.False(result.Completed);
