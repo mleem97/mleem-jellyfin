@@ -34,10 +34,13 @@ mleem-jellyfin/
 │   ├── HddDisplay/
 │   ├── BetterMusicDisplay/
 │   └── MusicHoarderzProvider/
+├── tests/
+│   └── Jellyfin.Plugins.Tests/
 ├── docs/
 ├── .github/
 │   ├── scripts/
 │   └── workflows/
+├── Jellyfin.Plugins.sln
 ├── manifest.json
 ├── build.yaml
 ├── PLUGIN_REPOSITORY.md
@@ -47,7 +50,14 @@ mleem-jellyfin/
 
 ## Build
 
-Build the current plugins individually:
+Restore and build all plugins and tests together:
+
+```bash
+dotnet restore Jellyfin.Plugins.sln
+dotnet build Jellyfin.Plugins.sln -c Release --no-restore
+```
+
+Individual plugin projects can still be built directly:
 
 ```bash
 dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release
@@ -55,22 +65,25 @@ dotnet build plugins/BetterMusicDisplay/BetterMusicDisplay.csproj -c Release
 dotnet build plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj -c Release
 ```
 
+## Tests
+
+Run the complete repository test suite:
+
+```bash
+dotnet test Jellyfin.Plugins.sln -c Release
+```
+
+CI also creates temporary ZIP packages from every Release output and validates their declared artifacts with:
+
+```bash
+python .github/scripts/package_smoke_test.py
+```
+
 ## Automatic Releases
 
 Plugin releases are automated from `main`.
 
-When a commit changes files under `plugins/<PluginSlug>/`, the `Auto Publish Plugins` workflow:
-
-1. detects the changed plugin folder;
-2. creates a changelog from commits since the last `<PluginSlug>-v*` tag;
-3. bumps the version in `plugin.json` and the plugin `.csproj`;
-4. builds the plugin;
-5. creates a ZIP package;
-6. updates `manifest.json`;
-7. commits the release metadata back to `main`;
-8. creates a GitHub release with the package and manifest.
-
-Manual releases can also be started from GitHub Actions with a selected plugin and bump type.
+The `Auto Publish Plugins` workflow is started manually with a selected plugin and either an exact four-part version or a configured bump type. It builds and validates the plugin, creates a ZIP package, updates `manifest.json`, verifies the SHA-256 checksum and publishes the GitHub release.
 
 ## Versioning
 
@@ -92,9 +105,9 @@ Automatic bump rules:
 Each plugin has its own tag namespace:
 
 ```text
-HddDisplay-v1.0.0.0
+HddDisplay-v0.1.0.0
 BetterMusicDisplay-v0.1.0.0
-MusicHoarderzProvider-v0.1.0.0
+MusicHoarderzProvider-v0.2.0.0
 ```
 
 ## Planning
