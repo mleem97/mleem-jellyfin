@@ -35,8 +35,13 @@ public class SystemUsageController : ControllerBase
         var diagnostics = new List<string>();
         var configurationManager = HttpContext.RequestServices.GetService<IServerConfigurationManager>();
         var inputs = CreateInputs(applicationPaths, configurationManager, diagnostics);
-        var cacheMinutes = Plugin.Instance?.Configuration.SystemScanCacheMinutes ?? 30;
-        var result = SystemUsageAggregator.Calculate(inputs, cacheMinutes, refresh == true);
+        var configuration = Plugin.Instance?.Configuration;
+        var result = SystemUsageAggregator.Calculate(
+            inputs,
+            configuration?.SystemScanCacheMinutes ?? 30,
+            refresh == true,
+            HttpContext.RequestAborted,
+            configuration?.SystemScanTimeoutSeconds ?? 60);
         result.Diagnostics = result.Diagnostics
             .Concat(diagnostics)
             .Distinct(StringComparer.OrdinalIgnoreCase)
