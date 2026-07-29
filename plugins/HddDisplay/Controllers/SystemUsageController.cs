@@ -16,7 +16,7 @@ namespace Jellyfin.Plugin.HddDisplay.Controllers;
 /// </summary>
 [ApiController]
 [Route("Plugins/HddDisplay/SystemUsage")]
-public class SystemUsageController : ControllerBase
+public class SystemUsageController : HddDisplayAdminControllerBase
 {
     /// <summary>
     /// Gets usage for cache, metadata, transcoding, log and other Jellyfin system paths.

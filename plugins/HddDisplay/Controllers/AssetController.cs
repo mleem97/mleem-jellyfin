@@ -9,7 +9,7 @@ namespace Jellyfin.Plugin.HddDisplay.Controllers;
 /// </summary>
 [ApiController]
 [Route("Plugins/HddDisplay/Assets")]
-public class AssetController : ControllerBase
+public class AssetController : HddDisplayAdminControllerBase
 {
     private const string DashboardWidgetResource = "Jellyfin.Plugin.HddDisplay.Web.dashboard-widget.js";
     private const string SystemUsageResource = "Jellyfin.Plugin.HddDisplay.Web.system-usage-extension.js";
