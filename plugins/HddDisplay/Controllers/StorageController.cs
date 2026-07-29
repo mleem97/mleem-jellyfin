@@ -19,7 +19,7 @@ public class StorageController : ControllerBase
     /// <summary>
     /// Gets storage and library data for the dashboard UI.
     /// </summary>
-    /// <param name="refresh">Whether the storage scan cache should be bypassed.</param>
+    /// <param name="refresh">Whether the storage and GPU caches should be bypassed.</param>
     /// <returns>Dashboard data.</returns>
     [HttpGet("Storage")]
     public ActionResult<StorageDashboardResponse> GetStorage([FromQuery] bool? refresh)
@@ -30,7 +30,7 @@ public class StorageController : ControllerBase
     /// <summary>
     /// Gets storage and GPU data for the Admin Dashboard widget.
     /// </summary>
-    /// <param name="refresh">Whether the storage scan cache should be bypassed.</param>
+    /// <param name="refresh">Whether the storage and GPU caches should be bypassed.</param>
     /// <returns>Admin Dashboard overview data.</returns>
     [HttpGet("AdminDashboard/Overview")]
     public ActionResult<StorageDashboardResponse> GetAdminDashboardOverview([FromQuery] bool? refresh)
@@ -39,17 +39,18 @@ public class StorageController : ControllerBase
     }
 
     /// <summary>
-    /// Clears the in-memory storage scan cache.
+    /// Clears the in-memory storage and GPU caches.
     /// </summary>
     /// <returns>Cache clear result.</returns>
     [HttpPost("Storage/Cache/Clear")]
     public ActionResult<CacheClearResponse> ClearStorageCache()
     {
         MediaUsageAggregator.ClearCache();
+        GpuUsageCache.Clear();
         return Ok(new CacheClearResponse
         {
             ClearedAtUtc = DateTimeOffset.UtcNow,
-            Message = "HDD Display storage scan cache cleared."
+            Message = "HDD Display storage and GPU caches cleared."
         });
     }
 
@@ -61,6 +62,7 @@ public class StorageController : ControllerBase
             return StatusCode(500, "ILibraryManager service is not available.");
         }
 
+        var configuration = Plugin.Instance?.Configuration;
         var virtualFolders = libraryManager.GetVirtualFolders().ToArray();
         var libraries = virtualFolders
             .Select(v => new LibraryEntry
@@ -87,8 +89,18 @@ public class StorageController : ControllerBase
             .Cast<MediaUsageScanInput>()
             .ToArray();
 
-        var usage = MediaUsageAggregator.Calculate(usageInputs, Plugin.Instance?.Configuration.StorageScanCacheMinutes ?? 15, refresh);
-        var gpu = new NvidiaSmiGpuUsageProvider().GetSnapshot();
+        var usage = MediaUsageAggregator.Calculate(
+            usageInputs,
+            configuration?.StorageScanCacheMinutes ?? 15,
+            refresh,
+            HttpContext.RequestAborted,
+            configuration?.StorageScanTimeoutSeconds ?? 120);
+        var gpuProvider = new NvidiaSmiGpuUsageProvider(
+            configuration?.GpuCommandTimeoutMilliseconds ?? 2500);
+        var gpu = GpuUsageCache.GetSnapshot(
+            gpuProvider,
+            configuration?.GpuCacheSeconds ?? 5,
+            refresh);
 
         var drives = mountResolutions
             .Where(resolution => resolution.IsResolved && !string.IsNullOrWhiteSpace(resolution.MountPath))
@@ -106,13 +118,19 @@ public class StorageController : ControllerBase
             Mounts = mountResolutions,
             Usage = usage,
             Gpu = gpu,
-            Note = "Library paths are resolved through /proc/self/mountinfo where available. Media usage is aggregated from real file sizes. NVIDIA telemetry is read through nvidia-smi when available."
+            Note = usage.Completed
+                ? "Library paths were resolved and scanned. NVIDIA telemetry is isolated behind a timeout and short-lived cache."
+                : "The media scan returned partial results after cancellation or timeout; see usage diagnostics."
         });
     }
 
-    private static MediaUsageScanInput? CreateUsageInput(LibraryEntry library, string path, IReadOnlyList<MountResolution> resolutions)
+    private static MediaUsageScanInput? CreateUsageInput(
+        LibraryEntry library,
+        string path,
+        IReadOnlyList<MountResolution> resolutions)
     {
-        var resolution = resolutions.FirstOrDefault(item => string.Equals(item.LibraryPath, path, StringComparison.OrdinalIgnoreCase));
+        var resolution = resolutions.FirstOrDefault(item =>
+            string.Equals(item.LibraryPath, path, StringComparison.OrdinalIgnoreCase));
         if (resolution is null || !resolution.IsResolved)
         {
             return null;
@@ -127,14 +145,21 @@ public class StorageController : ControllerBase
         };
     }
 
-    private static DriveEntry? TryReadDrive(string root, IReadOnlyList<MountResolution> resolutions, IReadOnlyList<MediaUsageEntry> usageEntries)
+    private static DriveEntry? TryReadDrive(
+        string root,
+        IReadOnlyList<MountResolution> resolutions,
+        IReadOnlyList<MediaUsageEntry> usageEntries)
     {
         try
         {
             var info = new DriveInfo(root);
             if (!info.IsReady)
             {
-                return CreateUnavailableDrive(root, resolutions, usageEntries, "DriveInfo reports the mount as not ready.");
+                return CreateUnavailableDrive(
+                    root,
+                    resolutions,
+                    usageEntries,
+                    "DriveInfo reports the mount as not ready.");
             }
 
             var total = info.TotalSize;
@@ -146,9 +171,15 @@ public class StorageController : ControllerBase
                 Source = resolutions.FirstOrDefault()?.Source ?? string.Empty,
                 FileSystemType = resolutions.FirstOrDefault()?.FileSystemType ?? string.Empty,
                 ResolutionProvider = resolutions.FirstOrDefault()?.ResolutionProvider ?? string.Empty,
-                LibraryPaths = resolutions.Select(resolution => resolution.LibraryPath).OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray(),
+                LibraryPaths = resolutions
+                    .Select(resolution => resolution.LibraryPath)
+                    .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
                 Usage = UsageForMount(root, usageEntries),
-                Diagnostics = resolutions.Select(resolution => resolution.Diagnostic).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+                Diagnostics = resolutions
+                    .Select(resolution => resolution.Diagnostic)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
                 TotalBytes = total,
                 FreeBytes = free,
                 UsedBytes = Math.Max(0, total - free),
@@ -174,14 +205,23 @@ public class StorageController : ControllerBase
             Source = resolutions.FirstOrDefault()?.Source ?? string.Empty,
             FileSystemType = resolutions.FirstOrDefault()?.FileSystemType ?? string.Empty,
             ResolutionProvider = resolutions.FirstOrDefault()?.ResolutionProvider ?? string.Empty,
-            LibraryPaths = resolutions.Select(resolution => resolution.LibraryPath).OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray(),
+            LibraryPaths = resolutions
+                .Select(resolution => resolution.LibraryPath)
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
             Usage = UsageForMount(root, usageEntries),
-            Diagnostics = resolutions.Select(resolution => resolution.Diagnostic).Append(diagnostic).Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+            Diagnostics = resolutions
+                .Select(resolution => resolution.Diagnostic)
+                .Append(diagnostic)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
             IsReady = false
         };
     }
 
-    private static IReadOnlyList<MediaUsageEntry> UsageForMount(string root, IReadOnlyList<MediaUsageEntry> usageEntries)
+    private static IReadOnlyList<MediaUsageEntry> UsageForMount(
+        string root,
+        IReadOnlyList<MediaUsageEntry> usageEntries)
     {
         return usageEntries
             .Where(entry => string.Equals(entry.MountPath, root, StringComparison.OrdinalIgnoreCase))
