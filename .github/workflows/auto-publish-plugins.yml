@@ -18,6 +18,10 @@ on:
         description: 'Version bump: auto, major, minor, patch, or revision'
         required: false
         default: 'auto'
+      release_version:
+        description: 'Optional exact four-part version, for example 0.1.0.0'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -41,4 +45,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PLUGIN: ${{ github.event.inputs.plugin || 'auto' }}
           VERSION_BUMP: ${{ github.event.inputs.bump || 'auto' }}
-        run: python .github/scripts/auto_publish_plugins.py
+          RELEASE_VERSION: ${{ github.event.inputs.release_version || '' }}
+        run: python .github/scripts/publish_plugins.py
