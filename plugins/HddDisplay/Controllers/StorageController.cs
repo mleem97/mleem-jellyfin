@@ -14,7 +14,7 @@ namespace Jellyfin.Plugin.HddDisplay.Controllers;
 /// </summary>
 [ApiController]
 [Route("Plugins/HddDisplay")]
-public class StorageController : ControllerBase
+public class StorageController : HddDisplayAdminControllerBase
 {
     /// <summary>
     /// Gets storage and library data for the dashboard UI.
