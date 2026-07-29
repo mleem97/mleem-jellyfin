@@ -3,6 +3,7 @@ using System.Linq;
 using Jellyfin.Plugin.BetterMusicDisplay.Configuration;
 using Jellyfin.Plugin.BetterMusicDisplay.Services;
 using MediaBrowser.Controller.Library;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,6 +13,7 @@ namespace Jellyfin.Plugin.BetterMusicDisplay.Controllers;
 /// Better MusicDisplay endpoints.
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("Plugins/BetterMusicDisplay")]
 public class MusicDisplayController : ControllerBase
 {
@@ -29,7 +31,10 @@ public class MusicDisplayController : ControllerBase
         }
 
         var musicLibraries = libraryManager.GetVirtualFolders()
-            .Where(folder => string.Equals(folder.CollectionType?.ToString(), "music", StringComparison.OrdinalIgnoreCase))
+            .Where(folder => string.Equals(
+                folder.CollectionType?.ToString(),
+                "music",
+                StringComparison.OrdinalIgnoreCase))
             .Select(folder => new MusicLibrarySummary
             {
                 Name = string.IsNullOrWhiteSpace(folder.Name) ? "Music" : folder.Name,
@@ -54,9 +59,9 @@ public class MusicDisplayController : ControllerBase
     [HttpGet("Users/{userId:guid}/Settings")]
     public ActionResult<UserMusicSettingsResponse> GetUserSettings(Guid userId)
     {
-        if (!CanAccessUserSettings(userId))
+        if (!UserSettingsAccessEvaluator.CanAccess(User, userId))
         {
-            return StatusCode(403, "The current user may not access settings for the requested user id.");
+            return Forbid();
         }
 
         return Ok(new UserMusicSettingsResponse
@@ -75,16 +80,20 @@ public class MusicDisplayController : ControllerBase
     /// <param name="settings">User settings.</param>
     /// <returns>Saved user settings response.</returns>
     [HttpPut("Users/{userId:guid}/Settings")]
-    public ActionResult<UserMusicSettingsResponse> SaveUserSettings(Guid userId, [FromBody] UserMusicViewSettings settings)
+    public ActionResult<UserMusicSettingsResponse> SaveUserSettings(
+        Guid userId,
+        [FromBody] UserMusicViewSettings settings)
     {
-        if (!CanAccessUserSettings(userId))
+        if (!UserSettingsAccessEvaluator.CanAccess(User, userId))
         {
-            return StatusCode(403, "The current user may not update settings for the requested user id.");
+            return Forbid();
         }
 
         if (!(Plugin.Instance?.Configuration.AllowUserCustomization ?? true))
         {
-            return StatusCode(403, "User customization is disabled by the Better MusicDisplay configuration.");
+            return StatusCode(
+                403,
+                "User customization is disabled by the Better MusicDisplay configuration.");
         }
 
         var saved = UserMusicSettingsStore.Save(userId, settings);
@@ -105,14 +114,16 @@ public class MusicDisplayController : ControllerBase
     [HttpDelete("Users/{userId:guid}/Settings")]
     public ActionResult<UserMusicSettingsResetResponse> ResetUserSettings(Guid userId)
     {
-        if (!CanAccessUserSettings(userId))
+        if (!UserSettingsAccessEvaluator.CanAccess(User, userId))
         {
-            return StatusCode(403, "The current user may not reset settings for the requested user id.");
+            return Forbid();
         }
 
         if (!(Plugin.Instance?.Configuration.AllowUserCustomization ?? true))
         {
-            return StatusCode(403, "User customization is disabled by the Better MusicDisplay configuration.");
+            return StatusCode(
+                403,
+                "User customization is disabled by the Better MusicDisplay configuration.");
         }
 
         var deleted = UserMusicSettingsStore.Delete(userId);
@@ -123,61 +134,6 @@ public class MusicDisplayController : ControllerBase
             Deleted = deleted,
             Settings = UserMusicSettingsStore.Get(userId)
         });
-    }
-
-    private bool CanAccessUserSettings(Guid requestedUserId)
-    {
-        return !TryGetRequestUserId(out var requestUserId) || requestUserId == requestedUserId;
-    }
-
-    private bool TryGetRequestUserId(out Guid userId)
-    {
-        var candidates = new[]
-        {
-            "X-Emby-User-Id",
-            "X-MediaBrowser-UserId",
-            "X-Jellyfin-UserId"
-        };
-
-        foreach (var headerName in candidates)
-        {
-            if (Request.Headers.TryGetValue(headerName, out var value)
-                && Guid.TryParse(value.ToString(), out userId))
-            {
-                return true;
-            }
-        }
-
-        if (Request.Headers.TryGetValue("X-Emby-Authorization", out var authorization)
-            && TryParseAuthorizationUserId(authorization.ToString(), out userId))
-        {
-            return true;
-        }
-
-        userId = Guid.Empty;
-        return false;
-    }
-
-    private static bool TryParseAuthorizationUserId(string authorization, out Guid userId)
-    {
-        userId = Guid.Empty;
-        if (string.IsNullOrWhiteSpace(authorization))
-        {
-            return false;
-        }
-
-        const string key = "UserId=";
-        var index = authorization.IndexOf(key, StringComparison.OrdinalIgnoreCase);
-        if (index < 0)
-        {
-            return false;
-        }
-
-        var start = index + key.Length;
-        var end = authorization.IndexOf(',', start);
-        var raw = end >= 0 ? authorization[start..end] : authorization[start..];
-        raw = raw.Trim().Trim('"');
-        return Guid.TryParse(raw, out userId);
     }
 }
 
