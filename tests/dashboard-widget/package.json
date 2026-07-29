@@ -1,0 +1,11 @@
+{
+  "name": "mleem-jellyfin-dashboard-widget-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test dashboard-widget.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}
