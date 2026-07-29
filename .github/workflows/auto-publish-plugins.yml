@@ -48,8 +48,8 @@ jobs:
         with:
           dotnet-version: '9.0.x'
       - name: Validate release scripts
-        run: python -m py_compile .github/scripts/auto_publish_plugins.py .github/scripts/publish_plugins.py
-      - name: Build, package and publish
+        run: python -m py_compile .github/scripts/auto_publish_plugins.py .github/scripts/publish_plugins.py .github/scripts/release_validation.py
+      - name: Build, validate, package and publish
         env:
           GH_TOKEN: ${{ github.token }}
           PLUGIN: ${{ inputs.plugin }}
