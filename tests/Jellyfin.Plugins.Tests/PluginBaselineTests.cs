@@ -1,6 +1,7 @@
 using System.Net;
 using Jellyfin.Plugin.BetterMusicDisplay.Services;
 using Jellyfin.Plugin.HddDisplay.Services;
+using Xunit;
 using ProviderConfiguration = Jellyfin.Plugin.MusicHoarderzProvider.Configuration.PluginConfiguration;
 
 namespace Jellyfin.Plugins.Tests;
