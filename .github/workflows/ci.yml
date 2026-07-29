@@ -24,7 +24,7 @@ jobs:
         with:
           dotnet-version: '9.0.x'
       - name: Validate Python release scripts
-        run: python -m py_compile .github/scripts/auto_publish_plugins.py .github/scripts/publish_plugins.py
+        run: python -m py_compile .github/scripts/auto_publish_plugins.py .github/scripts/publish_plugins.py .github/scripts/release_validation.py
       - name: Validate JSON metadata
         run: |
           python - <<'PY'
