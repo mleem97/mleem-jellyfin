@@ -1,23 +1,27 @@
 name: Auto Publish Plugins
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'plugins/**'
-      - 'manifest.json'
-      - 'build.yaml'
   workflow_dispatch:
     inputs:
       plugin:
-        description: 'Plugin slug to publish, or auto'
-        required: false
-        default: 'auto'
+        description: 'Plugin slug to publish'
+        required: true
+        type: choice
+        options:
+          - HddDisplay
+          - BetterMusicDisplay
+          - MusicHoarderzProvider
       bump:
-        description: 'Version bump: auto, major, minor, patch, or revision'
+        description: 'Version bump when no exact version is supplied'
         required: false
         default: 'auto'
+        type: choice
+        options:
+          - auto
+          - major
+          - minor
+          - patch
+          - revision
       release_version:
         description: 'Optional exact four-part version, for example 0.1.0.0'
         required: false
@@ -26,9 +30,12 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: plugin-publish
+  cancel-in-progress: false
+
 jobs:
-  auto-publish:
-    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'chore(release):')
+  publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
@@ -40,10 +47,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
-      - name: Auto version, changelog and publish
+      - name: Validate release scripts
+        run: python -m py_compile .github/scripts/auto_publish_plugins.py .github/scripts/publish_plugins.py
+      - name: Build, package and publish
         env:
           GH_TOKEN: ${{ github.token }}
-          PLUGIN: ${{ github.event.inputs.plugin || 'auto' }}
-          VERSION_BUMP: ${{ github.event.inputs.bump || 'auto' }}
-          RELEASE_VERSION: ${{ github.event.inputs.release_version || '' }}
+          PLUGIN: ${{ inputs.plugin }}
+          VERSION_BUMP: ${{ inputs.bump }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
         run: python .github/scripts/publish_plugins.py
