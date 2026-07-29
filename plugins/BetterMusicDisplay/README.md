@@ -32,16 +32,22 @@ Explicitly excluded from 0.1.0:
 
 Those features remain assigned to later milestones and must not delay or expand the Albums MVP.
 
-## Current baseline
+## Current backend
 
 - Buildable Jellyfin plugin project.
 - Plugin configuration page.
-- `GET /Plugins/BetterMusicDisplay/Overview` endpoint.
-- `GET /Plugins/BetterMusicDisplay/Users/{userId}/Settings` endpoint.
-- `PUT /Plugins/BetterMusicDisplay/Users/{userId}/Settings` endpoint.
-- `DELETE /Plugins/BetterMusicDisplay/Users/{userId}/Settings` endpoint.
-- Per-user settings persistence in the plugin data folder.
-- Existing header-based settings guard is temporary and is replaced before the functional release.
+- Authenticated, claim-based per-user settings endpoints.
+- Injected, atomic per-user settings persistence.
+- `GET /Plugins/BetterMusicDisplay/Overview`.
+- `GET /Plugins/BetterMusicDisplay/Albums` with bounded paging.
+- Album query options: `startIndex`, `limit`, `parentId`, `searchTerm`, `sortBy`, `sortOrder`, `isFavorite`, `missingCover`, `genre`, `year` and `fields`.
+- Normal album pages are limited to 200 results.
+- Missing-cover queries inspect at most 1,000 underlying albums per request in chunks of 200 and return `nextStartIndex` for continuation.
+- Queries run with Jellyfin's authenticated user context, so library visibility and parental restrictions remain active.
+
+## Album response
+
+The Albums API returns only the fields needed by the MVP grid: item id, title, album artist, year, optional date/genres, primary-image state and current-user favorite state. `filteredTotalRecordCount` is exact for direct filters; for missing-cover queries it remains nullable unless the bounded scan reaches the end.
 
 ## Release definition
 
