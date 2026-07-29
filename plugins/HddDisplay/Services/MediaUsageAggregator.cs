@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace Jellyfin.Plugin.HddDisplay.Services;
 
@@ -12,6 +13,7 @@ namespace Jellyfin.Plugin.HddDisplay.Services;
 /// </summary>
 public static class MediaUsageAggregator
 {
+    private const int DefaultTimeoutSeconds = 120;
     private static readonly object CacheLock = new();
     private static CachedMediaUsage? CachedResult;
 
@@ -21,8 +23,15 @@ public static class MediaUsageAggregator
     /// <param name="inputs">Scan inputs.</param>
     /// <param name="cacheMinutes">Cache lifetime in minutes. Use zero to disable cache.</param>
     /// <param name="forceRefresh">Whether the current cache should be bypassed.</param>
-    /// <returns>Media usage aggregation result.</returns>
-    public static MediaUsageAggregationResult Calculate(IReadOnlyList<MediaUsageScanInput> inputs, int cacheMinutes, bool forceRefresh)
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <param name="timeoutSeconds">Hard scan deadline in seconds.</param>
+    /// <returns>Media usage aggregation result. Partial results are returned after cancellation or timeout.</returns>
+    public static MediaUsageAggregationResult Calculate(
+        IReadOnlyList<MediaUsageScanInput> inputs,
+        int cacheMinutes,
+        bool forceRefresh,
+        CancellationToken cancellationToken = default,
+        int timeoutSeconds = DefaultTimeoutSeconds)
     {
         var cacheKey = BuildCacheKey(inputs);
         if (!forceRefresh && TryGetCached(cacheKey, cacheMinutes, out var cached))
@@ -36,11 +45,16 @@ public static class MediaUsageAggregator
             diagnostics.Add("Storage scan cache was bypassed by request.");
         }
 
+        var context = new ScanContext(cancellationToken, timeoutSeconds, diagnostics, "media");
         var usage = new Dictionary<string, MediaUsageEntry>(StringComparer.OrdinalIgnoreCase);
-
         foreach (var input in inputs)
         {
-            var usedBytes = CalculatePathBytes(input.LibraryPath, diagnostics);
+            if (context.ShouldStop(input.LibraryPath))
+            {
+                break;
+            }
+
+            var usedBytes = CalculatePathBytes(input.LibraryPath, diagnostics, context);
             var mediaType = NormalizeMediaType(input.LibraryType);
             var key = string.Concat(input.MountPath, "|", mediaType);
             if (!usage.TryGetValue(key, out var entry))
@@ -61,14 +75,22 @@ public static class MediaUsageAggregator
             GeneratedAtUtc = DateTimeOffset.UtcNow,
             CacheHit = false,
             ForcedRefresh = forceRefresh,
+            Completed = !context.Stopped,
             Entries = usage.Values
                 .OrderBy(entry => entry.MountPath, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(entry => entry.MediaType, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
-            Diagnostics = diagnostics.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(item => item, StringComparer.OrdinalIgnoreCase).ToArray()
+            Diagnostics = diagnostics
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
+                .ToArray()
         };
 
-        StoreCache(cacheKey, result);
+        if (result.Completed)
+        {
+            StoreCache(cacheKey, result);
+        }
+
         return result;
     }
 
@@ -83,7 +105,105 @@ public static class MediaUsageAggregator
         }
     }
 
-    private static bool TryGetCached(string cacheKey, int cacheMinutes, out MediaUsageAggregationResult result)
+    private static long CalculatePathBytes(
+        string path,
+        List<string> diagnostics,
+        ScanContext context)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                return context.ShouldStop(path) ? 0 : new FileInfo(path).Length;
+            }
+
+            if (!Directory.Exists(path))
+            {
+                diagnostics.Add($"Path does not exist: {path}");
+                return 0;
+            }
+
+            long total = 0;
+            var pending = new Stack<string>();
+            pending.Push(path);
+            while (pending.Count > 0)
+            {
+                var current = pending.Pop();
+                if (context.ShouldStop(current))
+                {
+                    break;
+                }
+
+                IEnumerable<string> entries;
+                try
+                {
+                    entries = Directory.EnumerateFileSystemEntries(current).ToArray();
+                }
+                catch (IOException exception)
+                {
+                    diagnostics.Add($"Failed to enumerate media path: {current}: {exception.Message}");
+                    continue;
+                }
+                catch (UnauthorizedAccessException exception)
+                {
+                    diagnostics.Add($"Access denied while enumerating media path: {current}: {exception.Message}");
+                    continue;
+                }
+
+                foreach (var entryPath in entries)
+                {
+                    if (context.ShouldStop(entryPath))
+                    {
+                        break;
+                    }
+
+                    try
+                    {
+                        var attributes = File.GetAttributes(entryPath);
+                        if ((attributes & FileAttributes.ReparsePoint) != 0)
+                        {
+                            diagnostics.Add($"Skipped symbolic link or reparse point: {entryPath}");
+                            continue;
+                        }
+
+                        if ((attributes & FileAttributes.Directory) != 0)
+                        {
+                            pending.Push(entryPath);
+                        }
+                        else
+                        {
+                            total += new FileInfo(entryPath).Length;
+                        }
+                    }
+                    catch (IOException exception)
+                    {
+                        diagnostics.Add($"Failed to read media entry: {entryPath}: {exception.Message}");
+                    }
+                    catch (UnauthorizedAccessException exception)
+                    {
+                        diagnostics.Add($"Access denied while reading media entry: {entryPath}: {exception.Message}");
+                    }
+                }
+            }
+
+            return total;
+        }
+        catch (IOException exception)
+        {
+            diagnostics.Add($"Failed to scan path: {path}: {exception.Message}");
+            return 0;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            diagnostics.Add($"Access denied while scanning path: {path}: {exception.Message}");
+            return 0;
+        }
+    }
+
+    private static bool TryGetCached(
+        string cacheKey,
+        int cacheMinutes,
+        out MediaUsageAggregationResult result)
     {
         result = new MediaUsageAggregationResult();
         if (cacheMinutes <= 0)
@@ -93,12 +213,9 @@ public static class MediaUsageAggregator
 
         lock (CacheLock)
         {
-            if (CachedResult is null || !string.Equals(CachedResult.CacheKey, cacheKey, StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            if (DateTimeOffset.UtcNow - CachedResult.CreatedAtUtc > TimeSpan.FromMinutes(cacheMinutes))
+            if (CachedResult is null
+                || !string.Equals(CachedResult.CacheKey, cacheKey, StringComparison.Ordinal)
+                || DateTimeOffset.UtcNow - CachedResult.CreatedAtUtc > TimeSpan.FromMinutes(cacheMinutes))
             {
                 return false;
             }
@@ -121,62 +238,11 @@ public static class MediaUsageAggregator
         }
     }
 
-    private static long CalculatePathBytes(string path, List<string> diagnostics)
-    {
-        try
-        {
-            if (File.Exists(path))
-            {
-                return new FileInfo(path).Length;
-            }
-
-            if (!Directory.Exists(path))
-            {
-                diagnostics.Add($"Path does not exist: {path}");
-                return 0;
-            }
-
-            var options = new EnumerationOptions
-            {
-                RecurseSubdirectories = true,
-                IgnoreInaccessible = true,
-                AttributesToSkip = FileAttributes.ReparsePoint
-            };
-
-            long total = 0;
-            foreach (var file in new DirectoryInfo(path).EnumerateFiles("*", options))
-            {
-                try
-                {
-                    total += file.Length;
-                }
-                catch (IOException exception)
-                {
-                    diagnostics.Add($"Failed to read file size: {file.FullName}: {exception.Message}");
-                }
-                catch (UnauthorizedAccessException exception)
-                {
-                    diagnostics.Add($"Access denied while reading file size: {file.FullName}: {exception.Message}");
-                }
-            }
-
-            return total;
-        }
-        catch (IOException exception)
-        {
-            diagnostics.Add($"Failed to scan path: {path}: {exception.Message}");
-            return 0;
-        }
-        catch (UnauthorizedAccessException exception)
-        {
-            diagnostics.Add($"Access denied while scanning path: {path}: {exception.Message}");
-            return 0;
-        }
-    }
-
     private static string NormalizeMediaType(string libraryType)
     {
-        return string.IsNullOrWhiteSpace(libraryType) ? "other" : libraryType.Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(libraryType)
+            ? "other"
+            : libraryType.Trim().ToLowerInvariant();
     }
 
     private static string BuildCacheKey(IReadOnlyList<MediaUsageScanInput> inputs)
@@ -185,6 +251,53 @@ public static class MediaUsageAggregator
             .OrderBy(input => input.LibraryPath, StringComparer.OrdinalIgnoreCase)
             .Select(input => string.Join("|", input.LibraryPath, input.LibraryType, input.MountPath)));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
+    }
+
+    private sealed class ScanContext
+    {
+        private readonly CancellationToken _cancellationToken;
+        private readonly DateTimeOffset _deadlineUtc;
+        private readonly List<string> _diagnostics;
+        private readonly string _scanName;
+
+        public ScanContext(
+            CancellationToken cancellationToken,
+            int timeoutSeconds,
+            List<string> diagnostics,
+            string scanName)
+        {
+            _cancellationToken = cancellationToken;
+            _diagnostics = diagnostics;
+            _scanName = scanName;
+            var boundedTimeout = Math.Clamp(timeoutSeconds, 1, 3600);
+            _deadlineUtc = DateTimeOffset.UtcNow.AddSeconds(boundedTimeout);
+        }
+
+        public bool Stopped { get; private set; }
+
+        public bool ShouldStop(string currentPath)
+        {
+            if (Stopped)
+            {
+                return true;
+            }
+
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Stopped = true;
+                _diagnostics.Add($"The {_scanName} scan was cancelled while reading: {currentPath}");
+                return true;
+            }
+
+            if (DateTimeOffset.UtcNow >= _deadlineUtc)
+            {
+                Stopped = true;
+                _diagnostics.Add($"The {_scanName} scan timed out while reading: {currentPath}");
+                return true;
+            }
+
+            return false;
+        }
     }
 
     private sealed class CachedMediaUsage
@@ -244,6 +357,11 @@ public class MediaUsageAggregationResult
     public bool ForcedRefresh { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the scan completed before cancellation or timeout.
+    /// </summary>
+    public bool Completed { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets usage entries.
     /// </summary>
     public IReadOnlyList<MediaUsageEntry> Entries { get; set; } = Array.Empty<MediaUsageEntry>();
@@ -266,6 +384,7 @@ public class MediaUsageAggregationResult
             GeneratedAtUtc = GeneratedAtUtc,
             CacheHit = cacheHit,
             ForcedRefresh = forcedRefresh,
+            Completed = Completed,
             Entries = Entries.Select(entry => entry.Clone()).ToArray(),
             Diagnostics = Diagnostics.ToArray()
         };

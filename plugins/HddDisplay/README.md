@@ -10,8 +10,8 @@ HDD Display is the storage and transcoding plugin in this Jellyfin plugin librar
 
 - Adds a Jellyfin plugin page named **HDD Display**.
 - Exposes `GET /Plugins/HddDisplay/Storage`.
-- Exposes `GET /Plugins/HddDisplay/Storage?refresh=true` to bypass the media scan cache.
-- Exposes `POST /Plugins/HddDisplay/Storage/Cache/Clear` to clear the media scan cache.
+- Exposes `GET /Plugins/HddDisplay/Storage?refresh=true` to bypass the media and GPU caches.
+- Exposes `POST /Plugins/HddDisplay/Storage/Cache/Clear` to clear the media and GPU caches.
 - Exposes `GET /Plugins/HddDisplay/SystemUsage` for exclusive Jellyfin system-path usage.
 - Exposes `GET /Plugins/HddDisplay/SystemUsage?refresh=true` to bypass the system-path cache.
 - Exposes `POST /Plugins/HddDisplay/SystemUsage/Cache/Clear` to clear the system-path cache.
@@ -23,8 +23,11 @@ HDD Display is the storage and transcoding plugin in this Jellyfin plugin librar
 - Aggregates real media sizes by mount and media type.
 - Aggregates cache, image cache, metadata, transcodes, logs, temp, plugins, configuration, program data and web resources.
 - Excludes nested configured system paths from their parent category to prevent double counting.
-- Uses independent configurable cache lifetimes for media and system scans.
-- Reads NVIDIA GPU telemetry through `nvidia-smi` when available.
+- Uses independent configurable cache lifetimes and hard deadlines for media and system scans.
+- Returns partial, uncached results with diagnostics when a request is cancelled or a deadline expires.
+- Skips symbolic links and reparse points to prevent traversal loops.
+- Reads NVIDIA GPU telemetry through `nvidia-smi` with a hard command timeout.
+- Caches GPU snapshots independently from filesystem scans.
 - Detects GPU processes that look like Jellyfin ffmpeg sessions.
 - Returns mount, scan, system-path and GPU diagnostics for troubleshooting.
 
@@ -39,6 +42,7 @@ HDD Display does not modify Jellyfin Web files. Load the stable asset through th
 - Shows colored media segments for movies, series, music and video.
 - Shows a separate exclusive system-path segment bar per mount.
 - Shows live NVIDIA usage while `jellyfin-ffmpeg` is active.
+- Removes injected DOM, observers and polling timers when navigation leaves the dashboard.
 
 ## Target Hardware
 
