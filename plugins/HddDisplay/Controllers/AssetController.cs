@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jellyfin.Plugin.HddDisplay.Controllers;
@@ -11,7 +12,13 @@ namespace Jellyfin.Plugin.HddDisplay.Controllers;
 public class AssetController : ControllerBase
 {
     private const string DashboardWidgetResource = "Jellyfin.Plugin.HddDisplay.Web.dashboard-widget.js";
+    private const string SystemUsageResource = "Jellyfin.Plugin.HddDisplay.Web.system-usage-extension.js";
     private const string JavaScriptContentType = "application/javascript; charset=utf-8";
+    private static readonly string[] DashboardResources =
+    {
+        DashboardWidgetResource,
+        SystemUsageResource
+    };
 
     /// <summary>
     /// Gets the current dashboard widget with revalidation enabled.
@@ -46,13 +53,12 @@ public class AssetController : ControllerBase
 
     private ActionResult CreateAssetResponse(bool immutable)
     {
-        var assembly = typeof(Plugin).Assembly;
-        var stream = assembly.GetManifestResourceStream(DashboardWidgetResource);
+        var stream = CreateDashboardBundle();
         if (stream is null)
         {
             return StatusCode(500, new
             {
-                Message = "The embedded HDD Display dashboard widget is unavailable."
+                Message = "One or more embedded HDD Display dashboard assets are unavailable."
             });
         }
 
@@ -64,6 +70,27 @@ public class AssetController : ControllerBase
         Response.Headers["X-Content-Type-Options"] = "nosniff";
 
         return File(stream, JavaScriptContentType, enableRangeProcessing: false);
+    }
+
+    private static MemoryStream? CreateDashboardBundle()
+    {
+        var assembly = typeof(Plugin).Assembly;
+        var output = new MemoryStream();
+        foreach (var resourceName in DashboardResources)
+        {
+            using var resource = assembly.GetManifestResourceStream(resourceName);
+            if (resource is null)
+            {
+                output.Dispose();
+                return null;
+            }
+
+            resource.CopyTo(output);
+            output.WriteByte((byte)'\n');
+        }
+
+        output.Position = 0;
+        return output;
     }
 
     private static string CurrentVersion()
