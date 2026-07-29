@@ -15,6 +15,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         IServiceCollection serviceCollection,
         IServerApplicationHost applicationHost)
     {
+        _ = applicationHost;
         serviceCollection.AddSingleton<IUserMusicSettingsStore, UserMusicSettingsStore>();
     }
 }
