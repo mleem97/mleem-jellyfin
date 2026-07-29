@@ -9,6 +9,11 @@ namespace Jellyfin.Plugin.BetterMusicDisplay.Configuration;
 public class UserMusicViewSettings
 {
     /// <summary>
+    /// Gets or sets the persisted settings schema version.
+    /// </summary>
+    public int SchemaVersion { get; set; } = 1;
+
+    /// <summary>
     /// Gets or sets the Jellyfin user id.
     /// </summary>
     public Guid UserId { get; set; }

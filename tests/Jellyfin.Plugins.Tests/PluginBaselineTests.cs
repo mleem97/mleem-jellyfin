@@ -21,10 +21,13 @@ public sealed class PluginBaselineTests
     [Fact]
     public void BetterMusicDisplayCreatesIsolatedDefaultUserSettings()
     {
+        using var directory = new TemporaryDirectory();
+        var store = new UserMusicSettingsStore(directory.Path);
         var userId = Guid.NewGuid();
 
-        var settings = UserMusicSettingsStore.Get(userId);
+        var settings = store.Get(userId);
 
+        Assert.Equal(1, settings.SchemaVersion);
         Assert.Equal(userId, settings.UserId);
         Assert.Equal("Suggestions", settings.LandingPage);
         Assert.Equal("Grid", settings.AlbumLayout);
