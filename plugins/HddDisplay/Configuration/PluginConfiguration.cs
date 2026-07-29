@@ -13,8 +13,9 @@ public class PluginConfiguration : BasePluginConfiguration
     public PluginConfiguration()
     {
         IncludeSystemDrive = false;
-        DashboardRefreshSeconds = 5;
+        DashboardRefreshSeconds = 15;
         StorageScanCacheMinutes = 15;
+        SystemScanCacheMinutes = 30;
     }
 
     /// <summary>
@@ -31,4 +32,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the storage scan cache lifetime in minutes.
     /// </summary>
     public int StorageScanCacheMinutes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the system-path scan cache lifetime in minutes.
+    /// </summary>
+    public int SystemScanCacheMinutes { get; set; }
 }
