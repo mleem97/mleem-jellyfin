@@ -26,8 +26,10 @@
   <ItemGroup>
     <None Remove="Web\config.html" />
     <None Remove="Web\dashboard-widget.js" />
+    <None Remove="Web\system-usage-extension.js" />
     <EmbeddedResource Include="Web\config.html" />
     <EmbeddedResource Include="Web\dashboard-widget.js" />
+    <EmbeddedResource Include="Web\system-usage-extension.js" />
   </ItemGroup>
 
 </Project>
