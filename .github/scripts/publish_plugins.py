@@ -9,10 +9,12 @@ release version supplied through ``RELEASE_VERSION``/``INPUT_RELEASE_VERSION``.
 from __future__ import annotations
 
 import os
+import pathlib
 import re
 import sys
 
 import auto_publish_plugins as publisher
+import release_validation as validator
 
 VERSION_PATTERN = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
@@ -67,7 +69,7 @@ def resolve_version(metadata: dict, changelog: str, exact_version: str | None) -
 
 
 def main() -> int:
-    """Build, package, publish and record all selected plugins."""
+    """Build, validate, package, publish and record all selected plugins."""
     slugs = publisher.selected_plugins()
     if not slugs:
         print("No changed plugin projects detected.")
@@ -84,7 +86,7 @@ def main() -> int:
             "RELEASE_VERSION can only be used when exactly one plugin is selected."
         )
 
-    release_data: list[tuple[dict, str, str, object]] = []
+    release_data: list[tuple[dict, str, str, pathlib.Path]] = []
     for slug in slugs:
         metadata_path = publisher.PLUGINS_DIR / slug / "plugin.json"
         metadata = publisher.load_json(metadata_path)
@@ -97,7 +99,14 @@ def main() -> int:
         publisher.update_csproj(project, new_version)
         publisher.build_plugin(project)
         zip_path = publisher.package_plugin(metadata, new_version)
+        validator.validate_package(metadata, zip_path)
         publisher.update_manifest(metadata, new_version, changelog, zip_path)
+        validator.validate_manifest(
+            publisher.MANIFEST_PATH,
+            metadata["guid"],
+            new_version,
+            zip_path,
+        )
         release_data.append((metadata, new_version, changelog, zip_path))
 
     publisher.run(["git", "config", "user.name", "github-actions[bot]"])
@@ -113,6 +122,7 @@ def main() -> int:
 
     for metadata, version, changelog, zip_path in release_data:
         publisher.release_with_gh(metadata, version, changelog, zip_path)
+        validator.verify_published_asset(metadata, version, zip_path)
     publisher.run(["git", "push", "origin", "main", "--follow-tags"])
     return 0
 
