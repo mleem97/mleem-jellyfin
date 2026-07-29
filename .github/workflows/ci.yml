@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Validate Python release scripts
+        run: python -m py_compile .github/scripts/auto_publish_plugins.py .github/scripts/publish_plugins.py
+      - name: Validate JSON metadata
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+
+          paths = [pathlib.Path('manifest.json'), pathlib.Path('build.yaml')]
+          paths.extend(pathlib.Path('plugins').glob('*/plugin.json'))
+          for path in paths:
+              if path.suffix == '.json':
+                  json.loads(path.read_text(encoding='utf-8'))
+                  print(f'validated {path}')
+          PY
+      - name: Restore and build plugins
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' project; do
+            dotnet restore "$project"
+            dotnet build "$project" -c Release --no-restore
+          done < <(find plugins -name '*.csproj' -print0 | sort -z)
