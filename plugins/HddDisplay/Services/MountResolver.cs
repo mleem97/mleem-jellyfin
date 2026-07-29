@@ -19,6 +19,33 @@ public static class MountResolver
     /// <returns>Mount resolution result.</returns>
     public static MountResolution Resolve(string path)
     {
+        return ResolveFromEntries(path, ReadMounts(), "/proc/self/mountinfo");
+    }
+
+    /// <summary>
+    /// Resolves a path against supplied Linux mountinfo lines.
+    /// </summary>
+    /// <param name="path">Library path.</param>
+    /// <param name="mountInfoLines">Mountinfo input lines.</param>
+    /// <returns>Mount resolution result.</returns>
+    public static MountResolution ResolveFromMountInfo(
+        string path,
+        IEnumerable<string> mountInfoLines)
+    {
+        ArgumentNullException.ThrowIfNull(mountInfoLines);
+        var mounts = mountInfoLines
+            .Select(ParseMountInfoLine)
+            .Where(entry => entry is not null)
+            .Cast<MountInfoEntry>()
+            .ToArray();
+        return ResolveFromEntries(path, mounts, "supplied mountinfo");
+    }
+
+    private static MountResolution ResolveFromEntries(
+        string path,
+        IReadOnlyList<MountInfoEntry> mounts,
+        string providerDescription)
+    {
         var normalizedPath = NormalizePath(path);
         if (string.IsNullOrWhiteSpace(normalizedPath))
         {
@@ -30,8 +57,13 @@ public static class MountResolver
             return ResolveWindowsPath(path, normalizedPath);
         }
 
-        var match = FindMountInfoMatch(normalizedPath);
-        return match is null ? CreateFallbackResolution(path, normalizedPath) : CreateMountInfoResolution(path, normalizedPath, match);
+        var match = mounts
+            .Where(mount => IsPathOnMount(normalizedPath, mount.MountPath))
+            .OrderByDescending(mount => mount.MountPath.Length)
+            .FirstOrDefault();
+        return match is null
+            ? CreateFallbackResolution(path, normalizedPath)
+            : CreateMountInfoResolution(path, normalizedPath, match, providerDescription);
     }
 
     private static MountResolution ResolveWindowsPath(string originalPath, string normalizedPath)
@@ -50,15 +82,11 @@ public static class MountResolver
         };
     }
 
-    private static MountInfoEntry? FindMountInfoMatch(string normalizedPath)
-    {
-        return ReadMounts()
-            .Where(mount => IsPathOnMount(normalizedPath, mount.MountPath))
-            .OrderByDescending(mount => mount.MountPath.Length)
-            .FirstOrDefault();
-    }
-
-    private static MountResolution CreateMountInfoResolution(string originalPath, string normalizedPath, MountInfoEntry match)
+    private static MountResolution CreateMountInfoResolution(
+        string originalPath,
+        string normalizedPath,
+        MountInfoEntry match,
+        string providerDescription)
     {
         return new MountResolution
         {
@@ -69,7 +97,7 @@ public static class MountResolver
             FileSystemType = match.FileSystemType,
             ResolutionProvider = "mountinfo",
             IsResolved = true,
-            Diagnostic = "Resolved from /proc/self/mountinfo."
+            Diagnostic = string.Concat("Resolved from ", providerDescription, ".")
         };
     }
 
@@ -133,9 +161,15 @@ public static class MountResolver
             return null;
         }
 
+        var mountPath = NormalizePath(UnescapeMountInfoValue(left[4]));
+        if (string.IsNullOrWhiteSpace(mountPath))
+        {
+            return null;
+        }
+
         return new MountInfoEntry
         {
-            MountPath = NormalizePath(UnescapeMountInfoValue(left[4])),
+            MountPath = mountPath,
             FileSystemType = right[0],
             Source = UnescapeMountInfoValue(right[1])
         };
@@ -150,15 +184,18 @@ public static class MountResolver
 
         try
         {
-            return Path.GetFullPath(path).Replace('\\', '/').TrimEnd('/');
+            var fullPath = Path.GetFullPath(path).Replace('\\', '/');
+            return fullPath == "/" ? fullPath : fullPath.TrimEnd('/');
         }
         catch (ArgumentException)
         {
-            return path.Replace('\\', '/').TrimEnd('/');
+            var normalized = path.Replace('\\', '/');
+            return normalized == "/" ? normalized : normalized.TrimEnd('/');
         }
         catch (NotSupportedException)
         {
-            return path.Replace('\\', '/').TrimEnd('/');
+            var normalized = path.Replace('\\', '/');
+            return normalized == "/" ? normalized : normalized.TrimEnd('/');
         }
     }
 
@@ -245,7 +282,10 @@ public class MountResolution
     /// <param name="normalizedPath">Normalized path.</param>
     /// <param name="diagnostic">Diagnostic note.</param>
     /// <returns>Unresolved mount result.</returns>
-    public static MountResolution Unresolved(string libraryPath, string normalizedPath, string diagnostic)
+    public static MountResolution Unresolved(
+        string libraryPath,
+        string normalizedPath,
+        string diagnostic)
     {
         return new MountResolution
         {
