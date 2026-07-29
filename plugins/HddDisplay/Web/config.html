@@ -16,22 +16,35 @@
         <div data-role="content">
             <div class="content-primary">
                 <h1>HDD Display</h1>
-                <p class="hdd-muted">This page is only a diagnostics fallback. The target UI for this plugin is the Jellyfin Admin Dashboard.</p>
+                <p class="hdd-muted">This page is a diagnostics fallback. The primary surface is the Jellyfin Admin Dashboard.</p>
+
+                <form id="HddDisplaySettings" class="hdd-card">
+                    <h2>Scan settings</h2>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="storageScanCacheMinutes">Media scan cache (minutes)</label>
+                        <input is="emby-input" id="storageScanCacheMinutes" type="number" min="0" max="1440" step="1" />
+                        <div class="fieldDescription">Caching avoids a complete library filesystem scan on every dashboard refresh.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="systemScanCacheMinutes">System-path scan cache (minutes)</label>
+                        <input is="emby-input" id="systemScanCacheMinutes" type="number" min="0" max="1440" step="1" />
+                        <div class="fieldDescription">Applies independently to cache, image cache, metadata, transcodes, logs and other Jellyfin system paths.</div>
+                    </div>
+                    <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                        <span>Save</span>
+                    </button>
+                </form>
 
                 <div class="hdd-card">
-                    <h2>Planned Admin Dashboard widget</h2>
-                    <p>The next implementation will replace the dashboard <strong>Paths</strong> area with a compact disk and NVIDIA transcoding overview.</p>
-                    <ul>
-                        <li>One card per mount/disk.</li>
-                        <li>Stacked usage bar by media type: Filme, Serien, Musik, Video.</li>
-                        <li>Live NVIDIA GTX 1060 telemetry for active <code>jellyfin-ffmpeg</code> transcoding.</li>
-                        <li>Fallback diagnostics when GPU telemetry is unavailable.</li>
-                    </ul>
+                    <h2>Dashboard integration</h2>
+                    <p>The widget augments the dashboard <strong>Paths</strong> area and shows media usage, exclusive Jellyfin system-path segments and NVIDIA telemetry.</p>
+                    <p>See <code>docs/adr/0001-hdd-dashboard-injection.md</code> for the non-destructive loader design.</p>
                 </div>
 
                 <div class="hdd-card">
                     <h2>Current storage endpoint</h2>
                     <div id="hddStatus" class="hdd-muted">Loading...</div>
+                    <div id="hddSystemStatus" class="hdd-muted"></div>
                     <div id="hddDrives" class="hdd-grid"></div>
                 </div>
             </div>
@@ -39,6 +52,10 @@
 
         <script>
             (function () {
+                const pluginId = 'eb5d7894-8eef-4b36-aa6f-5d124e828ce1';
+                const page = document.querySelector('#HddDisplayConfigPage');
+                const form = document.querySelector('#HddDisplaySettings');
+
                 function fmtBytes(bytes) {
                     if (!bytes || bytes <= 0) return '0 B';
                     const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
@@ -55,39 +72,88 @@
                         return ApiClient.getJSON(ApiClient.getUrl(url));
                     }
 
-                    return fetch(url).then(function (response) {
+                    return fetch(url, { credentials: 'same-origin' }).then(function (response) {
                         if (!response.ok) throw new Error('HTTP ' + response.status);
                         return response.json();
                     });
                 }
 
-                function render(data) {
+                function loadConfiguration() {
+                    return ApiClient.getPluginConfiguration(pluginId).then(function (configuration) {
+                        document.querySelector('#storageScanCacheMinutes').value = configuration.StorageScanCacheMinutes ?? 15;
+                        document.querySelector('#systemScanCacheMinutes').value = configuration.SystemScanCacheMinutes ?? 30;
+                    });
+                }
+
+                function saveConfiguration(event) {
+                    event.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (configuration) {
+                        configuration.StorageScanCacheMinutes = Math.max(0, Number(document.querySelector('#storageScanCacheMinutes').value || 0));
+                        configuration.SystemScanCacheMinutes = Math.max(0, Number(document.querySelector('#systemScanCacheMinutes').value || 0));
+                        return ApiClient.updatePluginConfiguration(pluginId, configuration);
+                    }).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    }).catch(function (error) {
+                        Dashboard.hideLoadingMsg();
+                        document.querySelector('#hddStatus').textContent = 'Failed to save settings: ' + error.message;
+                    });
+                }
+
+                function renderStorage(data) {
                     const drives = data.drives || [];
                     const status = document.querySelector('#hddStatus');
                     const grid = document.querySelector('#hddDrives');
                     status.textContent = data.note || (drives.length + ' drives detected.');
-                    grid.innerHTML = drives.map(function (drive) {
+                    grid.replaceChildren();
+                    drives.forEach(function (drive) {
                         const used = drive.usedBytes || 0;
                         const total = drive.totalBytes || 0;
                         const usedPct = pct(used, total);
-                        return '<div class="hdd-card">'
-                            + '<h3>' + (drive.label || drive.name) + '</h3>'
-                            + '<div class="hdd-code hdd-muted">' + drive.name + '</div>'
-                            + '<p>' + fmtBytes(used) + ' / ' + fmtBytes(total) + ' used · ' + usedPct + '%</p>'
-                            + '<div class="hdd-bar"><div class="hdd-bar-used" style="width:' + usedPct + '%"></div></div>'
-                            + '</div>';
-                    }).join('');
+                        const card = document.createElement('div');
+                        card.className = 'hdd-card';
+                        const heading = document.createElement('h3');
+                        heading.textContent = drive.label || drive.name;
+                        card.appendChild(heading);
+                        const path = document.createElement('div');
+                        path.className = 'hdd-code hdd-muted';
+                        path.textContent = drive.name || '';
+                        card.appendChild(path);
+                        const summary = document.createElement('p');
+                        summary.textContent = fmtBytes(used) + ' / ' + fmtBytes(total) + ' used · ' + usedPct + '%';
+                        card.appendChild(summary);
+                        const bar = document.createElement('div');
+                        bar.className = 'hdd-bar';
+                        const fill = document.createElement('div');
+                        fill.className = 'hdd-bar-used';
+                        fill.style.width = usedPct + '%';
+                        bar.appendChild(fill);
+                        card.appendChild(bar);
+                        grid.appendChild(card);
+                    });
                 }
 
-                function load() {
-                    getJson('Plugins/HddDisplay/Storage')
-                        .then(render)
-                        .catch(function (error) {
-                            document.querySelector('#hddStatus').textContent = 'Failed to load diagnostics: ' + error.message;
-                        });
+                function renderSystemUsage(data) {
+                    const entries = data.entries || [];
+                    const total = entries.reduce(function (sum, entry) { return sum + Number(entry.usedBytes || 0); }, 0);
+                    document.querySelector('#hddSystemStatus').textContent = entries.length
+                        ? entries.length + ' exclusive system categories · ' + fmtBytes(total)
+                        : 'No readable system paths detected.';
                 }
 
-                document.querySelector('#HddDisplayConfigPage').addEventListener('pageshow', load);
+                function loadDiagnostics() {
+                    return Promise.all([
+                        getJson('Plugins/HddDisplay/Storage').then(renderStorage),
+                        getJson('Plugins/HddDisplay/SystemUsage').then(renderSystemUsage)
+                    ]).catch(function (error) {
+                        document.querySelector('#hddStatus').textContent = 'Failed to load diagnostics: ' + error.message;
+                    });
+                }
+
+                page.addEventListener('pageshow', function () {
+                    Promise.all([loadConfiguration(), loadDiagnostics()]);
+                });
+                form.addEventListener('submit', saveConfiguration);
             })();
         </script>
     </div>
