@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace Jellyfin.Plugin.HddDisplay.Services;
 
@@ -12,6 +13,7 @@ namespace Jellyfin.Plugin.HddDisplay.Services;
 /// </summary>
 public static class SystemUsageAggregator
 {
+    private const int DefaultTimeoutSeconds = 60;
     private static readonly object CacheLock = new();
     private static CachedSystemUsage? CachedResult;
 
@@ -21,11 +23,15 @@ public static class SystemUsageAggregator
     /// <param name="inputs">System paths ordered from most specific to least specific.</param>
     /// <param name="cacheMinutes">Cache lifetime in minutes.</param>
     /// <param name="forceRefresh">Whether to bypass the cache.</param>
-    /// <returns>Exclusive system usage data.</returns>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <param name="timeoutSeconds">Hard scan deadline in seconds.</param>
+    /// <returns>Exclusive system usage data. Partial results are returned after cancellation or timeout.</returns>
     public static SystemUsageAggregationResult Calculate(
         IReadOnlyList<SystemUsageScanInput> inputs,
         int cacheMinutes,
-        bool forceRefresh)
+        bool forceRefresh,
+        CancellationToken cancellationToken = default,
+        int timeoutSeconds = DefaultTimeoutSeconds)
     {
         var normalizedInputs = NormalizeInputs(inputs);
         var cacheKey = BuildCacheKey(normalizedInputs);
@@ -40,9 +46,15 @@ public static class SystemUsageAggregator
             diagnostics.Add("System-path scan cache was bypassed by request.");
         }
 
+        var context = new ScanContext(cancellationToken, timeoutSeconds, diagnostics);
         var entries = new List<SystemUsageEntry>();
         foreach (var input in normalizedInputs)
         {
+            if (context.ShouldStop(input.Path))
+            {
+                break;
+            }
+
             var exclusions = normalizedInputs
                 .Where(other => !string.Equals(other.Path, input.Path, StringComparison.OrdinalIgnoreCase)
                     && IsPathWithin(other.Path, input.Path))
@@ -54,7 +66,7 @@ public static class SystemUsageAggregator
                 Category = input.Category,
                 Path = input.Path,
                 MountPath = input.MountPath,
-                UsedBytes = CalculatePathBytes(input.Path, exclusions, diagnostics)
+                UsedBytes = CalculatePathBytes(input.Path, exclusions, diagnostics, context)
             });
         }
 
@@ -63,6 +75,7 @@ public static class SystemUsageAggregator
             GeneratedAtUtc = DateTimeOffset.UtcNow,
             CacheHit = false,
             ForcedRefresh = forceRefresh,
+            Completed = !context.Stopped,
             Entries = entries
                 .OrderBy(entry => entry.MountPath, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(entry => entry.Category, StringComparer.OrdinalIgnoreCase)
@@ -73,7 +86,11 @@ public static class SystemUsageAggregator
                 .ToArray()
         };
 
-        StoreCache(cacheKey, result);
+        if (result.Completed)
+        {
+            StoreCache(cacheKey, result);
+        }
+
         return result;
     }
 
@@ -88,7 +105,8 @@ public static class SystemUsageAggregator
         }
     }
 
-    private static IReadOnlyList<SystemUsageScanInput> NormalizeInputs(IReadOnlyList<SystemUsageScanInput> inputs)
+    private static IReadOnlyList<SystemUsageScanInput> NormalizeInputs(
+        IReadOnlyList<SystemUsageScanInput> inputs)
     {
         return inputs
             .Where(input => !string.IsNullOrWhiteSpace(input.Category)
@@ -110,13 +128,14 @@ public static class SystemUsageAggregator
     private static long CalculatePathBytes(
         string path,
         IReadOnlyList<string> excludedRoots,
-        List<string> diagnostics)
+        List<string> diagnostics,
+        ScanContext context)
     {
         try
         {
             if (File.Exists(path))
             {
-                return new FileInfo(path).Length;
+                return context.ShouldStop(path) ? 0 : new FileInfo(path).Length;
             }
 
             if (!Directory.Exists(path))
@@ -128,10 +147,14 @@ public static class SystemUsageAggregator
             long total = 0;
             var pending = new Stack<string>();
             pending.Push(path);
-
             while (pending.Count > 0)
             {
                 var current = pending.Pop();
+                if (context.ShouldStop(current))
+                {
+                    break;
+                }
+
                 if (excludedRoots.Any(excluded => IsPathWithin(current, excluded)))
                 {
                     continue;
@@ -155,11 +178,17 @@ public static class SystemUsageAggregator
 
                 foreach (var child in children)
                 {
+                    if (context.ShouldStop(child))
+                    {
+                        break;
+                    }
+
                     try
                     {
                         var attributes = File.GetAttributes(child);
                         if ((attributes & FileAttributes.ReparsePoint) != 0)
                         {
+                            diagnostics.Add($"Skipped symbolic link or reparse point: {child}");
                             continue;
                         }
 
@@ -236,7 +265,9 @@ public static class SystemUsageAggregator
 
     private static string BuildCacheKey(IReadOnlyList<SystemUsageScanInput> inputs)
     {
-        var raw = string.Join("\n", inputs.Select(input => string.Join("|", input.Category, input.Path, input.MountPath)));
+        var raw = string.Join(
+            "\n",
+            inputs.Select(input => string.Join("|", input.Category, input.Path, input.MountPath)));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
     }
 
@@ -275,6 +306,49 @@ public static class SystemUsageAggregator
                 CreatedAtUtc = DateTimeOffset.UtcNow,
                 Result = result.Clone(cacheHit: false, forcedRefresh: false)
             };
+        }
+    }
+
+    private sealed class ScanContext
+    {
+        private readonly CancellationToken _cancellationToken;
+        private readonly DateTimeOffset _deadlineUtc;
+        private readonly List<string> _diagnostics;
+
+        public ScanContext(
+            CancellationToken cancellationToken,
+            int timeoutSeconds,
+            List<string> diagnostics)
+        {
+            _cancellationToken = cancellationToken;
+            _diagnostics = diagnostics;
+            _deadlineUtc = DateTimeOffset.UtcNow.AddSeconds(Math.Clamp(timeoutSeconds, 1, 3600));
+        }
+
+        public bool Stopped { get; private set; }
+
+        public bool ShouldStop(string currentPath)
+        {
+            if (Stopped)
+            {
+                return true;
+            }
+
+            if (_cancellationToken.IsCancellationRequested)
+            {
+                Stopped = true;
+                _diagnostics.Add($"The system-path scan was cancelled while reading: {currentPath}");
+                return true;
+            }
+
+            if (DateTimeOffset.UtcNow >= _deadlineUtc)
+            {
+                Stopped = true;
+                _diagnostics.Add($"The system-path scan timed out while reading: {currentPath}");
+                return true;
+            }
+
+            return false;
         }
     }
 
@@ -330,6 +404,11 @@ public class SystemUsageAggregationResult
     public bool ForcedRefresh { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the scan completed before cancellation or timeout.
+    /// </summary>
+    public bool Completed { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets system usage entries.
     /// </summary>
     public IReadOnlyList<SystemUsageEntry> Entries { get; set; } = Array.Empty<SystemUsageEntry>();
@@ -352,6 +431,7 @@ public class SystemUsageAggregationResult
             GeneratedAtUtc = GeneratedAtUtc,
             CacheHit = cacheHit,
             ForcedRefresh = forcedRefresh,
+            Completed = Completed,
             Entries = Entries.Select(entry => entry.Clone()).ToArray(),
             Diagnostics = Diagnostics.ToArray()
         };
