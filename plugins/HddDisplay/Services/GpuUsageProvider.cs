@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Jellyfin.Plugin.HddDisplay.Services;
 
@@ -20,43 +21,143 @@ public interface IGpuUsageProvider
 }
 
 /// <summary>
+/// Provides an independent short-lived cache for GPU snapshots.
+/// </summary>
+public static class GpuUsageCache
+{
+    private static readonly object CacheLock = new();
+    private static CachedGpuUsage? CachedResult;
+
+    /// <summary>
+    /// Gets a cached GPU snapshot or invokes the provider.
+    /// </summary>
+    /// <param name="provider">GPU provider.</param>
+    /// <param name="cacheSeconds">Cache lifetime in seconds.</param>
+    /// <param name="forceRefresh">Whether the cache should be bypassed.</param>
+    /// <returns>A detached GPU snapshot.</returns>
+    public static GpuUsageSnapshot GetSnapshot(
+        IGpuUsageProvider provider,
+        int cacheSeconds,
+        bool forceRefresh)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        if (!forceRefresh && TryGetCached(cacheSeconds, out var cached))
+        {
+            cached.CacheHit = true;
+            return cached;
+        }
+
+        var snapshot = provider.GetSnapshot();
+        snapshot.CacheHit = false;
+        lock (CacheLock)
+        {
+            CachedResult = new CachedGpuUsage
+            {
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                Snapshot = snapshot.Clone()
+            };
+        }
+
+        return snapshot.Clone();
+    }
+
+    /// <summary>
+    /// Clears the GPU snapshot cache.
+    /// </summary>
+    public static void Clear()
+    {
+        lock (CacheLock)
+        {
+            CachedResult = null;
+        }
+    }
+
+    private static bool TryGetCached(int cacheSeconds, out GpuUsageSnapshot snapshot)
+    {
+        snapshot = new GpuUsageSnapshot();
+        if (cacheSeconds <= 0)
+        {
+            return false;
+        }
+
+        lock (CacheLock)
+        {
+            if (CachedResult is null
+                || DateTimeOffset.UtcNow - CachedResult.CreatedAtUtc > TimeSpan.FromSeconds(cacheSeconds))
+            {
+                return false;
+            }
+
+            snapshot = CachedResult.Snapshot.Clone();
+            return true;
+        }
+    }
+
+    private sealed class CachedGpuUsage
+    {
+        public DateTimeOffset CreatedAtUtc { get; init; }
+
+        public GpuUsageSnapshot Snapshot { get; init; } = new();
+    }
+}
+
+/// <summary>
 /// Reads NVIDIA GPU usage through nvidia-smi.
 /// </summary>
 public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
 {
-    private const int TimeoutMilliseconds = 2500;
+    private const int DefaultTimeoutMilliseconds = 2500;
+    private readonly int _timeoutMilliseconds;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NvidiaSmiGpuUsageProvider"/> class.
+    /// </summary>
+    /// <param name="timeoutMilliseconds">Hard timeout for each nvidia-smi invocation.</param>
+    public NvidiaSmiGpuUsageProvider(int timeoutMilliseconds = DefaultTimeoutMilliseconds)
+    {
+        _timeoutMilliseconds = Math.Clamp(timeoutMilliseconds, 250, 30000);
+    }
 
     /// <inheritdoc />
     public GpuUsageSnapshot GetSnapshot()
     {
-        var gpuCommand = RunNvidiaSmi(new[]
-        {
-            "--query-gpu=index,name,utilization.gpu,memory.total,memory.used,memory.free",
-            "--format=csv,noheader,nounits"
-        });
+        var gpuCommand = RunNvidiaSmi(
+            new[]
+            {
+                "--query-gpu=index,name,utilization.gpu,memory.total,memory.used,memory.free",
+                "--format=csv,noheader,nounits"
+            },
+            _timeoutMilliseconds);
 
         if (!gpuCommand.Success)
         {
             return GpuUsageSnapshot.Unavailable("nvidia-smi", gpuCommand.Error);
         }
 
-        var processCommand = RunNvidiaSmi(new[]
-        {
-            "--query-compute-apps=pid,process_name,used_memory",
-            "--format=csv,noheader,nounits"
-        });
+        var processCommand = RunNvidiaSmi(
+            new[]
+            {
+                "--query-compute-apps=pid,process_name,used_memory",
+                "--format=csv,noheader,nounits"
+            },
+            _timeoutMilliseconds);
 
         var devices = ParseDevices(gpuCommand.Output);
         var processes = processCommand.Success
             ? ParseProcesses(processCommand.Output)
             : Array.Empty<GpuProcessUsage>();
+        var processDiagnostic = processCommand.Success
+            ? string.Empty
+            : string.Concat(" Process telemetry unavailable: ", processCommand.Error);
 
         return new GpuUsageSnapshot
         {
             GeneratedAtUtc = DateTimeOffset.UtcNow,
             IsAvailable = devices.Count > 0,
             Provider = "nvidia-smi",
-            Diagnostic = devices.Count > 0 ? "NVIDIA telemetry collected." : "nvidia-smi returned no GPU rows.",
+            Diagnostic = devices.Count > 0
+                ? string.Concat("NVIDIA telemetry collected.", processDiagnostic)
+                : "nvidia-smi returned no GPU rows.",
             Devices = devices,
             Processes = processes,
             JellyfinFfmpegProcessCount = processes.Count(process => process.IsJellyfinFfmpeg)
@@ -128,10 +229,14 @@ public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
 
     private static int ParseInt(string value)
     {
-        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result) ? result : 0;
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result)
+            ? result
+            : 0;
     }
 
-    private static CommandResult RunNvidiaSmi(IReadOnlyList<string> arguments)
+    private static CommandResult RunNvidiaSmi(
+        IReadOnlyList<string> arguments,
+        int timeoutMilliseconds)
     {
         try
         {
@@ -157,17 +262,25 @@ public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
                 return CommandResult.Fail("nvidia-smi could not be started.");
             }
 
-            if (!process.WaitForExit(TimeoutMilliseconds))
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> errorTask = process.StandardError.ReadToEndAsync();
+            if (!process.WaitForExit(timeoutMilliseconds))
             {
-                process.Kill(entireProcessTree: true);
-                return CommandResult.Fail("nvidia-smi timed out.");
+                TryKillProcess(process);
+                return CommandResult.Fail(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"nvidia-smi exceeded the {timeoutMilliseconds} ms timeout and was terminated."));
             }
 
-            var output = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
+            var output = outputTask.GetAwaiter().GetResult();
+            var error = errorTask.GetAwaiter().GetResult();
             if (process.ExitCode != 0)
             {
-                return CommandResult.Fail(string.IsNullOrWhiteSpace(error) ? $"nvidia-smi exited with code {process.ExitCode}." : error.Trim());
+                return CommandResult.Fail(
+                    string.IsNullOrWhiteSpace(error)
+                        ? string.Create(CultureInfo.InvariantCulture, $"nvidia-smi exited with code {process.ExitCode}.")
+                        : error.Trim());
             }
 
             return CommandResult.Ok(output);
@@ -179,6 +292,34 @@ public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
         catch (InvalidOperationException exception)
         {
             return CommandResult.Fail(exception.Message);
+        }
+        catch (NotSupportedException exception)
+        {
+            return CommandResult.Fail(exception.Message);
+        }
+    }
+
+    private static void TryKillProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(500);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // The process already exited between the timeout and cleanup attempt.
+        }
+        catch (NotSupportedException)
+        {
+            // Process-tree termination is not available on this platform.
+        }
+        catch (Win32Exception)
+        {
+            // The process could not be terminated; the timeout is still reported.
         }
     }
 
@@ -226,6 +367,11 @@ public class GpuUsageSnapshot
     public bool IsAvailable { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether this snapshot came from cache.
+    /// </summary>
+    public bool CacheHit { get; set; }
+
+    /// <summary>
     /// Gets or sets the provider name.
     /// </summary>
     public string Provider { get; set; } = string.Empty;
@@ -266,6 +412,25 @@ public class GpuUsageSnapshot
             Diagnostic = diagnostic
         };
     }
+
+    /// <summary>
+    /// Creates a detached snapshot copy.
+    /// </summary>
+    /// <returns>A cloned snapshot.</returns>
+    public GpuUsageSnapshot Clone()
+    {
+        return new GpuUsageSnapshot
+        {
+            GeneratedAtUtc = GeneratedAtUtc,
+            IsAvailable = IsAvailable,
+            CacheHit = CacheHit,
+            Provider = Provider,
+            Diagnostic = Diagnostic,
+            Devices = Devices.Select(device => device.Clone()).ToArray(),
+            Processes = Processes.Select(process => process.Clone()).ToArray(),
+            JellyfinFfmpegProcessCount = JellyfinFfmpegProcessCount
+        };
+    }
 }
 
 /// <summary>
@@ -302,6 +467,23 @@ public class GpuDeviceUsage
     /// Gets or sets free memory in MiB.
     /// </summary>
     public int MemoryFreeMiB { get; set; }
+
+    /// <summary>
+    /// Creates a detached copy.
+    /// </summary>
+    /// <returns>A cloned device.</returns>
+    public GpuDeviceUsage Clone()
+    {
+        return new GpuDeviceUsage
+        {
+            Index = Index,
+            Name = Name,
+            GpuUtilizationPercent = GpuUtilizationPercent,
+            MemoryTotalMiB = MemoryTotalMiB,
+            MemoryUsedMiB = MemoryUsedMiB,
+            MemoryFreeMiB = MemoryFreeMiB
+        };
+    }
 }
 
 /// <summary>
@@ -328,4 +510,19 @@ public class GpuProcessUsage
     /// Gets or sets a value indicating whether the process looks like Jellyfin ffmpeg.
     /// </summary>
     public bool IsJellyfinFfmpeg { get; set; }
+
+    /// <summary>
+    /// Creates a detached copy.
+    /// </summary>
+    /// <returns>A cloned process.</returns>
+    public GpuProcessUsage Clone()
+    {
+        return new GpuProcessUsage
+        {
+            Pid = Pid,
+            ProcessName = ProcessName,
+            UsedMemoryMiB = UsedMemoryMiB,
+            IsJellyfinFfmpeg = IsJellyfinFfmpeg
+        };
+    }
 }
