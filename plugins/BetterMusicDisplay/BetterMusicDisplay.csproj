@@ -26,7 +26,9 @@
 
   <ItemGroup>
     <None Remove="Web\config.html" />
+    <None Remove="Web\albums-view.js" />
     <EmbeddedResource Include="Web\config.html" />
+    <EmbeddedResource Include="Web\albums-view.js" />
   </ItemGroup>
 
 </Project>
