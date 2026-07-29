@@ -10,32 +10,35 @@ HDD Display is the storage and transcoding plugin in this Jellyfin plugin librar
 
 - Adds a Jellyfin plugin page named **HDD Display**.
 - Exposes `GET /Plugins/HddDisplay/Storage`.
-- Exposes `GET /Plugins/HddDisplay/Storage?refresh=true` to bypass the storage scan cache.
-- Exposes `POST /Plugins/HddDisplay/Storage/Cache/Clear` to clear the in-memory storage scan cache.
-- Exposes `GET /Plugins/HddDisplay/AdminDashboard/Overview` for the dashboard widget.
-- Exposes the embedded widget at `GET /Plugins/HddDisplay/Assets/DashboardWidget.js`.
+- Exposes `GET /Plugins/HddDisplay/Storage?refresh=true` to bypass the media scan cache.
+- Exposes `POST /Plugins/HddDisplay/Storage/Cache/Clear` to clear the media scan cache.
+- Exposes `GET /Plugins/HddDisplay/SystemUsage` for exclusive Jellyfin system-path usage.
+- Exposes `GET /Plugins/HddDisplay/SystemUsage?refresh=true` to bypass the system-path cache.
+- Exposes `POST /Plugins/HddDisplay/SystemUsage/Cache/Clear` to clear the system-path cache.
+- Exposes `GET /Plugins/HddDisplay/AdminDashboard/Overview` for mount and GPU data.
+- Exposes the embedded widget bundle at `GET /Plugins/HddDisplay/Assets/DashboardWidget.js`.
 - Exposes immutable versioned assets at `GET /Plugins/HddDisplay/Assets/{assemblyVersion}/DashboardWidget.js`.
-- Reads Jellyfin virtual folders.
-- Resolves configured Jellyfin library paths through Linux mount information when available.
+- Reads Jellyfin virtual folders and resolves them through Linux mount information when available.
 - Uses `DriveInfo` fallback for Windows paths or restricted environments.
-- Groups configured Jellyfin library paths by detected drive or mount.
-- Aggregates real file sizes by resolved mount and media type.
-- Caches storage scans with a configurable cache lifetime.
+- Aggregates real media sizes by mount and media type.
+- Aggregates cache, image cache, metadata, transcodes, logs, temp, plugins, configuration, program data and web resources.
+- Excludes nested configured system paths from their parent category to prevent double counting.
+- Uses independent configurable cache lifetimes for media and system scans.
 - Reads NVIDIA GPU telemetry through `nvidia-smi` when available.
 - Detects GPU processes that look like Jellyfin ffmpeg sessions.
-- Returns per-path mount, scan and GPU diagnostics for troubleshooting.
-- Displays total, used and free bytes for detected drives.
+- Returns mount, scan, system-path and GPU diagnostics for troubleshooting.
 
 ## Dashboard Loader
 
 HDD Display does not modify Jellyfin Web files. Load the stable asset through the opt-in deployment mechanism described in [`../../docs/adr/0001-hdd-dashboard-injection.md`](../../docs/adr/0001-hdd-dashboard-injection.md). The versioned endpoint returns an immutable response and prevents stale script reuse after plugin upgrades.
 
-## Target Dashboard Functionality
+## Dashboard Display
 
-- Replace or augment the Admin Dashboard `Pfade` panel.
-- Show all Jellyfin media mounts in a compact card.
-- Show colored usage segments for Filme, Serien, Musik and Video.
-- Show live NVIDIA usage while `jellyfin-ffmpeg` is active.
+- Augments the Admin Dashboard `Pfade` / `Paths` area.
+- Shows all Jellyfin media mounts in a compact card.
+- Shows colored media segments for movies, series, music and video.
+- Shows a separate exclusive system-path segment bar per mount.
+- Shows live NVIDIA usage while `jellyfin-ffmpeg` is active.
 
 ## Target Hardware
 
