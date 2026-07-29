@@ -1,0 +1,40 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HddDisplay", "plugins\HddDisplay\HddDisplay.csproj", "{3D2B6644-6ACB-4A55-9AE7-9A0BF02B71D1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetterMusicDisplay", "plugins\BetterMusicDisplay\BetterMusicDisplay.csproj", "{83D1F30C-A7C7-4B04-BE57-E8C54C2571E5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicHoarderzProvider", "plugins\MusicHoarderzProvider\MusicHoarderzProvider.csproj", "{BD0F3410-C86C-46D4-AE5D-A97ED6610FBE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugins.Tests", "tests\Jellyfin.Plugins.Tests\Jellyfin.Plugins.Tests.csproj", "{53AF98BB-C71D-4CE4-8DC5-E8A8DB90F98D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3D2B6644-6ACB-4A55-9AE7-9A0BF02B71D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D2B6644-6ACB-4A55-9AE7-9A0BF02B71D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D2B6644-6ACB-4A55-9AE7-9A0BF02B71D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D2B6644-6ACB-4A55-9AE7-9A0BF02B71D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83D1F30C-A7C7-4B04-BE57-E8C54C2571E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83D1F30C-A7C7-4B04-BE57-E8C54C2571E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83D1F30C-A7C7-4B04-BE57-E8C54C2571E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83D1F30C-A7C7-4B04-BE57-E8C54C2571E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD0F3410-C86C-46D4-AE5D-A97ED6610FBE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD0F3410-C86C-46D4-AE5D-A97ED6610FBE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD0F3410-C86C-46D4-AE5D-A97ED6610FBE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD0F3410-C86C-46D4-AE5D-A97ED6610FBE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{53AF98BB-C71D-4CE4-8DC5-E8A8DB90F98D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{53AF98BB-C71D-4CE4-8DC5-E8A8DB90F98D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{53AF98BB-C71D-4CE4-8DC5-E8A8DB90F98D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{53AF98BB-C71D-4CE4-8DC5-E8A8DB90F98D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
