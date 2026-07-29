@@ -13,6 +13,8 @@ HDD Display is the storage and transcoding plugin in this Jellyfin plugin librar
 - Exposes `GET /Plugins/HddDisplay/Storage?refresh=true` to bypass the storage scan cache.
 - Exposes `POST /Plugins/HddDisplay/Storage/Cache/Clear` to clear the in-memory storage scan cache.
 - Exposes `GET /Plugins/HddDisplay/AdminDashboard/Overview` for the dashboard widget.
+- Exposes the embedded widget at `GET /Plugins/HddDisplay/Assets/DashboardWidget.js`.
+- Exposes immutable versioned assets at `GET /Plugins/HddDisplay/Assets/{assemblyVersion}/DashboardWidget.js`.
 - Reads Jellyfin virtual folders.
 - Resolves configured Jellyfin library paths through Linux mount information when available.
 - Uses `DriveInfo` fallback for Windows paths or restricted environments.
@@ -23,6 +25,10 @@ HDD Display is the storage and transcoding plugin in this Jellyfin plugin librar
 - Detects GPU processes that look like Jellyfin ffmpeg sessions.
 - Returns per-path mount, scan and GPU diagnostics for troubleshooting.
 - Displays total, used and free bytes for detected drives.
+
+## Dashboard Loader
+
+HDD Display does not modify Jellyfin Web files. Load the stable asset through the opt-in deployment mechanism described in [`../../docs/adr/0001-hdd-dashboard-injection.md`](../../docs/adr/0001-hdd-dashboard-injection.md). The versioned endpoint returns an immutable response and prevents stale script reuse after plugin upgrades.
 
 ## Target Dashboard Functionality
 
