@@ -17,6 +17,17 @@ namespace Jellyfin.Plugin.BetterMusicDisplay.Controllers;
 [Route("Plugins/BetterMusicDisplay")]
 public class MusicDisplayController : ControllerBase
 {
+    private readonly IUserMusicSettingsStore _settingsStore;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MusicDisplayController"/> class.
+    /// </summary>
+    /// <param name="settingsStore">Per-user settings store.</param>
+    public MusicDisplayController(IUserMusicSettingsStore settingsStore)
+    {
+        _settingsStore = settingsStore;
+    }
+
     /// <summary>
     /// Gets the current music library overview.
     /// </summary>
@@ -69,7 +80,7 @@ public class MusicDisplayController : ControllerBase
             GeneratedAtUtc = DateTimeOffset.UtcNow,
             UserId = userId,
             CanCustomize = Plugin.Instance?.Configuration.AllowUserCustomization ?? true,
-            Settings = UserMusicSettingsStore.Get(userId)
+            Settings = _settingsStore.Get(userId)
         });
     }
 
@@ -96,7 +107,7 @@ public class MusicDisplayController : ControllerBase
                 "User customization is disabled by the Better MusicDisplay configuration.");
         }
 
-        var saved = UserMusicSettingsStore.Save(userId, settings);
+        var saved = _settingsStore.Save(userId, settings);
         return Ok(new UserMusicSettingsResponse
         {
             GeneratedAtUtc = DateTimeOffset.UtcNow,
@@ -126,13 +137,13 @@ public class MusicDisplayController : ControllerBase
                 "User customization is disabled by the Better MusicDisplay configuration.");
         }
 
-        var deleted = UserMusicSettingsStore.Delete(userId);
+        var deleted = _settingsStore.Delete(userId);
         return Ok(new UserMusicSettingsResetResponse
         {
             GeneratedAtUtc = DateTimeOffset.UtcNow,
             UserId = userId,
             Deleted = deleted,
-            Settings = UserMusicSettingsStore.Get(userId)
+            Settings = _settingsStore.Get(userId)
         });
     }
 }
