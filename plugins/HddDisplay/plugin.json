@@ -10,6 +10,7 @@
   "assembly": "Jellyfin.Plugin.HddDisplay.dll",
   "owner": "mleem97",
   "category": "General",
+  "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/HddDisplay/Web/assets/hdd-icon.svg",
   "overview": "Admin Dashboard storage, mount usage and NVIDIA telemetry for Jellyfin.",
   "description": "Displays Jellyfin library disk usage grouped by mount, adds media-type usage segments and reads NVIDIA jellyfin-ffmpeg telemetry for the Admin Dashboard.",
   "artifacts": [

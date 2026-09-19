@@ -248,6 +248,8 @@ def update_manifest(metadata: dict, version: str, changelog: str, zip_path: path
     entry["overview"] = metadata["overview"]
     entry["owner"] = metadata["owner"]
     entry["category"] = metadata["category"]
+    if "imageUrl" in metadata:
+        entry["imageUrl"] = metadata["imageUrl"]
     new_version = {
         "version": version,
         "changelog": changelog,
