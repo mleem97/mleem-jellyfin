@@ -37,11 +37,19 @@
   {
     "guid": "6b6c96ac-3f60-4ac3-8b8a-0d0cb8acb9dd",
     "name": "MusicSuite",
-    "description": "Extends Jellyfin music views with per-user layout persistence, baseline overview endpoints and planned endless scrolling, live search and filtering.",
-    "overview": "Suite for Jellyfin music: per-user layouts, Spotify dashboard UX and provider integrations.",
+    "description": "Transforms Jellyfin's music library into a modern Spotify 3-column UI/UX featuring squircle navigation, library shelves, real-time audio quality badges, and Paradox PluginPages integration.",
+    "overview": "Spotify-inspired 3-column music streaming experience, squircle cards, live search, and library redirection.",
     "owner": "mleem97",
     "category": "General",
     "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "- feat(musicsuite): implement Spotify 3-column UI/UX, squircle layouts, real-time now-playing, and Paradox bridges (1f500d0)\n- chore(release): publish MediaTools (c557a4c)\n- chore(release): publish MusicHoarderzProvider (8188665)\n- chore(release): publish GracenoteProvider (1a447d9)\n- feat(gracenote): add dual GMD v2/v3 support, artist metadata, coverart provider and test UI (d9aa4a4)\n- chore(release): publish SpotifyProvider (330ec0f)\n- feat(manifest): add imageUrl support for plugin catalog icon (4cc2ebe)\n- chore(release): publish HddDisplay (3ec1fdc)\n- chore(release): publish HddDisplay (9a94f94)\n- feat(musictoolkit): make Spotify music dashboard actually reachable (32a8372)\n- refactor: consolidate MusicToolkit into the central plugin library (aa9b854)\n- fix(release): switch manifest checksums to MD5 and repair published packages (f4f356e)",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/MusicSuite-v1.0.0.0/MusicSuite_1.0.0.0.zip",
+        "checksum": "1A49AB33E2131A1D4869A26C0F0D3CE9",
+        "timestamp": "2026-09-19T18:04:59Z"
+      },
       {
         "version": "0.1.0.0",
         "changelog": "- fix: repair Spotify/Gracenote builds, sync workflows and manifest metadata (8c492b8)\n- refactor: rename BetterMusicDisplay to MusicSuite, update HddDisplay, CI and docs (6dcc780)\n- build(music-display): embed Albums view loader (#36) (fcc3f43)\n- feat(music-display): add fail-open Albums view lifecycle (#36) (e00f0a1)\n- feat(music-display): expose versioned Albums loader asset (#36) (098a1f3)\n- feat(music-display): validate music library activation context (#36) (0df92e7)\n- docs(music-display): document bounded Albums API (#35) (14ba306)\n- feat(music-display): expose bounded Albums API (#35) (65f657c)\n- feat(music-display): register album query service (#35) (b9a8d19)\n- feat(music-display): implement bounded user-aware album queries (#35) (dcde1e0)\n- feat(music-display): define album query service (#35) (af30021)\n- feat(music-display): add bounded album query models (#35) (cc585df)\n- refactor(music-display): keep service registration analyzer-clean (#34) (b16d7a0)\n- refactor(music-display): inject settings store into controller (#34) (25e351e)\n- refactor(music-display): register settings store with Jellyfin DI (#34) (9a48828)\n- refactor(music-display): implement atomic injected settings store (#34) (5aee2a2)\n- refactor(music-display): version user settings schema (#34) (1414f43)\n- refactor(music-display): define settings store service (#34) (4dfadbd)\n- security(music-display): replace header authorization with claims (#33) (80007b5)\n- security(music-display): evaluate Jellyfin claims (#33) (cb78ce6)\n- docs(music-display): define Albums-only 0.1.0 scope (#32) (bd45669)\n- chore(release): publish MusicHoarderzProvider (ce9e9ba)\n- docs: mark Better MusicDisplay release readiness (86699d2)\n- chore(release): publish MusicHoarderzProvider (34665d9)\n- chore: prepare Better MusicDisplay release (4365307)\n- docs: document Better MusicDisplay user settings endpoints (d638f1a)\n- better-music-display: add user settings endpoints (7b13bbf)\n- better-music-display: add user settings persistence (fd182c6)\n- build: track three Jellyfin plugins (5c0e705)\n- manifest: register three-plugin library (373e47c)\n- better-musicdisplay: add README (dbf5547)\n- better-musicdisplay: add configuration page (a8ac1ed)\n- better-musicdisplay: add overview endpoint (8d08b89)\n- better-musicdisplay: add plugin entry point (45bb4c3)\n- better-musicdisplay: add user view settings model (d192114)\n- better-musicdisplay: add configuration model (402320d)\n- better-musicdisplay: add project (a071e02)\n- better-musicdisplay: add plugin metadata (bfe2151)\n- build: describe Jellyfin plugin library projects (b3f6f2d)\n- manifest: add MusicDashboard entry (2f503e7)\n- Prepare repository for multiple Jellyfin plugins (bd98daa)\n- Update manifest for v1.0.0.20 release (a619d49)\n- Update manifest for v1.0.0.19 release (690a727)\n- Update manifest for v1.0.0.18 release (c0cfcbf)\n- Update manifest for v1.0.0.17 release (8907fcd)\n- Update manifest for v1.0.0.16 release (2566169)\n- Update manifest for v1.0.0.10 release (55e9e9b)\n- Update manifest for v1.0.0.9 release (c49357d)\n- Update manifest for v1.0.0.8 release (ae12b90)\n- Update manifest for v1.0.0.7 release (1cd0e09)\n- Update manifest for v1.0.0.3 release (185edd5)\n- Update manifest for v1.0.0.2 release (2f71f6d)\n- Prepare manifest template placeholders for automated release metadata (729d49b)\n- Add automated release workflow with generated manifest checksum (5e2e64d)\n- Rename plugin to HDD Display and update description (a860dee)\n- Add Jellyfin manifest and upgrade report updates for .NET 9 (7e6281c)\n- Initial commit (1cb6f6b)",
@@ -50,7 +58,8 @@
         "checksum": "6FE7D214CAF4399A741089F02F4CD90A",
         "timestamp": "2026-09-19T03:30:50Z"
       }
-    ]
+    ],
+    "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/MusicSuite/Web/assets/musicsuite-icon.svg"
   },
   {
     "guid": "f8d74b1c-3c97-4481-a3b3-6eb622d6ad58",
