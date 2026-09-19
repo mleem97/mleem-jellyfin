@@ -27,7 +27,7 @@ This repository is the plugin library for Marvin's Jellyfin projects. It is not 
 | 3 | MusicHoarderz Cover & Metadata Provider | [`plugins/MusicHoarderzProvider`](./plugins/MusicHoarderzProvider) | Music cover and metadata provider using MusicHoarderz/COV, Spotify and YouTube |
 | 4 | Spotify Cover & Metadata Provider | [`plugins/SpotifyProvider`](./plugins/SpotifyProvider) | Primary artwork for albums and artists via the Spotify Web API |
 | 5 | Gracenote Metadata Provider | [`plugins/GracenoteProvider`](./plugins/GracenoteProvider) | Album metadata via the Gracenote MusicID Web API |
-| 6 | Music Toolkit & Spotify UX | [`src/Jellyfin.Plugin.MusicToolkit`](./src/Jellyfin.Plugin.MusicToolkit) | Audio-Duplikate, Dateihygiene, Spotify-Dashboard via Paradox |
+| 6 | Music Toolkit & Spotify UX | [`plugins/MusicToolkit`](./plugins/MusicToolkit) | Audio-Duplikate, Dateihygiene, MusicHoarderz/Gracenote-Anbindung, Spotify-Dashboard via Paradox |
 
 ## Layout
 
@@ -37,11 +37,14 @@ mleem-jellyfin/
 │   ├── HddDisplay/
 │   ├── MusicSuite/
 │   ├── MusicHoarderzProvider/
+│   ├── MusicToolkit/
 │   ├── SpotifyProvider/
 │   └── GracenoteProvider/
-├── src/
-│   └── Jellyfin.Plugin.MusicToolkit/
 ├── configs/
+├── docker/
+├── tests/
+│   ├── Jellyfin.Plugins.Tests/
+│   └── MusicToolkit.Tests/
 ├── tests/
 │   ├── Jellyfin.Plugins.Tests/
 │   └── Jellyfin.Plugin.MusicToolkit.Tests/
@@ -76,7 +79,7 @@ dotnet build plugins/MusicSuite/MusicSuite.csproj -c Release
 dotnet build plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj -c Release
 dotnet build plugins/SpotifyProvider/SpotifyProvider.csproj -c Release
 dotnet build plugins/GracenoteProvider/GracenoteProvider.csproj -c Release
-dotnet build src/Jellyfin.Plugin.MusicToolkit/Jellyfin.Plugin.MusicToolkit.csproj -c Release
+dotnet build plugins/MusicToolkit/MusicToolkit.csproj -c Release
 ```
 
 ## Tests

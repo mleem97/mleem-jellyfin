@@ -1,0 +1,33 @@
+# Jellyfin music lab: local test environment for MusicToolkit.
+#
+# Start:   docker compose up -d
+# Stop:    docker compose down
+# Repair:  docker compose exec jellyfin bash /etc/jellyfin/fix-sqlite-foreign-keys.sh
+
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin-music-lab
+    environment:
+      - TZ=Europe/Berlin
+      # Raise inotify instance limit (see server log warnings about "inotify instances")
+      - JELLYFIN_LOG_DIR=/config/log
+    volumes:
+      - ./data/config:/config
+      - ./data/cache:/cache
+      - ./data/music:/media/music
+      # Compiled plugin output: dotnet build plugins/MusicToolkit -c Release
+      - ../plugins/MusicToolkit/bin/Release/net10.0:/config/plugins/MusicToolkit:ro
+      # Repair script (see below)
+      - ./fix-sqlite-foreign-keys.sh:/etc/jellyfin/fix-sqlite-foreign-keys.sh:ro
+    devices:
+      - /dev/dri:/dev/dri
+    restart: unless-stopped
+
+  # One-off helper: docker compose run --rm db-doctor
+  db-doctor:
+    image: keinos/sqlite3:latest
+    profiles: ["tools"]
+    volumes:
+      - ./data/config/data:/data
+    entrypoint: ["sqlite3", "/data/jellyfin.db"]

@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Jellyfin.Plugin.MusicToolkit/Jellyfin.Plugin.MusicToolkit.csproj" />
+    <ProjectReference Include="../../plugins/MusicToolkit/MusicToolkit.csproj" />
   </ItemGroup>
 
 </Project>

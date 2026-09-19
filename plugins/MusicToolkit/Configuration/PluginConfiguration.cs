@@ -8,6 +8,26 @@ namespace Jellyfin.Plugin.MusicToolkit.Configuration;
 public class PluginConfiguration : BasePluginConfiguration
 {
     /// <summary>
+    /// Gets or sets the Gracenote client id.
+    /// </summary>
+    public string GracenoteClientId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the registered Gracenote user id.
+    /// </summary>
+    public string GracenoteUserId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether Gracenote lookups are enabled.
+    /// </summary>
+    public bool EnableGracenote { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether MusicHoarderz lookups are enabled.
+    /// </summary>
+    public bool EnableMusicHoarders { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets a value indicating whether duplicates are quarantined instead of deleted.
     /// </summary>
     public bool QuarantineDuplicates { get; set; } = true;

@@ -35,7 +35,7 @@ Required metadata lives in `plugin.json`. The root `manifest.json` contains the 
 | 3 | MusicHoarderz Cover & Metadata Provider | `plugins/MusicHoarderzProvider` | `f8d74b1c-3c97-4481-a3b3-6eb622d6ad58` |
 | 4 | Spotify Cover & Metadata Provider | `plugins/SpotifyProvider` | `67de1daa-c9fe-497a-9ca2-dc303abb717b` |
 | 5 | Gracenote Metadata Provider | `plugins/GracenoteProvider` | `a05dae4a-2e92-4303-8f16-a7ade62624b4` |
-| 6 | Music Toolkit & Spotify UX | `src/Jellyfin.Plugin.MusicToolkit` | `9f3e582a-281b-4b21-8c43-b295cbfa51de` |
+| 6 | Music Toolkit & Spotify UX | `plugins/MusicToolkit` | `9f3e582a-281b-4b21-8c43-b295cbfa51de` |
 
 ## Jellyfin Manifest URL
 

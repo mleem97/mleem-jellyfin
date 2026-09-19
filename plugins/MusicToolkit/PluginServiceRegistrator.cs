@@ -18,5 +18,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         _ = applicationHost;
         serviceCollection.AddSingleton<AudioHashService>();
         serviceCollection.AddSingleton<SafeRenameService>();
+        serviceCollection.AddHttpClient();
+        serviceCollection.AddSingleton<GracenoteClient>();
     }
 }

@@ -10,9 +10,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicHoarderzProvider", "pl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugins.Tests", "tests\Jellyfin.Plugins.Tests\Jellyfin.Plugins.Tests.csproj", "{53AF98BB-C71D-4CE4-8DC5-E8A8DB90F98D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.MusicToolkit", "src\Jellyfin.Plugin.MusicToolkit\Jellyfin.Plugin.MusicToolkit.csproj", "{7E0E2AD3-3D10-4150-92CE-8D2F17BE7789}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicToolkit", "plugins\MusicToolkit\MusicToolkit.csproj", "{7E0E2AD3-3D10-4150-92CE-8D2F17BE7789}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.MusicToolkit.Tests", "tests\Jellyfin.Plugin.MusicToolkit.Tests\Jellyfin.Plugin.MusicToolkit.Tests.csproj", "{ECDF27B5-8B94-4070-A231-0FDB245258E8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicToolkit.Tests", "tests\MusicToolkit.Tests\MusicToolkit.Tests.csproj", "{ECDF27B5-8B94-4070-A231-0FDB245258E8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpotifyProvider", "plugins\SpotifyProvider\SpotifyProvider.csproj", "{A93E9A12-DCA7-4361-93CB-12E10FE37A76}"
 EndProject

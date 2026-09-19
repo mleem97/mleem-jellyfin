@@ -1,20 +1,5 @@
-[
-  {
-    "guid": "9f3e582a-281b-4b21-8c43-b295cbfa51de",
-    "name": "Music Toolkit & Spotify UX",
-    "description": "Audio-Duplikate, Dateihygiene, MusicHoarders/Gracenote und Spotify-3-Spalten-Dashboard.",
-    "overview": "Toolkit fuer Musikbibliotheken mit Spotify UX via Paradox.",
-    "owner": "mleem97",
-    "category": "General",
-    "versions": [
-      {
-        "version": "1.0.0.0",
-        "changelog": "Initial MusicToolkit release.",
-        "targetAbi": "12.1.0.0",
-        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/MusicToolkit-v1.0.0.0/MusicToolkit_1.0.0.0.zip",
-        "checksum": "0000000000000000000000000000000000000000000000000000000000000000",
-        "timestamp": "2026-09-19T00:00:00Z"
-      }
-    ]
-  }
-]
+# Repository manifest (configs/) is deprecated.
+
+The single source of truth for the Jellyfin plugin catalog is the root
+`manifest.json`. This file only exists so old clones keep resolving the
+path; do not update it here.

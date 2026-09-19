@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/Jellyfin.Plugin.MusicToolkit/**'
-      - 'tests/Jellyfin.Plugin.MusicToolkit.Tests/**'
+      - 'plugins/MusicToolkit/**'
+      - 'tests/MusicToolkit.Tests/**'
   pull_request:
     paths:
-      - 'src/Jellyfin.Plugin.MusicToolkit/**'
-      - 'tests/Jellyfin.Plugin.MusicToolkit.Tests/**'
+      - 'plugins/MusicToolkit/**'
+      - 'tests/MusicToolkit.Tests/**'
   workflow_dispatch:
 
 jobs:
@@ -22,6 +22,6 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - name: Restore
-        run: dotnet restore tests/Jellyfin.Plugin.MusicToolkit.Tests/Jellyfin.Plugin.MusicToolkit.Tests.csproj
+        run: dotnet restore tests/MusicToolkit.Tests/MusicToolkit.Tests.csproj
       - name: Test with coverage
-        run: dotnet test tests/Jellyfin.Plugin.MusicToolkit.Tests/Jellyfin.Plugin.MusicToolkit.Tests.csproj -c Release --collect:"XPlat Code Coverage"
+        run: dotnet test tests/MusicToolkit.Tests/MusicToolkit.Tests.csproj -c Release --collect:"XPlat Code Coverage"

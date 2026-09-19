@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/Jellyfin.Plugin.MusicToolkit/**'
+      - 'plugins/MusicToolkit/**'
       - '.github/workflows/build-plugin.yml'
   pull_request:
     paths:
-      - 'src/Jellyfin.Plugin.MusicToolkit/**'
+      - 'plugins/MusicToolkit/**'
   workflow_dispatch:
 
 jobs:
@@ -21,17 +21,17 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - name: Restore
-        run: dotnet restore src/Jellyfin.Plugin.MusicToolkit/Jellyfin.Plugin.MusicToolkit.csproj
+        run: dotnet restore plugins/MusicToolkit/MusicToolkit.csproj
       - name: Build Release
-        run: dotnet build src/Jellyfin.Plugin.MusicToolkit/Jellyfin.Plugin.MusicToolkit.csproj -c Release --no-restore
+        run: dotnet build plugins/MusicToolkit/MusicToolkit.csproj -c Release --no-restore
       - name: Test
-        run: dotnet test tests/Jellyfin.Plugin.MusicToolkit.Tests/Jellyfin.Plugin.MusicToolkit.Tests.csproj -c Release --no-build
+        run: dotnet test tests/MusicToolkit.Tests/MusicToolkit.Tests.csproj -c Release --no-build
       - name: Package ZIP
         run: |
           STAGE="package/MusicToolkit"
           rm -rf "$STAGE" && mkdir -p "$STAGE"
-          cp src/Jellyfin.Plugin.MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.dll "$STAGE/"
-          cp src/Jellyfin.Plugin.MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.pdb "$STAGE/" || true
+          cp plugins/MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.dll "$STAGE/"
+          cp plugins/MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.pdb "$STAGE/" || true
           (cd package && zip -r "MusicToolkit_${{ github.sha }}.zip" MusicToolkit)
       - name: MD5 + manifest update
         run: |

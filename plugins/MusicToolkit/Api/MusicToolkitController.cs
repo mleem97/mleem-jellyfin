@@ -26,6 +26,7 @@ public sealed class MusicToolkitController : ControllerBase
     private readonly ILibraryManager _libraryManager;
     private readonly AudioHashService _hashService;
     private readonly SafeRenameService _renameService;
+    private readonly GracenoteClient _gracenoteClient;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MusicToolkitController"/> class.
@@ -33,11 +34,13 @@ public sealed class MusicToolkitController : ControllerBase
     public MusicToolkitController(
         ILibraryManager libraryManager,
         AudioHashService hashService,
-        SafeRenameService renameService)
+        SafeRenameService renameService,
+        GracenoteClient gracenoteClient)
     {
         _libraryManager = libraryManager;
         _hashService = hashService;
         _renameService = renameService;
+        _gracenoteClient = gracenoteClient;
     }
 
     /// <summary>
@@ -189,6 +192,43 @@ public sealed class MusicToolkitController : ControllerBase
         }
 
         return Ok(dto);
+    }
+
+    /// <summary>
+    /// Validates the configured Gracenote client id by test-registering a user.
+    /// </summary>
+    /// <param name="clientId">Optional client id override; falls back to configuration.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Ok when registration succeeded.</returns>
+    [HttpPost("TestGracenote")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> TestGracenote(
+        [FromQuery] string? clientId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var config = Plugin.Instance?.Configuration;
+        var id = string.IsNullOrWhiteSpace(clientId) ? config?.GracenoteClientId : clientId;
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest("No Gracenote client id configured. Pass ?clientId=...");
+        }
+
+        try
+        {
+            var user = await _gracenoteClient.RegisterAsync(id, cancellationToken).ConfigureAwait(false);
+            if (config is not null)
+            {
+                config.GracenoteClientId = id;
+                config.GracenoteUserId = user;
+                Plugin.Instance!.UpdateConfiguration(config);
+            }
+
+            return Ok(new { registered = true, userIdLength = user.Length });
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { registered = false, error = ex.Message });
+        }
     }
 
     private static int ComputeConfidence(string original, ParsedName parsed)

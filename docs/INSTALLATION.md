@@ -6,7 +6,7 @@
   - `https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/manifest.json`
   - `https://www.iamparadox.dev/jellyfin/plugins/manifest.json`
   - `https://raw.githubusercontent.com/jyourstone/jellyfin-plugin-manifest/main/manifest.json`
-  - `https://raw.githubusercontent.com/Felitendo/jellyfin-plugin-lyrics/master/manifest.json`
+  - `https://raw.githubusercontent.com/Felitendo/jellyfin-plugin-lyrics/master/manifest.json (correct branch; a configured `manifest` branch 404s)`
 - Optional: Paradox `PluginPages` + `FileTransformation` für `/pages/spotify-music`.
 
 ## Installieren
@@ -17,7 +17,7 @@
 
 ## Build
 ```bash
-dotnet restore src/Jellyfin.Plugin.MusicToolkit/Jellyfin.Plugin.MusicToolkit.csproj
-dotnet build src/Jellyfin.Plugin.MusicToolkit/Jellyfin.Plugin.MusicToolkit.csproj -c Release
+dotnet restore plugins/MusicToolkit/MusicToolkit.csproj
+dotnet build plugins/MusicToolkit/MusicToolkit.csproj -c Release
 dotnet test tests/Jellyfin.Plugin.MusicToolkit.Tests/Jellyfin.Plugin.MusicToolkit.Tests.csproj -c Release
 ```

@@ -88,5 +88,23 @@
         "timestamp": "2026-09-19T03:30:50Z"
       }
     ]
+  },
+  {
+    "guid": "9f3e582a-281b-4b21-8c43-b295cbfa51de",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "Initial MusicToolkit release: filename hygiene, audio dedup, Gracenote/MusicHoarderz integration, Spotify UX via Paradox.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/MusicToolkit-v1.0.0.0/MusicToolkit_1.0.0.0.zip",
+        "checksum": "BAEED30417CEDCED1B7FC5E731B3961E",
+        "timestamp": "2026-09-19T03:56:34Z"
+      }
+    ],
+    "name": "Music Toolkit & Spotify UX",
+    "description": "Cleans cryptic audio filenames, deduplicates audio streams by content hash, integrates MusicHoarderz/Gracenote and serves a Spotify-style music dashboard via the Paradox plugin ecosystem.",
+    "overview": "Toolkit fuer Musikbibliotheken mit Spotify UX via Paradox.",
+    "owner": "mleem97",
+    "category": "General"
   }
 ]
