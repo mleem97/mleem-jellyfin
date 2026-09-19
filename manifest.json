@@ -2,8 +2,8 @@
   {
     "guid": "eb5d7894-8eef-4b36-aa6f-5d124e828ce1",
     "name": "HDD Display",
-    "description": "Admin Dashboard storage and GPU overview for Jellyfin.",
-    "overview": "Admin Dashboard storage overview for Jellyfin.",
+    "description": "Displays Jellyfin library disk usage grouped by mount, adds media-type usage segments and reads NVIDIA jellyfin-ffmpeg telemetry for the Admin Dashboard.",
+    "overview": "Admin Dashboard storage, mount usage and NVIDIA telemetry for Jellyfin.",
     "owner": "mleem97",
     "category": "General",
     "versions": []
@@ -11,8 +11,8 @@
   {
     "guid": "6b6c96ac-3f60-4ac3-8b8a-0d0cb8acb9dd",
     "name": "MusicSuite",
-    "description": "Enhanced Jellyfin music UI with endless scroll, live search and per-user layouts.",
-    "overview": "Modern music views for Jellyfin.",
+    "description": "Extends Jellyfin music views with per-user layout persistence, baseline overview endpoints and planned endless scrolling, live search and filtering.",
+    "overview": "Suite for Jellyfin music: per-user layouts, Spotify dashboard UX and provider integrations.",
     "owner": "mleem97",
     "category": "General",
     "versions": []
@@ -46,8 +46,8 @@
   {
     "guid": "67de1daa-c9fe-497a-9ca2-dc303abb717b",
     "name": "Spotify Cover & Metadata Provider",
-    "description": "Primary artwork for albums and artists via the Spotify Web API.",
-    "overview": "Spotify artwork provider for Jellyfin.",
+    "description": "Provides primary artwork for albums and artists via the Spotify Web API using Client Credentials authentication.",
+    "overview": "Album and artist covers via Spotify.",
     "owner": "mleem97",
     "category": "Metadata",
     "versions": []
@@ -55,8 +55,8 @@
   {
     "guid": "a05dae4a-2e92-4303-8f16-a7ade62624b4",
     "name": "Gracenote Metadata Provider",
-    "description": "Album metadata via the Gracenote MusicID Web API.",
-    "overview": "Gracenote metadata provider for Jellyfin.",
+    "description": "Provides album metadata (title, year, genre, review, cover) via the Gracenote MusicID Web API with automatic user registration.",
+    "overview": "Album metadata via Gracenote MusicID.",
     "owner": "mleem97",
     "category": "Metadata",
     "versions": []

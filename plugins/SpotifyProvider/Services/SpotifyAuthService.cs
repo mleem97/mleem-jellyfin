@@ -21,7 +21,7 @@ public sealed record SpotifyToken(string AccessToken, DateTimeOffset ExpiresAtUt
 /// <summary>
 /// Handles Spotify Client Credentials authentication with in-memory token caching.
 /// </summary>
-public sealed partial class SpotifyAuthService
+public sealed partial class SpotifyAuthService : IDisposable
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SpotifyAuthService> _logger;
@@ -94,6 +94,13 @@ public sealed partial class SpotifyAuthService
     public void Invalidate()
     {
         _cached = null;
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _gate.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [LoggerMessage(EventId = 0, Level = LogLevel.Information, Message = "Spotify access token refreshed, valid until {ExpiresAtUtc}")]

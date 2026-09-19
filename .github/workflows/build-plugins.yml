@@ -23,7 +23,7 @@ jobs:
       - name: Build
         run: dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release --no-restore
 
-  better-musicdisplay:
+  music-suite:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -50,3 +50,31 @@ jobs:
         run: dotnet restore plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj
       - name: Build
         run: dotnet build plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj -c Release --no-restore
+
+  spotify-provider:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore plugins/SpotifyProvider/SpotifyProvider.csproj
+      - name: Build
+        run: dotnet build plugins/SpotifyProvider/SpotifyProvider.csproj -c Release --no-restore
+
+  gracenote-provider:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore plugins/GracenoteProvider/GracenoteProvider.csproj
+      - name: Build
+        run: dotnet build plugins/GracenoteProvider/GracenoteProvider.csproj -c Release --no-restore

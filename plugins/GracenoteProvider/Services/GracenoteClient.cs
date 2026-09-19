@@ -58,11 +58,14 @@ public sealed partial class GracenoteClient
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
         var xml = new XDocument(
-            new XElement("QUERIES",
-                new XElement("AUTH",
+            new XElement(
+                "QUERIES",
+                new XElement(
+                    "AUTH",
                     new XElement("CLIENT", clientId),
                     new XElement("USER", string.Empty)),
-                new XElement("QUERY",
+                new XElement(
+                    "QUERY",
                     new XAttribute("CMD", "REGISTER"),
                     new XElement("CLIENT", clientId))));
 
@@ -102,18 +105,26 @@ public sealed partial class GracenoteClient
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
         var xml = new XDocument(
-            new XElement("QUERIES",
-                new XElement("AUTH",
+            new XElement(
+                "QUERIES",
+                new XElement(
+                    "AUTH",
                     new XElement("CLIENT", clientId),
                     new XElement("USER", userId)),
-                new XElement("QUERY",
+                new XElement(
+                    "QUERY",
                     new XAttribute("CMD", "ALBUM_SEARCH"),
                     new XElement("MODE", "EXTENDED"),
-                    new XElement("TEXT",
-                        new XAttribute("TYPE", "ARTIST"), artist ?? string.Empty),
-                    new XElement("TEXT",
-                        new XAttribute("TYPE", "ALBUM_TITLE"), album ?? string.Empty),
-                    new XElement("OPTION",
+                    new XElement(
+                        "TEXT",
+                        new XAttribute("TYPE", "ARTIST"),
+                        artist ?? string.Empty),
+                    new XElement(
+                        "TEXT",
+                        new XAttribute("TYPE", "ALBUM_TITLE"),
+                        album ?? string.Empty),
+                    new XElement(
+                        "OPTION",
                         new XElement("PARAMETER", "SELECT_EXTENDED"),
                         new XElement("VALUE", "COVER,REVIEW,GENRE")))));
 

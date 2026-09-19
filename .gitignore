@@ -3,3 +3,6 @@ obj/
 .vs/
 .idea/
 artifacts
+node_modules/
+release-assets/
+__pycache__/

@@ -11,6 +11,8 @@ on:
           - HddDisplay
           - MusicSuite
           - MusicHoarderzProvider
+          - SpotifyProvider
+          - GracenoteProvider
       bump:
         description: 'Version bump when no exact version is supplied'
         required: false
