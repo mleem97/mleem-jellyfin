@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>MediaTools Dashboard</title>
+    <link rel="stylesheet" href="/Plugins/MediaTools/Assets/mediatools.css">
+</head>
+<body style="margin: 0; background: transparent;">
+    <div id="MediaToolsRoot" class="mediatools-page">
+        <!-- Header -->
+        <div class="mt-header">
+            <div class="mt-title-area">
+                <img src="/Plugins/MediaTools/Assets/mediatools-icon.svg" alt="MediaTools Icon" style="width: 38px; height: 38px;">
+                <div>
+                    <h1>MediaTools</h1>
+                    <div class="mt-subtitle">Universal Library Normalizer &bull; Zero-Interruption SQLite Sync &bull; Lossless MKV Tooling</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button id="mt-btn-refresh-status" class="mt-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    Refresh Status
+                </button>
+            </div>
+        </div>
+
+        <!-- Global Status Bar -->
+        <div class="mt-system-bar">
+            <div class="mt-stat-card">
+                <div class="mt-stat-label">FFmpeg Engine</div>
+                <div id="mt-stat-ffmpeg" class="mt-stat-value">
+                    <span class="mt-badge mt-badge-warn">Detecting...</span>
+                </div>
+            </div>
+            <div class="mt-stat-card">
+                <div class="mt-stat-label">FFprobe Probe</div>
+                <div id="mt-stat-ffprobe" class="mt-stat-value">
+                    <span class="mt-badge mt-badge-warn">Detecting...</span>
+                </div>
+            </div>
+            <div class="mt-stat-card">
+                <div class="mt-stat-label">Active Worker Jobs</div>
+                <div id="mt-stat-active-jobs" class="mt-stat-value">0</div>
+            </div>
+            <div class="mt-stat-card">
+                <div class="mt-stat-label">Completed Jobs</div>
+                <div id="mt-stat-completed-jobs" class="mt-stat-value">0</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="mt-tabs-nav">
+            <button class="mt-tab-btn active" data-tab="tab-renamer">🏷️ Media Renamer</button>
+            <button class="mt-tab-btn" data-tab="tab-split">🎬 Split-Movie Merger</button>
+            <button class="mt-tab-btn" data-tab="tab-containers">📦 Container Converter</button>
+            <button class="mt-tab-btn" data-tab="tab-dedup">🔍 Stream Deduplicator</button>
+            <button class="mt-tab-btn" data-tab="tab-queue">⚡ Live Queue</button>
+            <button class="mt-tab-btn" data-tab="tab-settings">⚙️ Settings</button>
+        </div>
+
+        <!-- TAB 1: MEDIA RENAMER -->
+        <div id="tab-renamer" class="mt-tab-pane active">
+            <div class="mt-card">
+                <div class="mt-card-header">
+                    <h2 class="mt-card-title">Safe Library Renamer &amp; Sanitizer</h2>
+                    <span class="mt-badge mt-badge-ok">SQLite Error 19 Protected</span>
+                </div>
+                <p style="color: var(--mt-text-muted); margin-top: 0;">
+                    Strips release tags, scene spam, hash prefixes, and normalizes file paths. Updates the database record in-place to protect user watch status, resume points, and favorites.
+                </p>
+                <div class="mt-controls-bar">
+                    <label for="renamer-filter-type" style="font-size: 0.85rem; color: var(--mt-text-muted);">Media Type:</label>
+                    <select id="renamer-filter-type" class="mt-select">
+                        <option value="">All Supported Types</option>
+                        <option value="Movie">Movies</option>
+                        <option value="Episode">Series Episodes</option>
+                        <option value="Audio">Audio Tracks</option>
+                    </select>
+
+                    <label for="renamer-limit" style="font-size: 0.85rem; color: var(--mt-text-muted);">Limit:</label>
+                    <input id="renamer-limit" type="number" class="mt-input" value="100" min="10" max="500" style="width: 80px;">
+
+                    <button id="btn-renamer-preview" class="mt-btn mt-btn-primary">
+                        Scan &amp; Preview Renames
+                    </button>
+                    <button id="btn-renamer-execute" class="mt-btn" disabled>
+                        Execute Selected Renames (<span id="renamer-selected-count">0</span>)
+                    </button>
+                </div>
+
+                <div id="renamer-results-container">
+                    <div class="mt-empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <div>Click <strong>Scan &amp; Preview Renames</strong> to analyze your library.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SPLIT-MOVIE MERGER -->
+        <div id="tab-split" class="mt-tab-pane">
+            <div class="mt-card">
+                <div class="mt-card-header">
+                    <h2 class="mt-card-title">Multi-Part Split Movie Merger</h2>
+                    <span class="mt-badge mt-badge-info">CD1 / CD2 Lossless Concat</span>
+                </div>
+                <p style="color: var(--mt-text-muted); margin-top: 0;">
+                    Discovers movies split into multiple files (CD1/CD2, Part 1/Part 2). Concatenates matching video/audio streams losslessly without re-encoding, cleans up secondary parts, and preserves metadata.
+                </p>
+                <div class="mt-controls-bar">
+                    <button id="btn-split-scan" class="mt-btn mt-btn-primary">
+                        Scan for Split Movies
+                    </button>
+                </div>
+
+                <div id="split-results-container">
+                    <div class="mt-empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+                        <div>Click <strong>Scan for Split Movies</strong> to discover multi-part files.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: CONTAINER CONVERTER -->
+        <div id="tab-containers" class="mt-tab-pane">
+            <div class="mt-card">
+                <div class="mt-card-header">
+                    <h2 class="mt-card-title">MKV Container Converter &amp; Subtitle Muxer</h2>
+                    <span class="mt-badge mt-badge-info">Lossless Remuxing</span>
+                </div>
+                <p style="color: var(--mt-text-muted); margin-top: 0;">
+                    Scans legacy container formats (AVI, MP4, WMV, TS) and converts them to standard Matroska (.mkv) with optional external subtitle muxing (.srt, .vtt, .ass).
+                </p>
+                <div class="mt-controls-bar">
+                    <button id="btn-containers-scan" class="mt-btn mt-btn-primary">
+                        Scan Non-MKV Media
+                    </button>
+                    <label style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-left: 1rem;">
+                        <input type="checkbox" id="containers-remux-only" checked> Fast Remux Only (no video re-encoding)
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; margin-left: 0.5rem;">
+                        <input type="checkbox" id="containers-include-subs" checked> Auto-mux external subtitles
+                    </label>
+                    <button id="btn-containers-convert" class="mt-btn" disabled>
+                        Convert Selected (<span id="containers-selected-count">0</span>)
+                    </button>
+                </div>
+
+                <div id="containers-results-container">
+                    <div class="mt-empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        <div>Click <strong>Scan Non-MKV Media</strong> to find candidates.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: STREAM DEDUPLICATOR -->
+        <div id="tab-dedup" class="mt-tab-pane">
+            <div class="mt-card">
+                <div class="mt-card-header">
+                    <h2 class="mt-card-title">Content Stream Deduplicator</h2>
+                    <span class="mt-badge mt-badge-warn">Tag-Skipping MD5 Hash</span>
+                </div>
+                <p style="color: var(--mt-text-muted); margin-top: 0;">
+                    Discovers duplicate files based on pure audio and video content stream hashing, ignoring mutable ID3/metadata tags. Automates safe quarantine into a dedicated directory.
+                </p>
+                <div class="mt-controls-bar">
+                    <label for="dedup-filter-type" style="font-size: 0.85rem; color: var(--mt-text-muted);">Media Type:</label>
+                    <select id="dedup-filter-type" class="mt-select">
+                        <option value="">All Media</option>
+                        <option value="Audio">Audio Tracks</option>
+                        <option value="Movie">Movies</option>
+                        <option value="Episode">Series Episodes</option>
+                    </select>
+
+                    <label for="dedup-min-size" style="font-size: 0.85rem; color: var(--mt-text-muted);">Min Size (MB):</label>
+                    <input id="dedup-min-size" type="number" class="mt-input" value="1" min="0" style="width: 80px;">
+
+                    <button id="btn-dedup-scan" class="mt-btn mt-btn-primary">
+                        Scan for Duplicates
+                    </button>
+                    <button id="btn-dedup-quarantine" class="mt-btn mt-btn-danger" disabled>
+                        Quarantine Selected (<span id="dedup-selected-count">0</span>)
+                    </button>
+                </div>
+
+                <div id="dedup-results-container">
+                    <div class="mt-empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <div>Click <strong>Scan for Duplicates</strong> to find identical content streams.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: LIVE QUEUE -->
+        <div id="tab-queue" class="mt-tab-pane">
+            <div class="mt-card">
+                <div class="mt-card-header">
+                    <h2 class="mt-card-title">Live Background Job Queue</h2>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <label style="font-size: 0.85rem; color: var(--mt-text-muted);">
+                            <input type="checkbox" id="queue-auto-refresh" checked> Auto-refresh (2s)
+                        </label>
+                        <button id="btn-queue-refresh" class="mt-btn">Refresh Now</button>
+                    </div>
+                </div>
+
+                <div id="queue-results-container">
+                    <div class="mt-empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        <div>No active background jobs in queue.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 6: SETTINGS -->
+        <div id="tab-settings" class="mt-tab-pane">
+            <div class="mt-card">
+                <div class="mt-card-header">
+                    <h2 class="mt-card-title">MediaTools Configuration</h2>
+                </div>
+                <form id="form-settings" style="display: grid; gap: 1rem; max-width: 700px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Custom FFmpeg Path Override</label>
+                        <input id="cfg-ffmpeg-path" type="text" class="mt-input" style="width: 100%;" placeholder="Leave empty for auto-discovery">
+                        <small style="color: var(--mt-text-muted);">Leave empty to use Jellyfin built-in ffmpeg binary.</small>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Custom FFprobe Path Override</label>
+                        <input id="cfg-ffprobe-path" type="text" class="mt-input" style="width: 100%;" placeholder="Leave empty for auto-discovery">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Quarantine Folder Name</label>
+                        <input id="cfg-quarantine-folder" type="text" class="mt-input" style="width: 100%;" value="_duplicates">
+                        <small style="color: var(--mt-text-muted);">Subfolder created within the respective media directory to isolate duplicates.</small>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Movie Rename Pattern</label>
+                        <input id="cfg-movie-pattern" type="text" class="mt-input" style="width: 100%;" value="{Title} ({Year})/{Title} ({Year}) [{Resolution} {VideoCodec}].{Ext}">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Episode Rename Pattern</label>
+                        <input id="cfg-episode-pattern" type="text" class="mt-input" style="width: 100%;" value="{SeriesTitle}/Season {SeasonNumber:02d}/{SeriesTitle} - S{SeasonNumber:02d}E{EpisodeNumber:02d} - {Title}.{Ext}">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.35rem; font-weight: 500;">Audio Track Rename Pattern</label>
+                        <input id="cfg-audio-pattern" type="text" class="mt-input" style="width: 100%;" value="{Artist}/{Album}/{TrackNumber:02d} - {Title}.{Ext}">
+                    </div>
+                    <div>
+                        <button type="submit" class="mt-btn mt-btn-primary">Save Configuration</button>
+                        <span id="cfg-save-status" style="margin-left: 0.75rem; font-size: 0.88rem;"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/Plugins/MediaTools/Assets/mediatools.js"></script>
+</body>
+</html>

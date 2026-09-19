@@ -1,0 +1,20 @@
+{
+  "slug": "MediaTools",
+  "name": "MediaTools",
+  "guid": "8e4d2f17-5a33-4c91-b921-dfa724180c55",
+  "version": "1.0.0.0",
+  "targetAbi": "12.1.0.0",
+  "framework": "net10.0",
+  "project": "plugins/MediaTools/MediaTools.csproj",
+  "packagePrefix": "MediaTools",
+  "assembly": "Jellyfin.Plugin.MediaTools.dll",
+  "owner": "mleem97",
+  "category": "General",
+  "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/MediaTools/Web/assets/mediatools-icon.svg",
+  "overview": "Media management swiss army knife: zero-interruption renaming, split-movie merging, MKV remuxing and stream deduplication.",
+  "description": "Comprehensive media optimization tool for Jellyfin: intelligently cleans release filenames without SQLite foreign-key breaks, merges multi-part CD1/CD2 movies via FFmpeg concat, batch remuxes legacy containers into MKV with subtitles, and detects byte-accurate audio/video duplicates.",
+  "artifacts": [
+    "Jellyfin.Plugin.MediaTools.dll",
+    "TagLibSharp.dll"
+  ]
+}
