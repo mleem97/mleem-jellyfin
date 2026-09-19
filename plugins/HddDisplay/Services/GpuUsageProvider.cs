@@ -26,7 +26,7 @@ public interface IGpuUsageProvider
 public static class GpuUsageCache
 {
     private static readonly object CacheLock = new();
-    private static CachedGpuUsage? CachedResult;
+    private static CachedGpuUsage? cachedResult;
 
     /// <summary>
     /// Gets a cached GPU snapshot or invokes the provider.
@@ -51,7 +51,7 @@ public static class GpuUsageCache
         snapshot.CacheHit = false;
         lock (CacheLock)
         {
-            CachedResult = new CachedGpuUsage
+            cachedResult = new CachedGpuUsage
             {
                 CreatedAtUtc = DateTimeOffset.UtcNow,
                 Snapshot = snapshot.Clone()
@@ -68,7 +68,7 @@ public static class GpuUsageCache
     {
         lock (CacheLock)
         {
-            CachedResult = null;
+            cachedResult = null;
         }
     }
 
@@ -82,13 +82,13 @@ public static class GpuUsageCache
 
         lock (CacheLock)
         {
-            if (CachedResult is null
-                || DateTimeOffset.UtcNow - CachedResult.CreatedAtUtc > TimeSpan.FromSeconds(cacheSeconds))
+            if (cachedResult is null
+                || DateTimeOffset.UtcNow - cachedResult.CreatedAtUtc > TimeSpan.FromSeconds(cacheSeconds))
             {
                 return false;
             }
 
-            snapshot = CachedResult.Snapshot.Clone();
+            snapshot = cachedResult.Snapshot.Clone();
             return true;
         }
     }
@@ -107,6 +107,20 @@ public static class GpuUsageCache
 public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
 {
     private const int DefaultTimeoutMilliseconds = 2500;
+    private static readonly string[] GpuQueryArguments =
+    {
+        "--query-gpu=index,name,utilization.gpu,memory.total,memory.used,memory.free",
+        "--format=csv,noheader,nounits"
+    };
+
+    private static readonly string[] ProcessQueryArguments =
+    {
+        "--query-compute-apps=pid,process_name,used_memory",
+        "--format=csv,noheader,nounits"
+    };
+
+    private static readonly char[] LineSeparators = { '\r', '\n' };
+
     private readonly int _timeoutMilliseconds;
 
     /// <summary>
@@ -122,11 +136,7 @@ public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
     public GpuUsageSnapshot GetSnapshot()
     {
         var gpuCommand = RunNvidiaSmi(
-            new[]
-            {
-                "--query-gpu=index,name,utilization.gpu,memory.total,memory.used,memory.free",
-                "--format=csv,noheader,nounits"
-            },
+            GpuQueryArguments,
             _timeoutMilliseconds);
 
         if (!gpuCommand.Success)
@@ -135,11 +145,7 @@ public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
         }
 
         var processCommand = RunNvidiaSmi(
-            new[]
-            {
-                "--query-compute-apps=pid,process_name,used_memory",
-                "--format=csv,noheader,nounits"
-            },
+            ProcessQueryArguments,
             _timeoutMilliseconds);
 
         var devices = ParseDevices(gpuCommand.Output);
@@ -153,9 +159,9 @@ public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
         return new GpuUsageSnapshot
         {
             GeneratedAtUtc = DateTimeOffset.UtcNow,
-            IsAvailable = devices.Count > 0,
+            IsAvailable = devices.Length > 0,
             Provider = "nvidia-smi",
-            Diagnostic = devices.Count > 0
+            Diagnostic = devices.Length > 0
                 ? string.Concat("NVIDIA telemetry collected.", processDiagnostic)
                 : "nvidia-smi returned no GPU rows.",
             Devices = devices,
@@ -164,10 +170,10 @@ public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
         };
     }
 
-    private static IReadOnlyList<GpuDeviceUsage> ParseDevices(string output)
+    private static GpuDeviceUsage[] ParseDevices(string output)
     {
         return output
-            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Split(LineSeparators, StringSplitOptions.RemoveEmptyEntries)
             .Select(ParseDeviceLine)
             .Where(device => device is not null)
             .Cast<GpuDeviceUsage>()
@@ -193,10 +199,10 @@ public sealed class NvidiaSmiGpuUsageProvider : IGpuUsageProvider
         };
     }
 
-    private static IReadOnlyList<GpuProcessUsage> ParseProcesses(string output)
+    private static GpuProcessUsage[] ParseProcesses(string output)
     {
         return output
-            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .Split(LineSeparators, StringSplitOptions.RemoveEmptyEntries)
             .Select(ParseProcessLine)
             .Where(process => process is not null)
             .Cast<GpuProcessUsage>()

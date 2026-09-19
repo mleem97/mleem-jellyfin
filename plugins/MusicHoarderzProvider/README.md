@@ -4,7 +4,7 @@
 
 ## Purpose
 
-MusicHoarderz Provider is the third plugin in this Jellyfin plugin library. HDD Display remains the first plugin; Better MusicDisplay is the second plugin.
+MusicHoarderz Provider is the third plugin in this Jellyfin plugin library. HDD Display remains the first plugin; MusicSuite is the second plugin.
 
 ## Planned Scope
 

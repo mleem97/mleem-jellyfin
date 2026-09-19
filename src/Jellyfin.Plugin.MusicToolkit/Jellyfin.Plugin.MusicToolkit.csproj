@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Jellyfin.Plugin.MusicToolkit</RootNamespace>
+    <AssemblyName>Jellyfin.Plugin.MusicToolkit</AssemblyName>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.0.0</Version>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- NU1903: transitive Microsoft.Kiota.Abstractions via Jellyfin.* 12.1.0 (upstream); keep as warning, not error -->
+    <WarningsNotAsErrors>NU1903</WarningsNotAsErrors>
+    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+    <CodeAnalysisRuleSet>../../jellyfin.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Jellyfin.Controller" Version="12.1.0" />
+    <PackageReference Include="Jellyfin.Model" Version="12.1.0" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Configuration\configPage.html" />
+    <None Remove="Configuration\configPage.js" />
+    <None Remove="Web\spotify-dashboard.html" />
+    <None Remove="Web\spotify-dashboard.js" />
+    <None Remove="Web\spotify-theme.css" />
+    <None Remove="Web\music-redirect.js" />
+    <EmbeddedResource Include="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\configPage.js" />
+    <EmbeddedResource Include="Web\spotify-dashboard.html" />
+    <EmbeddedResource Include="Web\spotify-dashboard.js" />
+    <EmbeddedResource Include="Web\spotify-theme.css" />
+    <EmbeddedResource Include="Web\music-redirect.js" />
+  </ItemGroup>
+
+</Project>

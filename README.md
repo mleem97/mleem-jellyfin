@@ -3,8 +3,8 @@
 > Personal Jellyfin plugin library for Marvin's Jellyfin projects.
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](./LICENSE)
-[![Jellyfin](https://img.shields.io/badge/Jellyfin-10.10%2B-blue?style=for-the-badge)](https://jellyfin.org)
-[![.NET](https://img.shields.io/badge/.NET-9.0-purple?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com)
+[![Jellyfin](https://img.shields.io/badge/Jellyfin-12.1%2B-blue?style=for-the-badge)](https://jellyfin.org)
+[![.NET](https://img.shields.io/badge/.NET-10.0-purple?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com)
 
 ## Repository URL for Jellyfin
 
@@ -23,8 +23,11 @@ This repository is the plugin library for Marvin's Jellyfin projects. It is not 
 | Order | Plugin | Folder | Purpose |
 |------:|--------|--------|---------|
 | 1 | HDD Display | [`plugins/HddDisplay`](./plugins/HddDisplay) | Admin Dashboard storage overview and NVIDIA transcoding telemetry |
-| 2 | Better MusicDisplay | [`plugins/BetterMusicDisplay`](./plugins/BetterMusicDisplay) | Enhanced music UI with endless scroll, live search and per-user layouts |
+| 2 | MusicSuite | [`plugins/MusicSuite`](./plugins/MusicSuite) | Enhanced music UI with endless scroll, live search and per-user layouts |
 | 3 | MusicHoarderz Cover & Metadata Provider | [`plugins/MusicHoarderzProvider`](./plugins/MusicHoarderzProvider) | Music cover and metadata provider using MusicHoarderz/COV, Spotify and YouTube |
+| 4 | Spotify Cover & Metadata Provider | [`plugins/SpotifyProvider`](./plugins/SpotifyProvider) | Primary artwork for albums and artists via the Spotify Web API |
+| 5 | Gracenote Metadata Provider | [`plugins/GracenoteProvider`](./plugins/GracenoteProvider) | Album metadata via the Gracenote MusicID Web API |
+| 6 | Music Toolkit & Spotify UX | [`src/Jellyfin.Plugin.MusicToolkit`](./src/Jellyfin.Plugin.MusicToolkit) | Audio-Duplikate, Dateihygiene, Spotify-Dashboard via Paradox |
 
 ## Layout
 
@@ -32,11 +35,19 @@ This repository is the plugin library for Marvin's Jellyfin projects. It is not 
 mleem-jellyfin/
 ├── plugins/
 │   ├── HddDisplay/
-│   ├── BetterMusicDisplay/
-│   └── MusicHoarderzProvider/
+│   ├── MusicSuite/
+│   ├── MusicHoarderzProvider/
+│   ├── SpotifyProvider/
+│   └── GracenoteProvider/
+├── src/
+│   └── Jellyfin.Plugin.MusicToolkit/
+├── configs/
 ├── tests/
-│   └── Jellyfin.Plugins.Tests/
+│   ├── Jellyfin.Plugins.Tests/
+│   └── Jellyfin.Plugin.MusicToolkit.Tests/
 ├── docs/
+│   ├── ARCHITECTURE.md
+│   └── INSTALLATION.md
 ├── .github/
 │   ├── scripts/
 │   └── workflows/
@@ -61,8 +72,11 @@ Individual plugin projects can still be built directly:
 
 ```bash
 dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release
-dotnet build plugins/BetterMusicDisplay/BetterMusicDisplay.csproj -c Release
+dotnet build plugins/MusicSuite/MusicSuite.csproj -c Release
 dotnet build plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj -c Release
+dotnet build plugins/SpotifyProvider/SpotifyProvider.csproj -c Release
+dotnet build plugins/GracenoteProvider/GracenoteProvider.csproj -c Release
+dotnet build src/Jellyfin.Plugin.MusicToolkit/Jellyfin.Plugin.MusicToolkit.csproj -c Release
 ```
 
 ## Tests
@@ -106,8 +120,11 @@ Each plugin has its own tag namespace:
 
 ```text
 HddDisplay-v0.1.0.0
-BetterMusicDisplay-v0.1.0.0
+MusicSuite-v0.1.0.0
 MusicHoarderzProvider-v0.2.0.0
+SpotifyProvider-v1.0.0.0
+GracenoteProvider-v1.0.0.0
+MusicToolkit-v1.0.0.0
 ```
 
 ## Planning

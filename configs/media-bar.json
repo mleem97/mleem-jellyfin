@@ -1,0 +1,8 @@
+{
+  "hero": {
+    "title": "New Release Spotlight",
+    "source": "latest MusicAlbum by DateCreated",
+    "layout": "right-column",
+    "actions": ["play", "shuffle"]
+  }
+}

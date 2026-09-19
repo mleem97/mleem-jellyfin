@@ -9,7 +9,7 @@ on:
         type: choice
         options:
           - HddDisplay
-          - BetterMusicDisplay
+          - MusicSuite
           - MusicHoarderzProvider
       bump:
         description: 'Version bump when no exact version is supplied'
@@ -46,7 +46,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
       - name: Validate release scripts
         run: python -m py_compile .github/scripts/auto_publish_plugins.py .github/scripts/publish_plugins.py .github/scripts/release_validation.py
       - name: Build, validate, package and publish

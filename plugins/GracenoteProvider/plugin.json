@@ -1,0 +1,18 @@
+{
+  "slug": "GracenoteProvider",
+  "name": "Gracenote Metadata Provider",
+  "guid": "a05dae4a-2e92-4303-8f16-a7ade62624b4",
+  "version": "1.0.0.0",
+  "targetAbi": "12.1.0.0",
+  "framework": "net10.0",
+  "project": "plugins/GracenoteProvider/GracenoteProvider.csproj",
+  "packagePrefix": "GracenoteProvider",
+  "assembly": "Jellyfin.Plugin.GracenoteProvider.dll",
+  "owner": "mleem97",
+  "category": "Metadata",
+  "overview": "Album metadata via Gracenote MusicID.",
+  "description": "Provides album metadata (title, year, genre, review, cover) via the Gracenote MusicID Web API with automatic user registration.",
+  "artifacts": [
+    "Jellyfin.Plugin.GracenoteProvider.dll"
+  ]
+}

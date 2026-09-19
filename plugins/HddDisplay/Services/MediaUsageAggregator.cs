@@ -15,7 +15,7 @@ public static class MediaUsageAggregator
 {
     private const int DefaultTimeoutSeconds = 120;
     private static readonly object CacheLock = new();
-    private static CachedMediaUsage? CachedResult;
+    private static CachedMediaUsage? cachedResult;
 
     /// <summary>
     /// Aggregates byte usage for the supplied library paths.
@@ -23,15 +23,15 @@ public static class MediaUsageAggregator
     /// <param name="inputs">Scan inputs.</param>
     /// <param name="cacheMinutes">Cache lifetime in minutes. Use zero to disable cache.</param>
     /// <param name="forceRefresh">Whether the current cache should be bypassed.</param>
-    /// <param name="cancellationToken">Request cancellation token.</param>
     /// <param name="timeoutSeconds">Hard scan deadline in seconds.</param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
     /// <returns>Media usage aggregation result. Partial results are returned after cancellation or timeout.</returns>
     public static MediaUsageAggregationResult Calculate(
         IReadOnlyList<MediaUsageScanInput> inputs,
         int cacheMinutes,
         bool forceRefresh,
-        CancellationToken cancellationToken = default,
-        int timeoutSeconds = DefaultTimeoutSeconds)
+        int timeoutSeconds = DefaultTimeoutSeconds,
+        CancellationToken cancellationToken = default)
     {
         var cacheKey = BuildCacheKey(inputs);
         if (!forceRefresh && TryGetCached(cacheKey, cacheMinutes, out var cached))
@@ -45,7 +45,7 @@ public static class MediaUsageAggregator
             diagnostics.Add("Storage scan cache was bypassed by request.");
         }
 
-        var context = new ScanContext(cancellationToken, timeoutSeconds, diagnostics, "media");
+        var context = new ScanContext(timeoutSeconds, diagnostics, "media", cancellationToken);
         var usage = new Dictionary<string, MediaUsageEntry>(StringComparer.OrdinalIgnoreCase);
         foreach (var input in inputs)
         {
@@ -101,7 +101,7 @@ public static class MediaUsageAggregator
     {
         lock (CacheLock)
         {
-            CachedResult = null;
+            cachedResult = null;
         }
     }
 
@@ -213,14 +213,14 @@ public static class MediaUsageAggregator
 
         lock (CacheLock)
         {
-            if (CachedResult is null
-                || !string.Equals(CachedResult.CacheKey, cacheKey, StringComparison.Ordinal)
-                || DateTimeOffset.UtcNow - CachedResult.CreatedAtUtc > TimeSpan.FromMinutes(cacheMinutes))
+            if (cachedResult is null
+                || !string.Equals(cachedResult.CacheKey, cacheKey, StringComparison.Ordinal)
+                || DateTimeOffset.UtcNow - cachedResult.CreatedAtUtc > TimeSpan.FromMinutes(cacheMinutes))
             {
                 return false;
             }
 
-            result = CachedResult.Result.Clone(cacheHit: true, forcedRefresh: false);
+            result = cachedResult.Result.Clone(cacheHit: true, forcedRefresh: false);
             return true;
         }
     }
@@ -229,7 +229,7 @@ public static class MediaUsageAggregator
     {
         lock (CacheLock)
         {
-            CachedResult = new CachedMediaUsage
+            cachedResult = new CachedMediaUsage
             {
                 CacheKey = cacheKey,
                 CreatedAtUtc = DateTimeOffset.UtcNow,
@@ -261,10 +261,10 @@ public static class MediaUsageAggregator
         private readonly string _scanName;
 
         public ScanContext(
-            CancellationToken cancellationToken,
             int timeoutSeconds,
             List<string> diagnostics,
-            string scanName)
+            string scanName,
+            CancellationToken cancellationToken)
         {
             _cancellationToken = cancellationToken;
             _diagnostics = diagnostics;

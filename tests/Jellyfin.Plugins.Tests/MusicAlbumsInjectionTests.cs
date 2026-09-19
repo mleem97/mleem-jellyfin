@@ -1,8 +1,8 @@
 using System.Reflection;
-using Jellyfin.Plugin.BetterMusicDisplay.Controllers;
+using Jellyfin.Plugin.MusicSuite.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Xunit;
-using MusicPlugin = Jellyfin.Plugin.BetterMusicDisplay.Plugin;
+using MusicPlugin = Jellyfin.Plugin.MusicSuite.Plugin;
 
 namespace Jellyfin.Plugins.Tests;
 
@@ -14,7 +14,7 @@ public sealed class MusicAlbumsInjectionTests
         var resources = typeof(MusicPlugin).Assembly.GetManifestResourceNames();
 
         Assert.Contains(
-            "Jellyfin.Plugin.BetterMusicDisplay.Web.albums-view.js",
+            "Jellyfin.Plugin.MusicSuite.Web.albums-view.js",
             resources);
     }
 

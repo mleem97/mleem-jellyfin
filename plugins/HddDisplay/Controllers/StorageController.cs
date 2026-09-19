@@ -93,8 +93,8 @@ public class StorageController : HddDisplayAdminControllerBase
             usageInputs,
             configuration?.StorageScanCacheMinutes ?? 15,
             refresh,
-            HttpContext.RequestAborted,
-            configuration?.StorageScanTimeoutSeconds ?? 120);
+            timeoutSeconds: configuration?.StorageScanTimeoutSeconds ?? 120,
+            cancellationToken: HttpContext.RequestAborted);
         var gpuProvider = new NvidiaSmiGpuUsageProvider(
             configuration?.GpuCommandTimeoutMilliseconds ?? 2500);
         var gpu = GpuUsageCache.GetSnapshot(
@@ -147,7 +147,7 @@ public class StorageController : HddDisplayAdminControllerBase
 
     private static DriveEntry? TryReadDrive(
         string root,
-        IReadOnlyList<MountResolution> resolutions,
+        MountResolution[] resolutions,
         IReadOnlyList<MediaUsageEntry> usageEntries)
     {
         try
@@ -168,9 +168,9 @@ public class StorageController : HddDisplayAdminControllerBase
             {
                 Name = root,
                 Label = string.IsNullOrWhiteSpace(info.VolumeLabel) ? root : info.VolumeLabel,
-                Source = resolutions.FirstOrDefault()?.Source ?? string.Empty,
-                FileSystemType = resolutions.FirstOrDefault()?.FileSystemType ?? string.Empty,
-                ResolutionProvider = resolutions.FirstOrDefault()?.ResolutionProvider ?? string.Empty,
+                Source = resolutions.Length > 0 ? resolutions[0].Source ?? string.Empty : string.Empty,
+                FileSystemType = resolutions.Length > 0 ? resolutions[0].FileSystemType ?? string.Empty : string.Empty,
+                ResolutionProvider = resolutions.Length > 0 ? resolutions[0].ResolutionProvider ?? string.Empty : string.Empty,
                 LibraryPaths = resolutions
                     .Select(resolution => resolution.LibraryPath)
                     .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
@@ -194,7 +194,7 @@ public class StorageController : HddDisplayAdminControllerBase
 
     private static DriveEntry CreateUnavailableDrive(
         string root,
-        IReadOnlyList<MountResolution> resolutions,
+        MountResolution[] resolutions,
         IReadOnlyList<MediaUsageEntry> usageEntries,
         string diagnostic)
     {
@@ -202,9 +202,9 @@ public class StorageController : HddDisplayAdminControllerBase
         {
             Name = root,
             Label = root,
-            Source = resolutions.FirstOrDefault()?.Source ?? string.Empty,
-            FileSystemType = resolutions.FirstOrDefault()?.FileSystemType ?? string.Empty,
-            ResolutionProvider = resolutions.FirstOrDefault()?.ResolutionProvider ?? string.Empty,
+            Source = resolutions.Length > 0 ? resolutions[0].Source ?? string.Empty : string.Empty,
+            FileSystemType = resolutions.Length > 0 ? resolutions[0].FileSystemType ?? string.Empty : string.Empty,
+            ResolutionProvider = resolutions.Length > 0 ? resolutions[0].ResolutionProvider ?? string.Empty : string.Empty,
             LibraryPaths = resolutions
                 .Select(resolution => resolution.LibraryPath)
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
@@ -219,7 +219,7 @@ public class StorageController : HddDisplayAdminControllerBase
         };
     }
 
-    private static IReadOnlyList<MediaUsageEntry> UsageForMount(
+    private static MediaUsageEntry[] UsageForMount(
         string root,
         IReadOnlyList<MediaUsageEntry> usageEntries)
     {

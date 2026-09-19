@@ -1,0 +1,27 @@
+name: MusicToolkit Test Suite
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/Jellyfin.Plugin.MusicToolkit/**'
+      - 'tests/Jellyfin.Plugin.MusicToolkit.Tests/**'
+  pull_request:
+    paths:
+      - 'src/Jellyfin.Plugin.MusicToolkit/**'
+      - 'tests/Jellyfin.Plugin.MusicToolkit.Tests/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore tests/Jellyfin.Plugin.MusicToolkit.Tests/Jellyfin.Plugin.MusicToolkit.Tests.csproj
+      - name: Test with coverage
+        run: dotnet test tests/Jellyfin.Plugin.MusicToolkit.Tests/Jellyfin.Plugin.MusicToolkit.Tests.csproj -c Release --collect:"XPlat Code Coverage"

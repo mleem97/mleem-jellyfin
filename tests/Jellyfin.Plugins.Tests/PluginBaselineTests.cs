@@ -1,5 +1,5 @@
 using System.Net;
-using Jellyfin.Plugin.BetterMusicDisplay.Services;
+using Jellyfin.Plugin.MusicSuite.Services;
 using Jellyfin.Plugin.HddDisplay.Services;
 using Xunit;
 using ProviderConfiguration = Jellyfin.Plugin.MusicHoarderzProvider.Configuration.PluginConfiguration;
@@ -19,7 +19,7 @@ public sealed class PluginBaselineTests
     }
 
     [Fact]
-    public void BetterMusicDisplayCreatesIsolatedDefaultUserSettings()
+    public void MusicSuiteCreatesIsolatedDefaultUserSettings()
     {
         using var directory = new TemporaryDirectory();
         var store = new UserMusicSettingsStore(directory.Path);

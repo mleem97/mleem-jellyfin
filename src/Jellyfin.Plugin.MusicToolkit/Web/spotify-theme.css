@@ -1,0 +1,263 @@
+/* Spotify 3-column theme for Jellyfin music — glassmorphism, hover play buttons, hidden native music page. */
+:root {
+    --mtk-bg: rgba(18, 18, 18, 0.85);
+    --mtk-card: rgba(32, 32, 32, 0.72);
+    --mtk-accent: #1db954;
+    --mtk-accent-blue: #3b82f6;
+    --mtk-text: #f5f5f5;
+    --mtk-muted: #b3b3b3;
+}
+
+div[data-role="page"].musicPage {
+    display: none !important;
+    opacity: 0 !important;
+}
+
+.mtk-root {
+    display: grid;
+    grid-template-columns: 300px 1fr 320px;
+    gap: 16px;
+    padding: 16px 16px 96px 16px;
+    color: var(--mtk-text);
+    background: linear-gradient(180deg, #0d1b2a 0%, #121212 40%, #121212 100%);
+    min-height: 100vh;
+}
+
+.mtk-glass {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: var(--mtk-bg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+
+.mtk-sidebar {
+    padding: 16px;
+    position: sticky;
+    top: 12px;
+    align-self: start;
+    max-height: calc(100vh - 120px);
+    overflow: auto;
+}
+
+.mtk-sidebar h2 {
+    font-size: 15px;
+    margin: 0 0 12px 0;
+}
+
+.mtk-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.mtk-tab {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    color: var(--mtk-text);
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.mtk-tab.active {
+    background: var(--mtk-text);
+    color: #111;
+}
+
+.mtk-search {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--mtk-text);
+    padding: 8px 10px;
+    margin-bottom: 12px;
+}
+
+.mtk-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mtk-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.mtk-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.mtk-row img {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.mtk-row.artist img {
+    border-radius: 50%;
+}
+
+.mtk-quick {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.mtk-tile {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--mtk-card);
+    border-radius: 10px;
+    padding: 10px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.mtk-tile img {
+    width: 52px;
+    height: 52px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.mtk-play {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--mtk-accent), var(--mtk-accent-blue));
+    box-shadow: 0 8px 24px rgba(29, 185, 84, 0.45);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.mtk-tile:hover .mtk-play,
+.mtk-card:hover .mtk-play {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.mtk-shelf {
+    margin-bottom: 22px;
+}
+
+.mtk-shelf h3 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+}
+
+.mtk-cards {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+}
+
+.mtk-card {
+    position: relative;
+    min-width: 160px;
+    max-width: 160px;
+    background: var(--mtk-card);
+    border-radius: 10px;
+    padding: 10px;
+    cursor: pointer;
+}
+
+.mtk-card img {
+    width: 100%;
+    height: 140px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.mtk-card.artist img {
+    border-radius: 50%;
+    height: 140px;
+}
+
+.mtk-name {
+    font-size: 13px;
+    margin-top: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mtk-sub {
+    font-size: 12px;
+    color: var(--mtk-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mtk-hero {
+    padding: 16px;
+    position: sticky;
+    top: 12px;
+    align-self: start;
+}
+
+.mtk-hero img {
+    width: 100%;
+    border-radius: 10px;
+}
+
+/* Refined, fixed nowPlayingBar */
+.nowPlayingBar {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    background: rgba(18, 18, 18, 0.85) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
+    z-index: 1000 !important;
+}
+
+@media (max-width: 1100px) {
+    .mtk-root {
+        grid-template-columns: 240px 1fr;
+    }
+    .mtk-hero {
+        display: none;
+    }
+}
+
+@media (max-width: 760px) {
+    .mtk-root {
+        grid-template-columns: 1fr;
+    }
+    .mtk-sidebar {
+        position: static;
+        max-height: none;
+    }
+    .mtk-quick {
+        grid-template-columns: 1fr 1fr;
+    }
+}

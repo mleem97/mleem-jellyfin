@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Security.Claims;
-using Jellyfin.Plugin.BetterMusicDisplay.Controllers;
-using Jellyfin.Plugin.BetterMusicDisplay.Services;
+using Jellyfin.Plugin.MusicSuite.Controllers;
+using Jellyfin.Plugin.MusicSuite.Services;
 using Microsoft.AspNetCore.Authorization;
 using Xunit;
 

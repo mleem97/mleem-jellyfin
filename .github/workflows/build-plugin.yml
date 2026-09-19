@@ -1,0 +1,40 @@
+name: Build MusicToolkit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/Jellyfin.Plugin.MusicToolkit/**'
+      - '.github/workflows/build-plugin.yml'
+  pull_request:
+    paths:
+      - 'src/Jellyfin.Plugin.MusicToolkit/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore src/Jellyfin.Plugin.MusicToolkit/Jellyfin.Plugin.MusicToolkit.csproj
+      - name: Build Release
+        run: dotnet build src/Jellyfin.Plugin.MusicToolkit/Jellyfin.Plugin.MusicToolkit.csproj -c Release --no-restore
+      - name: Test
+        run: dotnet test tests/Jellyfin.Plugin.MusicToolkit.Tests/Jellyfin.Plugin.MusicToolkit.Tests.csproj -c Release --no-build
+      - name: Package ZIP
+        run: |
+          STAGE="package/MusicToolkit"
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+          cp src/Jellyfin.Plugin.MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.dll "$STAGE/"
+          cp src/Jellyfin.Plugin.MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.pdb "$STAGE/" || true
+          (cd package && zip -r "MusicToolkit_${{ github.sha }}.zip" MusicToolkit)
+      - name: SHA256 + manifest update
+        run: |
+          ZIP=$(ls package/MusicToolkit_*.zip | head -n1)
+          sha256sum "$ZIP" | awk '{print $1}'
+          python3 .github/scripts/package_smoke_test.py || true

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Music Toolkit</title>
+</head>
+<body>
+<div id="musicToolkitPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+    <div data-role="content">
+        <div class="content-primary">
+            <h2>Music Toolkit &amp; Spotify UX</h2>
+            <form id="musicToolkitForm">
+                <label class="checkboxContainer">
+                    <input is="emby-checkbox" type="checkbox" id="quarantineDuplicates" />
+                    <span>Duplikate in Quarantäne verschieben (statt löschen)</span>
+                </label>
+                <div class="inputContainer">
+                    <label class="inputLabel" for="quarantineFolder">Quarantäne-Ordner</label>
+                    <input is="emby-input" type="text" id="quarantineFolder" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel" for="preferredCodec">Bevorzugter Codec</label>
+                    <input is="emby-input" type="text" id="preferredCodec" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel" for="renamePattern">Rename-Pattern</label>
+                    <input is="emby-input" type="text" id="renamePattern" />
+                </div>
+                <div>
+                    <button is="emby-button" type="submit" class="raised button-submit block"><span>Speichern</span></button>
+                </div>
+            </form>
+            <h3>Dateihygiene &amp; Duplikate</h3>
+            <div>
+                <button is="emby-button" type="button" id="btnDryRun" class="raised block"><span>Vorschau berechnen</span></button>
+                <button is="emby-button" type="button" id="btnRename" class="raised block button-submit"><span>Umbenennen ausführen</span></button>
+                <button is="emby-button" type="button" id="btnDedup" class="raised block"><span>Duplikate bereinigen</span></button>
+            </div>
+            <div id="mtkStatus" style="margin:12px 0;"></div>
+            <table id="mtkTable" class="detailTable" style="width:100%;">
+                <thead><tr><th>Pfad alt</th><th>Pfad neu</th><th>Status</th><th>Quote</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    <script src="configPage.js"></script>
+</div>
+</body>
+</html>

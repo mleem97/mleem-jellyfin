@@ -55,8 +55,11 @@ Examples:
 
 ```bash
 HddDisplay-v0.1.0.0
-BetterMusicDisplay-v0.1.0.0
+MusicSuite-v0.1.0.0
 MusicHoarderzProvider-v0.2.0.0
+SpotifyProvider-v1.0.0.0
+GracenoteProvider-v1.0.0.0
+MusicToolkit-v1.0.0.0
 ```
 
 This avoids version collisions when the repository contains multiple plugins.

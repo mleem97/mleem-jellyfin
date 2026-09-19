@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Musik</title>
+    <link rel="stylesheet" href="spotify-theme.css" />
+</head>
+<body>
+<div class="mtk-root" id="mtkRoot">
+    <aside class="mtk-glass mtk-sidebar" aria-label="Deine Bibliothek">
+        <h2>Deine Bibliothek</h2>
+        <div class="mtk-tabs" role="tablist">
+            <button class="mtk-tab active" data-tab="playlists" type="button">Playlists</button>
+            <button class="mtk-tab" data-tab="artists" type="button">K&uuml;nstler</button>
+            <button class="mtk-tab" data-tab="albums" type="button">Alben</button>
+        </div>
+        <input class="mtk-search" id="mtkSearch" type="search" placeholder="In der Bibliothek suchen" aria-label="Suche" />
+        <div class="mtk-list" id="mtkLibraryList"></div>
+    </aside>
+    <main>
+        <section class="mtk-quick" id="mtkQuick" aria-label="Quick Access"></section>
+        <section class="mtk-shelf" aria-label="Zuletzt gehört">
+            <h3>Zuletzt geh&ouml;rt</h3>
+            <div class="mtk-cards" id="mtkResume"></div>
+        </section>
+        <section class="mtk-shelf" aria-label="Daily Mixes">
+            <h3>Daily Mixes</h3>
+            <div class="mtk-cards" id="mtkMixes"></div>
+        </section>
+        <section class="mtk-shelf" aria-label="Für dich erstellt">
+            <h3>F&uuml;r dich erstellt</h3>
+            <div class="mtk-cards" id="mtkForYou"></div>
+        </section>
+        <section class="mtk-shelf" aria-label="Künstler">
+            <h3>K&uuml;nstler</h3>
+            <div class="mtk-cards" id="mtkArtists"></div>
+        </section>
+    </main>
+    <aside class="mtk-glass mtk-hero" aria-label="New Release Spotlight">
+        <h3>New Release</h3>
+        <div id="mtkHero">L&auml;dt …</div>
+    </aside>
+</div>
+<script src="spotify-dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "sections": [
+    { "id": "resume", "title": "Zuletzt gehört", "source": "playback-resume" },
+    { "id": "mixes", "title": "Daily Mixes", "source": "playlists" },
+    { "id": "for-you", "title": "Für dich erstellt", "source": "recent-albums" },
+    { "id": "artists", "title": "Künstler", "source": "music-artists", "shape": "circle" }
+  ]
+}

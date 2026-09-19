@@ -1,0 +1,16 @@
+{
+  "transformations": [
+    {
+      "target": "index.html",
+      "anchor": "<head>",
+      "asset": "spotify-theme.css",
+      "mode": "head-prepend"
+    },
+    {
+      "target": "index.html",
+      "anchor": "</body>",
+      "asset": "music-redirect.js",
+      "mode": "body-append"
+    }
+  ]
+}

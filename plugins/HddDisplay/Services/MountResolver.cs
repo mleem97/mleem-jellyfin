@@ -116,7 +116,7 @@ public static class MountResolver
         };
     }
 
-    private static IReadOnlyList<MountInfoEntry> ReadMounts()
+    private static MountInfoEntry[] ReadMounts()
     {
         try
         {

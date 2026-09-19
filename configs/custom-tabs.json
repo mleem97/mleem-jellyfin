@@ -1,0 +1,11 @@
+{
+  "tabs": [
+    {
+      "route": "/pages/spotify-music",
+      "name": "Musik",
+      "section": "library",
+      "icon": "audiotrack",
+      "source": "Jellyfin.Plugin.MusicToolkit.Web.spotify-dashboard.html"
+    }
+  ]
+}

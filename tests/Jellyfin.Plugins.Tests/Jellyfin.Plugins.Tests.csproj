@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <Nullable>enable</Nullable>
@@ -23,8 +23,10 @@
 
   <ItemGroup>
     <ProjectReference Include="../../plugins/HddDisplay/HddDisplay.csproj" />
-    <ProjectReference Include="../../plugins/BetterMusicDisplay/BetterMusicDisplay.csproj" />
+    <ProjectReference Include="../../plugins/MusicSuite/MusicSuite.csproj" />
     <ProjectReference Include="../../plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj" />
+    <ProjectReference Include="../../plugins/SpotifyProvider/SpotifyProvider.csproj" />
+    <ProjectReference Include="../../plugins/GracenoteProvider/GracenoteProvider.csproj" />
   </ItemGroup>
 
 </Project>

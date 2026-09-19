@@ -15,7 +15,7 @@ public static class SystemUsageAggregator
 {
     private const int DefaultTimeoutSeconds = 60;
     private static readonly object CacheLock = new();
-    private static CachedSystemUsage? CachedResult;
+    private static CachedSystemUsage? cachedResult;
 
     /// <summary>
     /// Calculates system-path usage while excluding nested configured paths from their parents.
@@ -23,15 +23,15 @@ public static class SystemUsageAggregator
     /// <param name="inputs">System paths ordered from most specific to least specific.</param>
     /// <param name="cacheMinutes">Cache lifetime in minutes.</param>
     /// <param name="forceRefresh">Whether to bypass the cache.</param>
-    /// <param name="cancellationToken">Request cancellation token.</param>
     /// <param name="timeoutSeconds">Hard scan deadline in seconds.</param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
     /// <returns>Exclusive system usage data. Partial results are returned after cancellation or timeout.</returns>
     public static SystemUsageAggregationResult Calculate(
         IReadOnlyList<SystemUsageScanInput> inputs,
         int cacheMinutes,
         bool forceRefresh,
-        CancellationToken cancellationToken = default,
-        int timeoutSeconds = DefaultTimeoutSeconds)
+        int timeoutSeconds = DefaultTimeoutSeconds,
+        CancellationToken cancellationToken = default)
     {
         var normalizedInputs = NormalizeInputs(inputs);
         var cacheKey = BuildCacheKey(normalizedInputs);
@@ -46,7 +46,7 @@ public static class SystemUsageAggregator
             diagnostics.Add("System-path scan cache was bypassed by request.");
         }
 
-        var context = new ScanContext(cancellationToken, timeoutSeconds, diagnostics);
+        var context = new ScanContext(timeoutSeconds, diagnostics, cancellationToken);
         var entries = new List<SystemUsageEntry>();
         foreach (var input in normalizedInputs)
         {
@@ -101,11 +101,11 @@ public static class SystemUsageAggregator
     {
         lock (CacheLock)
         {
-            CachedResult = null;
+            cachedResult = null;
         }
     }
 
-    private static IReadOnlyList<SystemUsageScanInput> NormalizeInputs(
+    private static SystemUsageScanInput[] NormalizeInputs(
         IReadOnlyList<SystemUsageScanInput> inputs)
     {
         return inputs
@@ -284,14 +284,14 @@ public static class SystemUsageAggregator
 
         lock (CacheLock)
         {
-            if (CachedResult is null
-                || !string.Equals(CachedResult.CacheKey, cacheKey, StringComparison.Ordinal)
-                || DateTimeOffset.UtcNow - CachedResult.CreatedAtUtc > TimeSpan.FromMinutes(cacheMinutes))
+            if (cachedResult is null
+                || !string.Equals(cachedResult.CacheKey, cacheKey, StringComparison.Ordinal)
+                || DateTimeOffset.UtcNow - cachedResult.CreatedAtUtc > TimeSpan.FromMinutes(cacheMinutes))
             {
                 return false;
             }
 
-            result = CachedResult.Result.Clone(cacheHit: true, forcedRefresh: false);
+            result = cachedResult.Result.Clone(cacheHit: true, forcedRefresh: false);
             return true;
         }
     }
@@ -300,7 +300,7 @@ public static class SystemUsageAggregator
     {
         lock (CacheLock)
         {
-            CachedResult = new CachedSystemUsage
+            cachedResult = new CachedSystemUsage
             {
                 CacheKey = cacheKey,
                 CreatedAtUtc = DateTimeOffset.UtcNow,
@@ -316,9 +316,9 @@ public static class SystemUsageAggregator
         private readonly List<string> _diagnostics;
 
         public ScanContext(
-            CancellationToken cancellationToken,
             int timeoutSeconds,
-            List<string> diagnostics)
+            List<string> diagnostics,
+            CancellationToken cancellationToken)
         {
             _cancellationToken = cancellationToken;
             _diagnostics = diagnostics;

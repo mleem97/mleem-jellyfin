@@ -1,5 +1,5 @@
-using Jellyfin.Plugin.BetterMusicDisplay.Configuration;
-using Jellyfin.Plugin.BetterMusicDisplay.Services;
+using Jellyfin.Plugin.MusicSuite.Configuration;
+using Jellyfin.Plugin.MusicSuite.Services;
 using Xunit;
 
 namespace Jellyfin.Plugins.Tests;
@@ -13,7 +13,7 @@ public sealed class MusicSettingsStoreTests
         var store = new UserMusicSettingsStore(directory.Path);
         var routeUserId = Guid.NewGuid();
 
-        var saved = store.Save(routeUserId, new UserMusicViewSettings
+        var settings = new UserMusicViewSettings
         {
             UserId = Guid.NewGuid(),
             LandingPage = "unknown",
@@ -21,17 +21,13 @@ public sealed class MusicSettingsStoreTests
             ArtistLayout = "list",
             SongLayout = "unknown",
             TileSize = "huge",
-            SortPreferences = new Dictionary<string, string>
-            {
-                ["albums"] = "DateCreated",
-                ["unsupported"] = "ignored"
-            },
-            EnabledSections = new Dictionary<string, bool>
-            {
-                ["albums"] = true,
-                ["unsupported"] = true
-            }
-        });
+        };
+        settings.SortPreferences["albums"] = "DateCreated";
+        settings.SortPreferences["unsupported"] = "ignored";
+        settings.EnabledSections["albums"] = true;
+        settings.EnabledSections["unsupported"] = true;
+
+        var saved = store.Save(routeUserId, settings);
 
         Assert.Equal(routeUserId, saved.UserId);
         Assert.Equal(1, saved.SchemaVersion);

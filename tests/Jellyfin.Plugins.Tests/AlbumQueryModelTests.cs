@@ -1,6 +1,6 @@
 using System.Reflection;
-using Jellyfin.Plugin.BetterMusicDisplay.Controllers;
-using Jellyfin.Plugin.BetterMusicDisplay.Models;
+using Jellyfin.Plugin.MusicSuite.Controllers;
+using Jellyfin.Plugin.MusicSuite.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;

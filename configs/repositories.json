@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Music Toolkit (eigen)",
+    "url": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/manifest.json"
+  },
+  {
+    "name": "Paradox Suite",
+    "url": "https://www.iamparadox.dev/jellyfin/plugins/manifest.json"
+  },
+  {
+    "name": "SmartLists & MusicTags",
+    "url": "https://raw.githubusercontent.com/jyourstone/jellyfin-plugin-manifest/main/manifest.json"
+  },
+  {
+    "name": "Synced Lyrics",
+    "url": "https://raw.githubusercontent.com/Felitendo/jellyfin-plugin-lyrics/master/manifest.json"
+  }
+]

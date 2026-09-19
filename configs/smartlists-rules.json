@@ -1,0 +1,8 @@
+{
+  "rules": [
+    { "name": "Heavy Rotation", "expression": "playCount > 10 AND lastPlayed < 30d", "limit": 25 },
+    { "name": "Neuheiten", "expression": "dateAdded < 30d AND type = MusicAlbum", "limit": 25 },
+    { "name": "Lossless Favoriten", "expression": "codec = FLAC AND rating >= 4", "limit": 50 },
+    { "name": "Zum Aufholen", "expression": "isPlayed = false AND type = Audio", "limit": 100 }
+  ]
+}

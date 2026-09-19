@@ -40,8 +40,8 @@ public class SystemUsageController : HddDisplayAdminControllerBase
             inputs,
             configuration?.SystemScanCacheMinutes ?? 30,
             refresh == true,
-            HttpContext.RequestAborted,
-            configuration?.SystemScanTimeoutSeconds ?? 60);
+            timeoutSeconds: configuration?.SystemScanTimeoutSeconds ?? 60,
+            cancellationToken: HttpContext.RequestAborted);
         result.Diagnostics = result.Diagnostics
             .Concat(diagnostics)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -65,7 +65,7 @@ public class SystemUsageController : HddDisplayAdminControllerBase
         });
     }
 
-    private static IReadOnlyList<SystemUsageScanInput> CreateInputs(
+    private static List<SystemUsageScanInput> CreateInputs(
         IServerApplicationPaths applicationPaths,
         IServerConfigurationManager? configurationManager,
         List<string> diagnostics)

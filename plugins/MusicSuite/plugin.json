@@ -1,0 +1,18 @@
+{
+  "slug": "MusicSuite",
+  "name": "MusicSuite",
+  "guid": "6b6c96ac-3f60-4ac3-8b8a-0d0cb8acb9dd",
+  "version": "0.1.0.0",
+  "targetAbi": "12.1.0.0",
+  "framework": "net10.0",
+  "project": "plugins/MusicSuite/MusicSuite.csproj",
+  "packagePrefix": "MusicSuite",
+  "assembly": "Jellyfin.Plugin.MusicSuite.dll",
+  "owner": "mleem97",
+  "category": "General",
+  "overview": "Suite for Jellyfin music: per-user layouts, Spotify dashboard UX and provider integrations.",
+  "description": "Extends Jellyfin music views with per-user layout persistence, baseline overview endpoints and planned endless scrolling, live search and filtering.",
+  "artifacts": [
+    "Jellyfin.Plugin.MusicSuite.dll"
+  ]
+}
