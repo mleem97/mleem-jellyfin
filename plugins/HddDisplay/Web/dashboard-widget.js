@@ -23,10 +23,8 @@
 
     function isAdminDashboardRoute() {
         const hash = String(window.location.hash || '').toLowerCase();
-        return hash === '#/dashboard'
-            || hash.startsWith('#/dashboard?')
-            || hash === '#dashboard'
-            || hash.includes('/dashboard.html');
+        const path = String(window.location.pathname || '').toLowerCase();
+        return hash.includes('dashboard') || path.includes('dashboard');
     }
 
     function mediaColor(mediaType) {
@@ -170,27 +168,32 @@
 
     function renderSegments(container, drive) {
         const total = Number(drive.totalBytes || 0);
+        const used = Number(drive.usedBytes || 0);
         const usage = Array.isArray(drive.usage) ? drive.usage : [];
         const bar = document.createElement('div');
         bar.style.cssText = 'height:8px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden;display:flex';
         bar.setAttribute('role', 'img');
-        bar.setAttribute('aria-label', pct(drive.usedBytes, total) + ' percent used');
+        bar.setAttribute('aria-label', pct(used, total) + ' percent used');
         container.appendChild(bar);
 
-        if (!usage.length || !total) {
-            const fill = document.createElement('div');
-            fill.style.cssText = 'height:100%;width:' + pct(drive.usedBytes, total) + '%;background:#5591c7';
-            bar.appendChild(fill);
-            return;
-        }
-
+        let mediaSum = 0;
         usage.forEach(function (entry) {
-            const segment = document.createElement('div');
+            mediaSum += Number(entry.usedBytes || 0);
             const width = Math.max(1, pct(entry.usedBytes, total));
+            const segment = document.createElement('div');
             segment.title = String(entry.mediaType || 'other') + ' · ' + fmtBytes(entry.usedBytes);
             segment.style.cssText = 'height:100%;width:' + width + '%;background:' + mediaColor(entry.mediaType);
             bar.appendChild(segment);
         });
+
+        const otherBytes = Math.max(0, used - mediaSum);
+        if (otherBytes > 0 && total > 0) {
+            const width = Math.max(1, pct(otherBytes, total));
+            const segOther = document.createElement('div');
+            segOther.title = 'Sonstiges · ' + fmtBytes(otherBytes);
+            segOther.style.cssText = 'height:100%;width:' + width + '%;background:#888888';
+            bar.appendChild(segOther);
+        }
 
         const legend = document.createElement('div');
         legend.style.cssText = 'font-size:10px;opacity:.65;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap';
@@ -209,6 +212,20 @@
                 String(entry.mediaType || 'other') + ': ' + fmtBytes(entry.usedBytes)
             ));
         });
+
+        if (otherBytes > 0) {
+            const otherItem = document.createElement('span');
+            otherItem.style.cssText = 'display:inline-flex;align-items:center;gap:4px';
+            legend.appendChild(otherItem);
+
+            const otherDot = document.createElement('span');
+            otherDot.setAttribute('aria-hidden', 'true');
+            otherDot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:999px;background:#888888';
+            otherItem.appendChild(otherDot);
+            otherItem.appendChild(document.createTextNode(
+                'Sonstiges: ' + fmtBytes(otherBytes)
+            ));
+        }
     }
 
     function renderGpu(container, gpu) {

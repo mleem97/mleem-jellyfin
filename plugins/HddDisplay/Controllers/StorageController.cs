@@ -14,8 +14,20 @@ namespace Jellyfin.Plugin.HddDisplay.Controllers;
 /// </summary>
 [ApiController]
 [Route("Plugins/HddDisplay")]
+[Route("HddDisplay")]
 public class StorageController : HddDisplayAdminControllerBase
 {
+    /// <summary>
+    /// Gets storage status (standard endpoint as specified in meh.md).
+    /// </summary>
+    /// <param name="refresh">Whether the storage and GPU caches should be bypassed.</param>
+    /// <returns>Dashboard and storage status data.</returns>
+    [HttpGet("StorageStatus")]
+    public ActionResult<StorageDashboardResponse> GetStorageStatus([FromQuery] bool? refresh)
+    {
+        return BuildStorageResponse(refresh == true);
+    }
+
     /// <summary>
     /// Gets storage and library data for the dashboard UI.
     /// </summary>
@@ -102,10 +114,46 @@ public class StorageController : HddDisplayAdminControllerBase
             configuration?.GpuCacheSeconds ?? 5,
             refresh);
 
-        var drives = mountResolutions
+        var mountResolutionDict = mountResolutions
             .Where(resolution => resolution.IsResolved && !string.IsNullOrWhiteSpace(resolution.MountPath))
             .GroupBy(resolution => resolution.MountPath, StringComparer.OrdinalIgnoreCase)
-            .Select(group => TryReadDrive(group.Key, group.ToArray(), usage.Entries))
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            var systemDrives = DriveInfo.GetDrives()
+                .Where(d => d.IsReady && d.TotalSize > 0)
+                .Select(d => d.RootDirectory.FullName)
+                .Where(root =>
+                    root.StartsWith("/mnt/media", StringComparison.OrdinalIgnoreCase)
+                    || root.StartsWith("/media/", StringComparison.OrdinalIgnoreCase)
+                    || root.StartsWith("/mnt/", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            foreach (var systemDrive in systemDrives)
+            {
+                var cleanRoot = systemDrive.TrimEnd(Path.DirectorySeparatorChar);
+                if (string.IsNullOrWhiteSpace(cleanRoot))
+                {
+                    cleanRoot = "/";
+                }
+
+                if (!mountResolutionDict.ContainsKey(cleanRoot))
+                {
+                    var fallbackResolution = MountResolver.Resolve(cleanRoot);
+                    mountResolutionDict[cleanRoot] = fallbackResolution.IsResolved
+                        ? new[] { fallbackResolution }
+                        : Array.Empty<MountResolution>();
+                }
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Non-critical fallback for environments where DriveInfo.GetDrives has restricted permissions.
+        }
+
+        var drives = mountResolutionDict
+            .Select(group => TryReadDrive(group.Key, group.Value, usage.Entries))
             .Where(drive => drive is not null)
             .Cast<DriveEntry>()
             .OrderBy(drive => drive.Name, StringComparer.OrdinalIgnoreCase)
