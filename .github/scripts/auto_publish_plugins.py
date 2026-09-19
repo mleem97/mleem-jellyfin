@@ -263,7 +263,10 @@ def update_manifest(metadata: dict, version: str, changelog: str, zip_path: path
 
 def release_with_gh(metadata: dict, version: str, changelog: str, zip_path: pathlib.Path) -> None:
     tag_name = f"{metadata['slug']}-v{version}"
-    run(["git", "tag", tag_name])
+    existing_tags = run(["git", "tag", "--list", tag_name], capture=True).splitlines()
+    if tag_name not in existing_tags:
+        run(["git", "tag", tag_name])
+    run(["git", "push", "origin", tag_name])
     notes_path = ROOT / "release-assets" / f"{metadata['slug']}-CHANGELOG.md"
     notes_path.write_text(changelog + "\n", encoding="utf-8")
     run([
