@@ -274,7 +274,7 @@ public sealed partial class CoverImageValidator
                 throw new InvalidDataException("Response exceeded the size limit.");
             }
 
-            buffer.Write(chunk, 0, read);
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
         }
 
         return buffer.ToArray();

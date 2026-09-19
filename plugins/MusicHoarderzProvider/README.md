@@ -29,6 +29,9 @@ MusicHoarderz Provider is the third plugin in this Jellyfin plugin library. HDD 
 - Release metadata is prepared in `plugin.json`.
 - Current implementation is a baseline release before the full provider stack.
 
+> Preview note: all `0.1.0.x` versions are a non-functional preview/baseline.
+> `0.2.0.0` will be the first functional release (see issue #42).
+
 ## Build
 
 ```bash

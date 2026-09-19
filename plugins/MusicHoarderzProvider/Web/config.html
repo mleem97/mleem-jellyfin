@@ -14,6 +14,38 @@
                     <div id="musicHoarderzProviderStatus">Loading...</div>
                     <p>No secrets are returned by the status endpoint.</p>
                 </div>
+                <div class="paperList" style="padding:1rem;margin-top:1rem">
+                    <h2>Spotify credentials</h2>
+                    <label>Client ID
+                        <input type="text" id="musicHoarderzSpotifyClientId" autocomplete="off" />
+                    </label>
+                    <label>Client Secret
+                        <input type="password" id="musicHoarderzSpotifyClientSecret" autocomplete="new-password" />
+                    </label>
+                    <label>Market
+                        <input type="text" id="musicHoarderzSpotifyMarket" placeholder="DE" />
+                    </label>
+                    <label><input type="checkbox" id="musicHoarderzSpotifyEnabled" /> Enabled</label>
+                </div>
+                <div class="paperList" style="padding:1rem;margin-top:1rem">
+                    <h2>YouTube credentials</h2>
+                    <label>API key
+                        <input type="password" id="musicHoarderzYouTubeKey" autocomplete="new-password" />
+                    </label>
+                    <label>Region code
+                        <input type="text" id="musicHoarderzYouTubeRegion" placeholder="DE" />
+                    </label>
+                    <label><input type="checkbox" id="musicHoarderzYouTubeEnabled" /> Enabled</label>
+                </div>
+                <div style="margin-top:1rem">
+                    <button id="musicHoarderzSaveCredentials" type="button">Save credentials</button>
+                    <button id="musicHoarderzTestCredentials" type="button">Test credentials</button>
+                    <button id="musicHoarderzDeleteCredentials" type="button">Delete credentials</button>
+                </div>
+                <div class="paperList" style="padding:1rem;margin-top:1rem">
+                    <h2>Result</h2>
+                    <div id="musicHoarderzCredentialsResult">No action yet. Empty inputs never overwrite stored values.</div>
+                </div>
             </div>
         </div>
         <script>
@@ -28,15 +60,81 @@
                     });
                 }
 
+                function sendJson(method, url, body) {
+                    var fullUrl = (window.ApiClient && ApiClient.getUrl) ? ApiClient.getUrl(url) : url;
+                    var headers = { 'Content-Type': 'application/json' };
+                    if (window.ApiClient && ApiClient.getAuthorizationHeader) {
+                        headers['X-Emby-Authorization'] = ApiClient.getAuthorizationHeader();
+                    }
+                    return fetch(fullUrl, {
+                        method: method,
+                        headers: headers,
+                        body: body ? JSON.stringify(body) : undefined
+                    }).then(function (response) {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        if (response.status === 204) return null;
+                        return response.json();
+                    });
+                }
+
+                function collect() {
+                    return {
+                        spotifyClientId: document.querySelector('#musicHoarderzSpotifyClientId').value,
+                        spotifyClientSecret: document.querySelector('#musicHoarderzSpotifyClientSecret').value,
+                        spotifyMarket: document.querySelector('#musicHoarderzSpotifyMarket').value,
+                        spotifyEnabled: document.querySelector('#musicHoarderzSpotifyEnabled').checked,
+                        youTubeApiKey: document.querySelector('#musicHoarderzYouTubeKey').value,
+                        youTubeRegionCode: document.querySelector('#musicHoarderzYouTubeRegion').value,
+                        youTubeEnabled: document.querySelector('#musicHoarderzYouTubeEnabled').checked
+                    };
+                }
+
+                function showResult(text) {
+                    document.querySelector('#musicHoarderzCredentialsResult').textContent = text;
+                }
+
                 function load() {
                     getJson('Plugins/MusicHoarderzProvider/Status').then(function (data) {
-                        document.querySelector('#musicHoarderzProviderStatus').textContent = 'Enabled: ' + data.enabled + ' · Write mode: ' + data.writeMode;
+                        var status = 'Enabled: ' + data.enabled + ' · Write mode: ' + data.writeMode
+                            + ' · Spotify: ' + (data.spotifyConfigured ? 'configured' : 'missing')
+                            + ' (' + (data.spotifyClientIdMasked || '') + ')'
+                            + ' · YouTube: ' + (data.youTubeConfigured ? 'configured' : 'missing');
+                        document.querySelector('#musicHoarderzProviderStatus').textContent = status;
                     }).catch(function (error) {
                         document.querySelector('#musicHoarderzProviderStatus').textContent = 'Failed to load status: ' + error.message;
                     });
                 }
 
-                document.querySelector('#MusicHoarderzProviderConfigPage').addEventListener('pageshow', load);
+                function bind() {
+                    document.querySelector('#musicHoarderzSaveCredentials').addEventListener('click', function () {
+                        sendJson('POST', 'Plugins/MusicHoarderzProvider/SaveCredentials', collect())
+                            .then(function (data) {
+                                showResult('Saved. Spotify configured: ' + data.spotifyConfigured + ', YouTube configured: ' + data.youTubeConfigured + '.');
+                                load();
+                            })
+                            .catch(function (error) { showResult('Save failed: ' + error.message); });
+                    });
+                    document.querySelector('#musicHoarderzTestCredentials').addEventListener('click', function () {
+                        sendJson('POST', 'Plugins/MusicHoarderzProvider/TestCredentials', collect())
+                            .then(function (data) {
+                                showResult('Test: ' + data.message);
+                            })
+                            .catch(function (error) { showResult('Test failed: ' + error.message); });
+                    });
+                    document.querySelector('#musicHoarderzDeleteCredentials').addEventListener('click', function () {
+                        if (!window.confirm('Delete stored Spotify and YouTube credentials?')) return;
+                        sendJson('DELETE', 'Plugins/MusicHoarderzProvider/Credentials?provider=all', null)
+                            .then(function () {
+                                showResult('Credentials deleted.');
+                                load();
+                            })
+                            .catch(function (error) { showResult('Delete failed: ' + error.message); });
+                    });
+                }
+
+                var page = document.querySelector('#MusicHoarderzProviderConfigPage');
+                page.addEventListener('pageshow', load);
+                bind();
             })();
         </script>
     </div>
