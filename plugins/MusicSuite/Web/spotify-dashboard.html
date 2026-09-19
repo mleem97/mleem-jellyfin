@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musik - Spotify Experience</title>
+    <link rel="stylesheet" href="/Plugins/MusicSuite/Assets/spotify-theme.css">
+</head>
+<body style="margin: 0; padding: 0; background: #0c0d0e; overflow: hidden;">
+    <div id="spotify-dashboard-root" class="spotify-app-container">
+        
+        <!-- ========================================================= -->
+        <!-- COLUMN 1: LEFT SIDEBAR (Squircles)                         -->
+        <!-- ========================================================= -->
+        <aside class="ms-left-column">
+            <!-- Upper Squircle: Primary Navigation -->
+            <nav class="ms-squircle ms-nav-squircle">
+                <ul class="ms-nav-list">
+                    <li>
+                        <a id="navHome" class="ms-nav-item active" title="Startseite">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                <polyline points="9 22 9 12 15 12 15 22"/>
+                            </svg>
+                            <span>Start</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="navSearch" class="ms-nav-item" title="Suchen">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <span>Suchen</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a id="navExplore" class="ms-nav-item" title="Entdecken">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+                            </svg>
+                            <span>Entdecken</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Lower Squircle: Your Library -->
+            <section class="ms-squircle ms-library-squircle">
+                <div class="ms-library-header">
+                    <div class="ms-library-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                        <span>Deine Bibliothek</span>
+                    </div>
+                    <button id="btnNewPlaylist" class="ms-btn-icon" title="Playlist erstellen">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Category Filters (Pills) -->
+                <div class="ms-pills-bar">
+                    <button class="ms-pill active" data-filter="all">Alle</button>
+                    <button class="ms-pill" data-filter="playlist">Playlists</button>
+                    <button class="ms-pill" data-filter="artist">Künstler</button>
+                    <button class="ms-pill" data-filter="album">Alben</button>
+                </div>
+
+                <!-- Scrollable Item List -->
+                <div id="msLibraryList" class="ms-library-list">
+                    <div style="padding: 1rem; color: var(--ms-text-muted); font-size: 0.85rem; text-align: center;">
+                        Lade Bibliothek...
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+        <!-- ========================================================= -->
+        <!-- COLUMN 2: CENTER MAIN VIEW                                 -->
+        <!-- ========================================================= -->
+        <main class="ms-squircle ms-center-column" id="msCenterColumn">
+            <!-- Top Sticky Navigation Bar -->
+            <header class="ms-center-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <button id="btnNavBack" class="ms-btn-icon" title="Zurück" style="background: rgba(0,0,0,0.4);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <button id="btnNavForward" class="ms-btn-icon" title="Vorwärts" style="background: rgba(0,0,0,0.4);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                    <div class="ms-search-box">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--ms-text-muted);">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        <input id="msSearchInput" class="ms-search-input" type="text" placeholder="Was möchtest du hören?" autocomplete="off">
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <a href="#!/configurationpage?name=MusicSuite" class="ms-btn-icon" title="MusicSuite Einstellungen" style="background: rgba(0,0,0,0.4);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </a>
+                </div>
+            </header>
+
+            <!-- Dynamic Views Container -->
+            <div id="msViewContainer" class="ms-content-body">
+                <!-- VIEW 1: HOME DASHBOARD -->
+                <div id="viewHome">
+                    <h1 id="msGreeting" class="ms-greeting">Guten Tag</h1>
+
+                    <!-- 6 Quick-Access Tiles -->
+                    <div id="msQuickGrid" class="ms-quick-grid">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+
+                    <!-- Shelf: Zuletzt gehört -->
+                    <section class="ms-shelf" id="sectionRecent">
+                        <div class="ms-shelf-header">
+                            <h2 class="ms-shelf-title">Zuletzt gehört</h2>
+                        </div>
+                        <div id="shelfRecentlyPlayed" class="ms-shelf-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </section>
+
+                    <!-- Shelf: Empfohlene Alben -->
+                    <section class="ms-shelf" id="sectionAlbums">
+                        <div class="ms-shelf-header">
+                            <h2 class="ms-shelf-title">Beliebte Alben</h2>
+                        </div>
+                        <div id="shelfAlbums" class="ms-shelf-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </section>
+
+                    <!-- Shelf: Deine Künstler -->
+                    <section class="ms-shelf" id="sectionArtists">
+                        <div class="ms-shelf-header">
+                            <h2 class="ms-shelf-title">Lieblingskünstler</h2>
+                        </div>
+                        <div id="shelfArtists" class="ms-shelf-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </section>
+
+                    <!-- Shelf: Playlists -->
+                    <section class="ms-shelf" id="sectionPlaylists">
+                        <div class="ms-shelf-header">
+                            <h2 class="ms-shelf-title">Erstellte Playlists</h2>
+                        </div>
+                        <div id="shelfPlaylists" class="ms-shelf-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </section>
+                </div>
+
+                <!-- VIEW 2: DETAIL VIEW (Album / Artist / Playlist) -->
+                <div id="viewDetail" style="display: none;">
+                    <div id="msDetailHero" class="ms-detail-hero">
+                        <img id="msDetailHeroCover" class="ms-hero-cover" src="" alt="Cover">
+                        <div class="ms-hero-info">
+                            <span id="msDetailType" class="ms-hero-type">ALBUM</span>
+                            <h1 id="msDetailTitle" class="ms-hero-title">Titel</h1>
+                            <div id="msDetailMeta" class="ms-hero-meta">Interpret • Jahr • Titel</div>
+                            <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem;">
+                                <button id="msBtnDetailPlay" class="ms-play-btn-float" style="opacity: 1; transform: none; width: 56px; height: 56px;" title="Wiedergeben">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                </button>
+                                <button id="msBtnDetailShuffle" class="ms-btn-icon" title="Zufallswiedergabe" style="background: rgba(255,255,255,0.1); width: 44px; height: 44px;">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding: 1.5rem 0;">
+                        <table class="ms-tracklist">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px; text-align: center;">#</th>
+                                    <th>Titel</th>
+                                    <th>Album</th>
+                                    <th style="width: 70px; text-align: right;">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="msTracklistBody">
+                                <!-- Tracks populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- VIEW 3: SEARCH / EXPLORE -->
+                <div id="viewSearch" style="display: none;">
+                    <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.25rem;">Suchergebnisse</h2>
+                    <div id="msSearchResults" class="ms-shelf-grid">
+                        <!-- Search results -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ========================================================= -->
+        <!-- COLUMN 3: RIGHT SIDEBAR (Now Playing & Hi-Res Info)        -->
+        <!-- ========================================================= -->
+        <aside class="ms-squircle ms-right-column" id="msRightColumn">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.95rem; font-weight: 700; color: var(--ms-text);">Aktuelle Wiedergabe</span>
+                <span id="msStreamQuality" class="ms-stream-pill">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    <span id="msQualityText">Stereo</span>
+                </span>
+            </div>
+
+            <!-- Cover Artwork -->
+            <img id="msNowCover" class="ms-now-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 24 24' fill='%23282828'%3E%3Crect width='24' height='24' rx='4'/%3E%3Cpath fill='%23666' d='M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z'/%3E%3C/svg%3E" alt="Now Playing">
+
+            <!-- Meta details -->
+            <div>
+                <h3 id="msNowTitle" class="ms-now-title">Keine Wiedergabe</h3>
+                <div id="msNowArtist" class="ms-now-artist">Wähle einen Song aus der Mediathek</div>
+            </div>
+
+            <!-- Artist Biography / About Box -->
+            <div id="msBioSection" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--ms-text);">Über den Künstler</span>
+                <div id="msBioCard" class="ms-bio-card">
+                    Starte einen Musiktitel, um Künstlerinformationen, Metadaten und Audio-Stream-Details in Echtzeit anzuzeigen.
+                </div>
+            </div>
+
+            <!-- Mini Up-Next Queue Preview -->
+            <div style="margin-top: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--ms-text-sub);">Als Nächstes</span>
+                </div>
+                <div id="msNextUpItem" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: var(--ms-surface-hover); border-radius: var(--ms-squircle-radius-sm);">
+                    <div style="font-size: 0.8rem; color: var(--ms-text-muted);">Warteschlange leer</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========================================================= -->
+        <!-- MODAL: CREATE PLAYLIST                                     -->
+        <!-- ========================================================= -->
+        <div id="modalNewPlaylist" class="ms-modal-backdrop" style="display: none;">
+            <div class="ms-modal">
+                <h3 style="margin-top: 0; font-size: 1.25rem; font-weight: 700;">Neue Playlist erstellen</h3>
+                <div style="margin: 1.25rem 0;">
+                    <label style="display: block; font-size: 0.82rem; color: var(--ms-text-sub); margin-bottom: 0.4rem;">Name der Playlist</label>
+                    <input id="inputPlaylistName" type="text" class="ms-search-input" placeholder="Meine Playlist" style="width: 100%; box-sizing: border-box; background: #282828; padding: 0.65rem 0.85rem; border-radius: 6px; border: 1px solid var(--ms-border);">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button id="btnCancelPlaylist" class="ms-pill" style="background: transparent;">Abbrechen</button>
+                    <button id="btnConfirmPlaylist" class="ms-pill" style="background: var(--ms-primary); color: #000; font-weight: 700;">Erstellen</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="/Plugins/MusicSuite/Assets/spotify-dashboard.js"></script>
+</body>
+</html>

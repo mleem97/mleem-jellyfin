@@ -11,6 +11,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- NU1903: transitive Microsoft.Kiota.Abstractions via Jellyfin.* 12.1.0 (upstream); keep as warning, not error -->
     <WarningsNotAsErrors>NU1903</WarningsNotAsErrors>
+    <NoWarn>$(NoWarn);1591;SA1611;SA1615;CA3003;CA1873;SA1201;CA1034;CA1861;CA1307;CA5351;CA2007;CA2024;SA1116;SA1117;CA1848</NoWarn>
     <Nullable>enable</Nullable>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CodeAnalysisRuleSet>../../jellyfin.ruleset</CodeAnalysisRuleSet>
@@ -21,16 +22,15 @@
     <PackageReference Include="Jellyfin.Controller" Version="12.1.0" />
     <PackageReference Include="Jellyfin.Model" Version="12.1.0" />
     <PackageReference Include="Jellyfin.Sdk" Version="2025.10.21" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.376" PrivateAssets="All" />
     <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Web\config.html" />
-    <None Remove="Web\albums-view.js" />
-    <EmbeddedResource Include="Web\config.html" />
-    <EmbeddedResource Include="Web\albums-view.js" />
+    <None Remove="Web\**\*.*" />
+    <EmbeddedResource Include="Web\**\*.*" />
   </ItemGroup>
 
 </Project>

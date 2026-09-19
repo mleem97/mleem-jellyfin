@@ -19,14 +19,40 @@ namespace Jellyfin.Plugin.MusicSuite.Controllers;
 public class MusicDisplayController : ControllerBase
 {
     private readonly IUserMusicSettingsStore _settingsStore;
+    private readonly ILibraryManager _libraryManager;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MusicDisplayController"/> class.
     /// </summary>
     /// <param name="settingsStore">Per-user settings store.</param>
-    public MusicDisplayController(IUserMusicSettingsStore settingsStore)
+    /// <param name="libraryManager">Library manager.</param>
+    public MusicDisplayController(
+        IUserMusicSettingsStore settingsStore,
+        ILibraryManager libraryManager)
     {
         _settingsStore = settingsStore;
+        _libraryManager = libraryManager;
+    }
+
+    /// <summary>
+    /// Gets high-level status of the MusicSuite plugin.
+    /// </summary>
+    [HttpGet("Status")]
+    public ActionResult GetStatus()
+    {
+        var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+        var musicLibraries = _libraryManager.GetVirtualFolders()
+            .Where(folder => string.Equals(folder.CollectionType?.ToString(), "music", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        return Ok(new
+        {
+            enabled = config.Enabled,
+            version = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "1.0.0.0",
+            libraryCount = musicLibraries.Count,
+            forceForAllUsers = config.ForceForAllUsers,
+            allowUserCustomization = config.AllowUserCustomization
+        });
     }
 
     /// <summary>
@@ -36,13 +62,7 @@ public class MusicDisplayController : ControllerBase
     [HttpGet("Overview")]
     public ActionResult<MusicDisplayOverview> GetOverview()
     {
-        var libraryManager = HttpContext.RequestServices.GetService<ILibraryManager>();
-        if (libraryManager is null)
-        {
-            return StatusCode(500, "ILibraryManager service is not available.");
-        }
-
-        var musicLibraries = libraryManager.GetVirtualFolders()
+        var musicLibraries = _libraryManager.GetVirtualFolders()
             .Where(folder => string.Equals(
                 folder.CollectionType?.ToString(),
                 "music",

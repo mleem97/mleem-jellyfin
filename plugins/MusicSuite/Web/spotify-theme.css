@@ -1,0 +1,632 @@
+/* MusicSuite: Spotify-Inspired 3-Column Theme & Glassmorphism System */
+:root {
+    --ms-bg: #0c0d0e;
+    --ms-squircle-bg: #121212;
+    --ms-squircle-sub: #181818;
+    --ms-surface-hover: #242424;
+    --ms-surface-active: #2a2a2a;
+    --ms-primary: #1db954;
+    --ms-primary-hover: #1ed760;
+    --ms-primary-glow: rgba(29, 185, 84, 0.4);
+    --ms-accent: #00a4dc;
+    --ms-text: #ffffff;
+    --ms-text-sub: #b3b3b3;
+    --ms-text-muted: #727272;
+    --ms-border: rgba(255, 255, 255, 0.07);
+    --ms-squircle-radius: 14px;
+    --ms-squircle-radius-sm: 8px;
+    --ms-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --ms-font: -apple-system, BlinkMacSystemFont, "Circular Spotify Tx T", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Suppression of native obsolete Jellyfin music views when active */
+div[data-role="page"].musicPage {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Main 3-Column Spotify Application Container */
+.spotify-app-container {
+    display: flex;
+    gap: 10px;
+    height: calc(100vh - 84px);
+    padding: 10px;
+    box-sizing: border-box;
+    background-color: var(--ms-bg);
+    color: var(--ms-text);
+    font-family: var(--ms-font);
+    overflow: hidden;
+}
+
+/* SQUIRCLE CONTAINERS */
+.ms-squircle {
+    background-color: var(--ms-squircle-bg);
+    border-radius: var(--ms-squircle-radius);
+    border: 1px solid var(--ms-border);
+    box-shadow: var(--ms-shadow);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* COLUMN 1: LEFT SIDEBAR */
+.ms-left-column {
+    width: 300px;
+    min-width: 260px;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+}
+
+/* Upper Squircle: Primary Navigation */
+.ms-nav-squircle {
+    padding: 1rem 1.25rem;
+    flex-shrink: 0;
+}
+
+.ms-nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ms-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ms-text-sub);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    padding: 0.35rem 0;
+}
+
+.ms-nav-item:hover, .ms-nav-item.active {
+    color: var(--ms-text);
+}
+
+.ms-nav-item.active svg {
+    stroke: var(--ms-primary);
+}
+
+/* Lower Squircle: Your Library */
+.ms-library-squircle {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    overflow: hidden;
+}
+
+.ms-library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+}
+
+.ms-library-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ms-text-sub);
+}
+
+.ms-btn-icon {
+    background: transparent;
+    border: none;
+    color: var(--ms-text-sub);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 6px;
+    transition: all 0.2s ease;
+}
+
+.ms-btn-icon:hover {
+    color: var(--ms-text);
+    background: var(--ms-surface-hover);
+}
+
+/* Category Filter Pills */
+.ms-pills-bar {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.65rem;
+    margin-bottom: 0.5rem;
+    scrollbar-width: none;
+}
+
+.ms-pills-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.ms-pill {
+    background: var(--ms-surface-hover);
+    color: var(--ms-text);
+    border: none;
+    border-radius: 999px;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.ms-pill:hover, .ms-pill.active {
+    background: #333333;
+}
+
+.ms-pill.active {
+    color: var(--ms-primary);
+}
+
+/* Library Items List */
+.ms-library-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.ms-lib-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border-radius: var(--ms-squircle-radius-sm);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.ms-lib-entry:hover {
+    background: var(--ms-surface-hover);
+}
+
+.ms-lib-thumb {
+    width: 46px;
+    height: 46px;
+    border-radius: 6px;
+    background: #282828;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.ms-lib-thumb.round {
+    border-radius: 50%;
+}
+
+.ms-lib-meta {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.ms-lib-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ms-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ms-lib-desc {
+    font-size: 0.78rem;
+    color: var(--ms-text-muted);
+    margin-top: 2px;
+}
+
+/* COLUMN 2: CENTER MAIN VIEW */
+.ms-center-column {
+    flex: 1;
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Top Sticky Navigation / Search Header */
+.ms-center-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: rgba(18, 18, 18, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.ms-search-box {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: #242424;
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    width: 320px;
+    border: 1px solid transparent;
+    transition: border-color 0.2s, width 0.2s;
+}
+
+.ms-search-box:focus-within {
+    border-color: #ffffff;
+    width: 360px;
+}
+
+.ms-search-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #ffffff;
+    font-size: 0.88rem;
+    width: 100%;
+}
+
+/* Greeting & Quick Access 6 Tiles */
+.ms-content-body {
+    padding: 1rem 1.5rem 3rem 1.5rem;
+}
+
+.ms-greeting {
+    font-size: 1.85rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0.5rem 0 1.25rem 0;
+}
+
+.ms-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 2rem;
+}
+
+.ms-quick-tile {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    position: relative;
+}
+
+.ms-quick-tile:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.ms-quick-thumb {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.ms-quick-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    padding: 0 1rem;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Floating Play Button on Hover */
+.ms-play-btn-float {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: var(--ms-primary);
+    color: #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: all 0.25s ease;
+    border: none;
+    cursor: pointer;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.ms-quick-tile:hover .ms-play-btn-float,
+.ms-card:hover .ms-play-btn-float {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.ms-play-btn-float:hover {
+    transform: scale(1.06);
+    background-color: var(--ms-primary-hover);
+}
+
+/* Content Shelves (Horizontal Carousel) */
+.ms-shelf {
+    margin-bottom: 2.25rem;
+}
+
+.ms-shelf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.ms-shelf-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+
+.ms-shelf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 1.25rem;
+}
+
+.ms-card {
+    background: var(--ms-squircle-sub);
+    padding: 0.9rem;
+    border-radius: var(--ms-squircle-radius-sm);
+    cursor: pointer;
+    transition: background 0.2s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.ms-card:hover {
+    background: var(--ms-surface-hover);
+}
+
+.ms-card-cover-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1/1;
+    margin-bottom: 0.75rem;
+}
+
+.ms-card-cover {
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    object-fit: cover;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.ms-card-cover.round {
+    border-radius: 50%;
+}
+
+.ms-card .ms-play-btn-float {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    margin: 0;
+}
+
+.ms-card-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--ms-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ms-card-sub {
+    font-size: 0.78rem;
+    color: var(--ms-text-muted);
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Detail View (Album / Artist / Playlist) */
+.ms-detail-hero {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.75rem;
+    padding: 2.5rem 1.75rem 1.75rem 1.75rem;
+    background: linear-gradient(180deg, rgba(29, 185, 84, 0.35) 0%, rgba(18, 18, 18, 0.95) 100%);
+    position: relative;
+}
+
+.ms-hero-cover {
+    width: 190px;
+    height: 190px;
+    border-radius: 10px;
+    object-fit: cover;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    flex-shrink: 0;
+}
+
+.ms-hero-cover.round {
+    border-radius: 50%;
+}
+
+.ms-hero-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.ms-hero-type {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.ms-hero-title {
+    font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    margin: 0;
+    line-height: 1.15;
+}
+
+.ms-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    color: var(--ms-text-sub);
+}
+
+/* Tracklist Table */
+.ms-tracklist {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.ms-tracklist th {
+    color: var(--ms-text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--ms-border);
+    text-align: left;
+}
+
+.ms-tracklist td {
+    padding: 0.7rem 1rem;
+    vertical-align: middle;
+}
+
+.ms-track-row {
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.ms-track-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.ms-track-row.playing {
+    color: var(--ms-primary);
+}
+
+.ms-track-idx {
+    width: 36px;
+    color: var(--ms-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* COLUMN 3: RIGHT SIDEBAR (NOW PLAYING) */
+.ms-right-column {
+    width: 320px;
+    min-width: 280px;
+    max-width: 380px;
+    height: 100%;
+    padding: 1.25rem;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow-y: auto;
+}
+
+.ms-now-cover {
+    width: 100%;
+    aspect-ratio: 1/1;
+    border-radius: 10px;
+    object-fit: cover;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.ms-now-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ms-now-artist {
+    font-size: 0.92rem;
+    color: var(--ms-text-sub);
+    margin-top: 3px;
+    cursor: pointer;
+}
+
+.ms-now-artist:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+.ms-stream-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--ms-border);
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ms-accent);
+}
+
+.ms-bio-card {
+    background: var(--ms-surface-hover);
+    padding: 1rem;
+    border-radius: var(--ms-squircle-radius-sm);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--ms-text-sub);
+}
+
+/* Modal Overlay for Creating Playlist */
+.ms-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.ms-modal {
+    background: var(--ms-squircle-bg);
+    border: 1px solid var(--ms-border);
+    border-radius: var(--ms-squircle-radius);
+    padding: 1.75rem;
+    width: 400px;
+    box-shadow: var(--ms-shadow);
+}

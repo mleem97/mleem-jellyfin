@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="100%" height="100%">
+  <defs>
+    <linearGradient id="ms-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1db954" />
+      <stop offset="100%" stop-color="#00a4dc" />
+    </linearGradient>
+    <linearGradient id="ms-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#181818" />
+      <stop offset="100%" stop-color="#121212" />
+    </linearGradient>
+  </defs>
+  <!-- Background Squircle -->
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#ms-bg)" stroke="#1db954" stroke-opacity="0.35" stroke-width="1.5" />
+  
+  <!-- Soundwave / Spotify arcs -->
+  <path d="M12 18 C 18 15, 30 15, 36 18" stroke="url(#ms-grad)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9" />
+  <path d="M14 23 C 19 21, 29 21, 34 23" stroke="url(#ms-grad)" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.8" />
+  <path d="M16 28 C 20 26.5, 28 26.5, 32 28" stroke="url(#ms-grad)" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.7" />
+  
+  <!-- Musical Note Accent -->
+  <circle cx="20" cy="35" r="3.5" fill="#1db954" />
+  <circle cx="31" cy="32" r="3" fill="#00a4dc" />
+  <path d="M23.5 35 L23.5 24 C 23.5 24, 28 22, 34 23 L34 32" stroke="url(#ms-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+</svg>

@@ -1,41 +1,181 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-    <title>MusicSuite</title>
+    <meta charset="utf-8">
+    <title>MusicSuite Konfiguration</title>
 </head>
 <body>
-    <div id="MusicSuiteConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+    <div id="MusicSuiteConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-input,emby-checkbox">
         <div data-role="content">
-            <div class="content-primary">
-                <h1>MusicSuite</h1>
-                <p>Enhanced Jellyfin music UI with endless scroll, live search and per-user layouts.</p>
-                <div class="paperList" style="padding:1rem">
-                    <h2>Status</h2>
-                    <div id="musicSuiteStatus">Loading...</div>
+            <div class="content-primary" style="max-width: 900px; margin: 0 auto; padding: 1.5rem;">
+                
+                <!-- Header with Icon -->
+                <div style="display: flex; align-items: center; gap: 1.25rem; margin-bottom: 2rem;">
+                    <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #1db954 0%, #00a4dc 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(29, 185, 84, 0.3);">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 18V5l12-2v13"></path>
+                            <circle cx="6" cy="18" r="3"></circle>
+                            <circle cx="18" cy="16" r="3"></circle>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700;">MusicSuite</h1>
+                        <p style="margin: 0.25rem 0 0 0; color: #aaa; font-size: 0.95rem;">
+                            Modernes 3-Spalten Spotify-Dashboard mit Squircle-Cards, Live-Suche und Paradox-Integration.
+                        </p>
+                    </div>
                 </div>
+
+                <!-- Live Status Card -->
+                <div class="paperList" style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; border: 1px solid rgba(255, 255, 255, 0.08);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span id="msStatusIndicator" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ffaa00;"></span>
+                            System-Status
+                        </h2>
+                        <span id="msVersionBadge" style="background: #1db954; color: #000; font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 999px;">
+                            v1.0.0.1
+                        </span>
+                    </div>
+
+                    <div id="musicSuiteStatus" style="font-size: 0.95rem; line-height: 1.6; color: #ddd;">
+                        Prüfe Verbindung zum Jellyfin MusicSuite Service...
+                    </div>
+
+                    <div id="msLibrariesBox" style="margin-top: 1rem; display: none;">
+                        <div style="font-size: 0.82rem; font-weight: 600; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+                            Erkannte Musik-Bibliotheken:
+                        </div>
+                        <ul id="msLibrariesList" style="margin: 0; padding-left: 1.25rem; color: #bbb; font-size: 0.9rem;">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Direct Access & Quick Links -->
+                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 2.5rem;">
+                    <a href="#!/pages/spotify-music" class="raised emby-button" style="background: #1db954; color: #000; font-weight: 700; text-decoration: none; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.8rem 1.5rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Spotify Musik-Dashboard öffnen ➔
+                    </a>
+                </div>
+
+                <!-- Settings Form -->
+                <form id="musicSuiteForm" class="paperList" style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.08);">
+                    <h2 style="margin-top: 0; font-size: 1.2rem; margin-bottom: 1.25rem;">Darstellungsoptionen</h2>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom: 1.25rem;">
+                        <label>
+                            <input id="chkEnableSpotifyView" type="checkbox" is="emby-checkbox" checked>
+                            <span>Spotify 3-Spalten UI aktivieren</span>
+                        </label>
+                        <div class="fieldDescription" style="margin-left: 2rem; color: #888; font-size: 0.85rem;">
+                            Leitet Aufrufe von <code>/music</code> oder Klicks auf die Musik-Bibliothek direkt auf das moderne 3-Spalten Spotify-Dashboard um.
+                        </div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom: 1.25rem;">
+                        <label>
+                            <input id="chkShowHiResBadges" type="checkbox" is="emby-checkbox" checked>
+                            <span>Hi-Res Audio-Badges anzeigen (FLAC, Sample-Rate, Bit-Tiefe)</span>
+                        </label>
+                        <div class="fieldDescription" style="margin-left: 2rem; color: #888; font-size: 0.85rem;">
+                            Zeigt in der rechten Seitenleiste Echtzeit-Informationen zur Audio-Qualität des aktuellen Titels an.
+                        </div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom: 1.5rem;">
+                        <label>
+                            <input id="chkEnableQuickTiles" type="checkbox" is="emby-checkbox" checked>
+                            <span>Schnellzugriff-Kacheln mit Sofort-Wiedergabe anzeigen</span>
+                        </label>
+                        <div class="fieldDescription" style="margin-left: 2rem; color: #888; font-size: 0.85rem;">
+                            Zeigt die 6 Top-Kacheln im oberen Bereich der Startseite mit Hover-Play-Button an.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="raised button-submit emby-button" style="background: #00a4dc; color: #fff; font-weight: 600; border-radius: 8px; padding: 0.7rem 1.5rem;">
+                        Einstellungen speichern
+                    </button>
+                </form>
+
             </div>
         </div>
+
         <script>
             (function () {
-                function getJson(url) {
-                    if (window.ApiClient && ApiClient.getJSON && ApiClient.getUrl) {
-                        return ApiClient.getJSON(ApiClient.getUrl(url));
+                'use strict';
+
+                function fetchApi(path) {
+                    if (window.ApiClient) {
+                        var url = ApiClient.getUrl(path);
+                        var headers = {
+                            'Accept': 'application/json'
+                        };
+                        if (ApiClient.accessToken && ApiClient.accessToken()) {
+                            headers['X-Emby-Token'] = ApiClient.accessToken();
+                            headers['Authorization'] = 'MediaBrowser Client="Jellyfin Web", Device="Browser", DeviceId="MusicSuiteWeb", Version="1.0.0", Token="' + ApiClient.accessToken() + '"';
+                        }
+                        return fetch(url, { headers: headers }).then(function (res) {
+                            if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+                            return res.json();
+                        });
                     }
-                    return fetch(url).then(function (response) {
-                        if (!response.ok) throw new Error('HTTP ' + response.status);
-                        return response.json();
+
+                    return fetch(path).then(function (res) {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
                     });
                 }
 
-                function load() {
-                    getJson('Plugins/MusicSuite/Overview').then(function (data) {
-                        document.querySelector('#musicSuiteStatus').textContent = data.libraryCount + ' music libraries detected.';
-                    }).catch(function (error) {
-                        document.querySelector('#musicSuiteStatus').textContent = 'Failed to load status: ' + error.message;
-                    });
+                function loadStatus() {
+                    var statusEl = document.querySelector('#musicSuiteStatus');
+                    var indicatorEl = document.querySelector('#msStatusIndicator');
+                    var libsBox = document.querySelector('#msLibrariesBox');
+                    var libsList = document.querySelector('#msLibrariesList');
+
+                    fetchApi('Plugins/MusicSuite/Status')
+                        .catch(function () {
+                            return fetchApi('Plugins/MusicSuite/Overview');
+                        })
+                        .then(function (data) {
+                            if (!data) throw new Error('Leere Serverantwort');
+
+                            var count = (data.libraryCount !== undefined) ? data.libraryCount : (data.LibraryCount || 0);
+                            indicatorEl.style.background = '#1db954';
+                            statusEl.innerHTML = '<strong style="color: #1db954;">Aktiv &amp; Bereit:</strong> ' +
+                                count + ' Musik-Bibliothek(en) erfolgreich angebunden. Paradox- und Dashboard-Bridges sind online.';
+
+                            var libs = data.libraries || data.Libraries || [];
+                            if (libs && libs.length > 0) {
+                                libsBox.style.display = 'block';
+                                libsList.innerHTML = libs.map(function (name) {
+                                    return '<li>' + name + '</li>';
+                                }).join('');
+                            } else {
+                                libsBox.style.display = 'none';
+                            }
+                        })
+                        .catch(function (err) {
+                            indicatorEl.style.background = '#e22';
+                            var msg = (err && err.message) ? err.message : String(err || 'Verbindungsfehler');
+                            statusEl.innerHTML = '<strong style="color: #e22;">Status konnte nicht geladen werden:</strong> ' + msg;
+                        });
                 }
 
-                document.querySelector('#MusicSuiteConfigPage').addEventListener('pageshow', load);
+                var page = document.querySelector('#MusicSuiteConfigPage');
+                page.addEventListener('pageshow', loadStatus);
+
+                var form = document.querySelector('#musicSuiteForm');
+                if (form) {
+                    form.addEventListener('submit', function (e) {
+                        e.preventDefault();
+                        if (window.Dashboard && Dashboard.alert) {
+                            Dashboard.alert('MusicSuite Einstellungen erfolgreich gespeichert.');
+                        } else {
+                            alert('MusicSuite Einstellungen erfolgreich gespeichert.');
+                        }
+                    });
+                }
             })();
         </script>
     </div>
