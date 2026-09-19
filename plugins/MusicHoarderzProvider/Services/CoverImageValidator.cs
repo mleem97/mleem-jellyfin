@@ -334,7 +334,7 @@ public sealed partial class CoverImageValidator
     {
         width = 0;
         height = 0;
-        if (bytes.Length < 12)
+        if (bytes.Length < 10)
         {
             return false;
         }
