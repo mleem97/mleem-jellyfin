@@ -2,7 +2,7 @@
   "slug": "SpotifyProvider",
   "name": "Spotify Cover & Metadata Provider",
   "guid": "67de1daa-c9fe-497a-9ca2-dc303abb717b",
-  "version": "1.0.0.0",
+  "version": "1.0.0.1",
   "targetAbi": "12.1.0.0",
   "framework": "net10.0",
   "project": "plugins/SpotifyProvider/SpotifyProvider.csproj",
