@@ -12,16 +12,12 @@ import zipfile
 
 import auto_publish_plugins as publisher
 
-SHA256_PATTERN = re.compile(r"^[A-F0-9]{64}$")
-LEGACY_MD5_PATTERN = re.compile(r"^[A-F0-9]{32}$")
-LEGACY_CHECKSUM_ALLOWLIST = {
-    ("f8d74b1c-3c97-4481-a3b3-6eb622d6ad58", "0.1.0.1"),
-}
+MD5_PATTERN = re.compile(r"^[A-F0-9]{32}$")
 
 
-def sha256_upper(path: pathlib.Path) -> str:
-    """Return the uppercase SHA-256 digest for a file."""
-    return hashlib.sha256(path.read_bytes()).hexdigest().upper()
+def md5_upper(path: pathlib.Path) -> str:
+    """Return the uppercase MD5 digest for a file (required by Jellyfin server)."""
+    return hashlib.md5(path.read_bytes()).hexdigest().upper()
 
 
 def expected_archive_names(metadata: dict) -> set[str]:
@@ -119,14 +115,11 @@ def validate_manifest(
                 raise SystemExit(f"Missing checksum for {guid} {version}.")
 
             normalized = checksum.upper()
-            if not SHA256_PATTERN.fullmatch(normalized):
+            if not MD5_PATTERN.fullmatch(normalized):
                 legacy_key = (guid, version)
-                if not (
-                    legacy_key in LEGACY_CHECKSUM_ALLOWLIST
-                    and LEGACY_MD5_PATTERN.fullmatch(normalized)
-                ):
+                if legacy_key not in LEGACY_CHECKSUM_ALLOWLIST:
                     raise SystemExit(
-                        f"Checksum for {guid} {version} is not a SHA-256 digest."
+                        f"Checksum for {guid} {version} is not an MD5 digest."
                     )
 
             if guid == expected_guid and version == expected_version:
@@ -137,7 +130,7 @@ def validate_manifest(
             f"Pending manifest version not found: {expected_guid} {expected_version}"
         )
 
-    expected_checksum = sha256_upper(expected_zip)
+    expected_checksum = md5_upper(expected_zip)
     actual_checksum = str(pending_version.get("checksum", "")).upper()
     if actual_checksum != expected_checksum:
         raise SystemExit(
@@ -167,7 +160,7 @@ def verify_published_asset(metadata: dict, version: str, local_zip: pathlib.Path
         downloaded = pathlib.Path(directory) / local_zip.name
         if not downloaded.is_file():
             raise SystemExit(f"Published release asset was not downloaded: {local_zip.name}")
-        if sha256_upper(downloaded) != sha256_upper(local_zip):
+        if md5_upper(downloaded) != md5_upper(local_zip):
             raise SystemExit(
                 f"Published release asset checksum differs from local package: {local_zip.name}"
             )

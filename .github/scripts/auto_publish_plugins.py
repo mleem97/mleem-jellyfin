@@ -229,8 +229,9 @@ def package_plugin(metadata: dict, version: str) -> pathlib.Path:
     return zip_path
 
 
-def sha256_upper(path: pathlib.Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest().upper()
+def md5_upper(path: pathlib.Path) -> str:
+    """Return the uppercase MD5 digest for a file (required by Jellyfin server)."""
+    return hashlib.md5(path.read_bytes()).hexdigest().upper()
 
 
 def update_manifest(metadata: dict, version: str, changelog: str, zip_path: pathlib.Path) -> None:
@@ -252,7 +253,7 @@ def update_manifest(metadata: dict, version: str, changelog: str, zip_path: path
         "changelog": changelog,
         "targetAbi": metadata["targetAbi"],
         "sourceUrl": f"https://github.com/{repo}/releases/download/{tag_name}/{zip_path.name}",
-        "checksum": sha256_upper(zip_path),
+        "checksum": md5_upper(zip_path),
         "timestamp": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
     }
     old_versions = entry.get("versions") or []

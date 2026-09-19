@@ -33,8 +33,8 @@ jobs:
           cp src/Jellyfin.Plugin.MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.dll "$STAGE/"
           cp src/Jellyfin.Plugin.MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.pdb "$STAGE/" || true
           (cd package && zip -r "MusicToolkit_${{ github.sha }}.zip" MusicToolkit)
-      - name: SHA256 + manifest update
+      - name: MD5 + manifest update
         run: |
           ZIP=$(ls package/MusicToolkit_*.zip | head -n1)
-          sha256sum "$ZIP" | awk '{print $1}'
+          md5sum "$ZIP" | awk '{print toupper($1)}'
           python3 .github/scripts/package_smoke_test.py || true
