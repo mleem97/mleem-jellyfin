@@ -1,0 +1,315 @@
+:root {
+    --mdd-bg: #0e1014;
+    --mdd-card: #151820;
+    --mdd-card-hover: #1e222d;
+    --mdd-primary: #8a2be2;
+    --mdd-primary-hover: #9d4edd;
+    --mdd-primary-glow: rgba(138, 43, 226, 0.35);
+    --mdd-accent: #00d2ff;
+    --mdd-success: #1db954;
+    --mdd-warning: #ffaa00;
+    --mdd-danger: #ff4757;
+    --mdd-text: #ffffff;
+    --mdd-text-sub: #a0a6b5;
+    --mdd-text-muted: #646b79;
+    --mdd-border: rgba(255, 255, 255, 0.08);
+    --mdd-radius: 14px;
+    --mdd-radius-sm: 8px;
+    --mdd-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --mdd-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--mdd-bg);
+    color: var(--mdd-text);
+    font-family: var(--mdd-font);
+    overflow-x: hidden;
+}
+
+.mdd-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    box-sizing: border-box;
+}
+
+/* Header */
+.mdd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.mdd-title-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.mdd-icon-box {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--mdd-radius);
+    background: linear-gradient(135deg, var(--mdd-primary), var(--mdd-accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px var(--mdd-primary-glow);
+    flex-shrink: 0;
+}
+
+.mdd-header-h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.mdd-header-sub {
+    font-size: 0.88rem;
+    color: var(--mdd-text-sub);
+    margin-top: 3px;
+}
+
+/* Tabs */
+.mdd-tabs-bar {
+    display: flex;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--mdd-border);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+}
+
+.mdd-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--mdd-text-sub);
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.6rem 1.25rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mdd-tab-btn:hover {
+    color: var(--mdd-text);
+    background: var(--mdd-card-hover);
+}
+
+.mdd-tab-btn.active {
+    background: linear-gradient(135deg, var(--mdd-primary), var(--mdd-accent));
+    color: #ffffff;
+    box-shadow: 0 4px 12px var(--mdd-primary-glow);
+}
+
+/* Squircles / Cards */
+.mdd-card {
+    background: var(--mdd-card);
+    border: 1px solid var(--mdd-border);
+    border-radius: var(--mdd-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--mdd-shadow);
+}
+
+/* Stats / Health Grid */
+.mdd-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.mdd-stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--mdd-border);
+    border-radius: var(--mdd-radius-sm);
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.mdd-stat-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--mdd-text-muted);
+    letter-spacing: 0.05em;
+}
+
+.mdd-stat-val {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--mdd-text);
+}
+
+.mdd-stat-val.score {
+    color: var(--mdd-success);
+}
+
+.mdd-stat-val.warn {
+    color: var(--mdd-warning);
+}
+
+/* Health Gauge Progress */
+.mdd-health-track {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.mdd-health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff4757 0%, #ffaa00 50%, #1db954 100%);
+    width: 100%;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Data Table */
+.mdd-table-wrap {
+    overflow-x: auto;
+}
+
+.mdd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.mdd-table th {
+    text-align: left;
+    padding: 0.85rem 1rem;
+    color: var(--mdd-text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--mdd-border);
+    letter-spacing: 0.05em;
+}
+
+.mdd-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    vertical-align: middle;
+}
+
+.mdd-table tr:hover {
+    background: var(--mdd-card-hover);
+}
+
+/* Pills & Badges */
+.mdd-badge {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.mdd-badge.missing {
+    background: rgba(255, 71, 87, 0.2);
+    color: #ff6b81;
+    border: 1px solid rgba(255, 71, 87, 0.4);
+}
+
+.mdd-badge.ok {
+    background: rgba(29, 185, 84, 0.2);
+    color: #2ed573;
+    border: 1px solid rgba(29, 185, 84, 0.4);
+}
+
+/* Buttons */
+.mdd-btn {
+    background: var(--mdd-primary);
+    color: #ffffff;
+    border: none;
+    border-radius: var(--mdd-radius-sm);
+    padding: 0.65rem 1.25rem;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.mdd-btn:hover {
+    background: var(--mdd-primary-hover);
+    box-shadow: 0 4px 14px var(--mdd-primary-glow);
+}
+
+.mdd-btn-secondary {
+    background: var(--mdd-card-hover);
+    color: var(--mdd-text);
+    border: 1px solid var(--mdd-border);
+}
+
+.mdd-btn-secondary:hover {
+    background: #2a2f3d;
+    box-shadow: none;
+}
+
+/* Provider Status Cards */
+.mdd-provider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.mdd-provider-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--mdd-border);
+    border-radius: var(--mdd-radius-sm);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.mdd-provider-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Modal */
+.mdd-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
+
+.mdd-modal {
+    background: var(--mdd-card);
+    border: 1px solid var(--mdd-border);
+    border-radius: var(--mdd-radius);
+    width: 600px;
+    max-width: 90vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 2rem;
+    box-shadow: var(--mdd-shadow);
+}

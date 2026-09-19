@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metadaten-Manager - Jellyfin</title>
+    <link rel="stylesheet" href="/Plugins/MetadataDashboard/Assets/metadata-dashboard.css">
+</head>
+<body>
+    <div class="mdd-container">
+        
+        <!-- Header -->
+        <header class="mdd-header">
+            <div class="mdd-title-group">
+                <div class="mdd-icon-box">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                        <line x1="7" y1="7" x2="7.01" y2="7"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="mdd-header-h1">Metadaten-Manager Studio</h1>
+                    <div class="mdd-header-sub">Zentrale Verwaltung für Musik-Metadaten: Spotify, Gracenote, MusicBrainz &amp; CoverArtArchive</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem;">
+                <button id="btnRunAudit" class="mdd-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    Bibliothek scannen
+                </button>
+                <a href="#!/configurationpage?name=MetadataDashboard" class="mdd-btn mdd-btn-secondary" title="Einstellungen">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </a>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="mdd-tabs-bar">
+            <button class="mdd-tab-btn active" data-tab="tabAudit">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Metadaten-Audit &amp; Gesundheit
+            </button>
+            <button class="mdd-tab-btn" data-tab="tabEditor">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                Metadaten-Manager &amp; Editor
+            </button>
+            <button class="mdd-tab-btn" data-tab="tabCoverArt">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                CoverArtArchive &amp; Provider-Status
+            </button>
+        </nav>
+
+        <!-- ========================================================= -->
+        <!-- TAB 1: AUDIT & HEALTH                                      -->
+        <!-- ========================================================= -->
+        <section id="tabAudit" class="mdd-tab-content">
+            <!-- Health Overview Card -->
+            <div class="mdd-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.25rem;">Gesundheit der Musik-Metadaten</h2>
+                        <div style="color: var(--mdd-text-muted); font-size: 0.85rem; margin-top: 4px;">Vollständigkeit der Cover-Artworks, IDs und Tags</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span id="txtHealthScore" class="mdd-stat-val score">--%</span>
+                    </div>
+                </div>
+
+                <div class="mdd-health-track">
+                    <div id="barHealthFill" class="mdd-health-fill" style="width: 0%;"></div>
+                </div>
+
+                <div class="mdd-stats-grid">
+                    <div class="mdd-stat-card">
+                        <span class="mdd-stat-label">Gesamte Alben</span>
+                        <span id="statTotalAlbums" class="mdd-stat-val">0</span>
+                    </div>
+                    <div class="mdd-stat-card">
+                        <span class="mdd-stat-label">Fehlende Cover</span>
+                        <span id="statMissingCovers" class="mdd-stat-val warn">0</span>
+                    </div>
+                    <div class="mdd-stat-card">
+                        <span class="mdd-stat-label">Fehlende MusicBrainz-IDs</span>
+                        <span id="statMissingMbids" class="mdd-stat-val warn">0</span>
+                    </div>
+                    <div class="mdd-stat-card">
+                        <span class="mdd-stat-label">Fehlende Spotify-IDs</span>
+                        <span id="statMissingSpotify" class="mdd-stat-val">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Issues List -->
+            <div class="mdd-card">
+                <h3 style="margin-top: 0; font-size: 1.15rem; margin-bottom: 1rem;">Einträge mit unvollständigen Metadaten</h3>
+                <div class="mdd-table-wrap">
+                    <table class="mdd-table">
+                        <thead>
+                            <tr>
+                                <th>Typ</th>
+                                <th>Name</th>
+                                <th>Interpret</th>
+                                <th>Fehlende Daten</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tblAuditIssues">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--mdd-text-muted); padding: 2rem;">
+                                    Klicke auf "Bibliothek scannen", um den aktuellen Metadaten-Zustand zu ermitteln.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 2: METADATA MANAGER & EDITOR                          -->
+        <!-- ========================================================= -->
+        <section id="tabEditor" class="mdd-tab-content" style="display: none;">
+            <div class="mdd-card">
+                <h2 style="margin-top: 0; font-size: 1.25rem; margin-bottom: 1rem;">Album / Künstler suchen &amp; bearbeiten</h2>
+                
+                <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <input id="inputSearchLibrary" type="text" placeholder="Titel oder Interpret eingeben..." style="flex: 1; background: #222632; border: 1px solid var(--mdd-border); padding: 0.75rem 1rem; border-radius: var(--mdd-radius-sm); color: #fff; font-size: 0.9rem;">
+                    <button id="btnSearchLibrary" class="mdd-btn">Suchen</button>
+                </div>
+
+                <div id="editorFormWrap" style="display: none; padding-top: 1rem; border-top: 1px solid var(--mdd-border);">
+                    <div style="display: grid; grid-template-columns: 180px 1fr; gap: 2rem;">
+                        <!-- Cover Preview Box -->
+                        <div>
+                            <img id="editCoverPreview" src="" alt="Cover" style="width: 180px; height: 180px; border-radius: 10px; object-fit: cover; background: #222;">
+                            <button id="btnOpenCaaModal" class="mdd-btn mdd-btn-secondary" style="width: 100%; margin-top: 0.75rem; font-size: 0.8rem; justify-content: center;">
+                                Cover suchen ➔
+                            </button>
+                        </div>
+
+                        <!-- Metadata Fields -->
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+                                <div>
+                                    <label style="display: block; font-size: 0.8rem; color: var(--mdd-text-muted); margin-bottom: 0.35rem;">Titel / Albumname</label>
+                                    <input id="editTitle" type="text" style="width: 100%; box-sizing: border-box; background: #222632; border: 1px solid var(--mdd-border); padding: 0.65rem 0.85rem; border-radius: var(--mdd-radius-sm); color: #fff;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.8rem; color: var(--mdd-text-muted); margin-bottom: 0.35rem;">Erscheinungsjahr</label>
+                                    <input id="editYear" type="number" style="width: 100%; box-sizing: border-box; background: #222632; border: 1px solid var(--mdd-border); padding: 0.65rem 0.85rem; border-radius: var(--mdd-radius-sm); color: #fff;">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style="display: block; font-size: 0.8rem; color: var(--mdd-text-muted); margin-bottom: 0.35rem;">Interpret / Künstler</label>
+                                <input id="editArtist" type="text" style="width: 100%; box-sizing: border-box; background: #222632; border: 1px solid var(--mdd-border); padding: 0.65rem 0.85rem; border-radius: var(--mdd-radius-sm); color: #fff;">
+                            </div>
+
+                            <!-- Provider IDs -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <label style="display: block; font-size: 0.8rem; color: var(--mdd-text-muted); margin-bottom: 0.35rem;">MusicBrainz MBID</label>
+                                    <input id="editMbid" type="text" placeholder="Release UUID" style="width: 100%; box-sizing: border-box; background: #222632; border: 1px solid var(--mdd-border); padding: 0.65rem 0.85rem; border-radius: var(--mdd-radius-sm); color: #fff;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.8rem; color: var(--mdd-text-muted); margin-bottom: 0.35rem;">Spotify ID</label>
+                                    <input id="editSpotify" type="text" placeholder="Spotify URI/ID" style="width: 100%; box-sizing: border-box; background: #222632; border: 1px solid var(--mdd-border); padding: 0.65rem 0.85rem; border-radius: var(--mdd-radius-sm); color: #fff;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.8rem; color: var(--mdd-text-muted); margin-bottom: 0.35rem;">Gracenote ID</label>
+                                    <input id="editGracenote" type="text" placeholder="Gracenote ID" style="width: 100%; box-sizing: border-box; background: #222632; border: 1px solid var(--mdd-border); padding: 0.65rem 0.85rem; border-radius: var(--mdd-radius-sm); color: #fff;">
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                                <button id="btnSearchMbLive" class="mdd-btn mdd-btn-secondary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    MusicBrainz abfragen
+                                </button>
+                                <button id="btnSaveMetadata" class="mdd-btn" style="background: var(--mdd-success);">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                    Metadaten anwenden &amp; speichern
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 3: COVERARTARCHIVE & PROVIDER STATUS                  -->
+        <!-- ========================================================= -->
+        <section id="tabCoverArt" class="mdd-tab-content" style="display: none;">
+            <div class="mdd-card">
+                <h2 style="margin-top: 0; font-size: 1.25rem;">CoverArtArchive Direktabfrage</h2>
+                <div style="color: var(--mdd-text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                    Prüfe Cover-Verfügbarkeit direkt aus dem Internet Archive für eine MusicBrainz Release-UUID.
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <input id="inputDirectMbid" type="text" placeholder="z. B. 76df3287-6cda-33eb-8e9a-044b5e15ffdd" style="flex: 1; background: #222632; border: 1px solid var(--mdd-border); padding: 0.75rem 1rem; border-radius: var(--mdd-radius-sm); color: #fff; font-size: 0.9rem;">
+                    <button id="btnLookupCaa" class="mdd-btn">Cover abrufen</button>
+                </div>
+
+                <div id="caaResultsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+                    <!-- CAA images loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Provider Status Grid -->
+            <div class="mdd-card">
+                <h2 style="margin-top: 0; font-size: 1.25rem; margin-bottom: 1.25rem;">Status der Metadaten-Provider</h2>
+                <div id="providerStatusGrid" class="mdd-provider-grid">
+                    <!-- Status loaded via API -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- MODAL: MUSICBRAINZ & COVER SEARCH MODAL                   -->
+        <!-- ========================================================= -->
+        <div id="modalSearch" class="mdd-modal-backdrop" style="display: none;">
+            <div class="mdd-modal">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 id="modalSearchTitle" style="margin: 0; font-size: 1.25rem;">MusicBrainz Treffer</h3>
+                    <button id="btnModalClose" style="background: transparent; border: none; color: #aaa; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                </div>
+                <div id="modalSearchResults" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <!-- Dynamic search list -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="/Plugins/MetadataDashboard/Assets/metadata-dashboard.js"></script>
+</body>
+</html>

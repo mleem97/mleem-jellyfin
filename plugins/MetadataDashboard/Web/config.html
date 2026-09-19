@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>MetadataDashboard Konfiguration</title>
+</head>
+<body>
+    <div id="MetadataDashboardConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-input,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary" style="max-width: 860px; margin: 0 auto; padding: 1.5rem;">
+                
+                <div style="display: flex; align-items: center; gap: 1.25rem; margin-bottom: 2rem;">
+                    <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #8a2be2 0%, #00d2ff 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(138, 43, 226, 0.3);">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                            <line x1="7" y1="7" x2="7.01" y2="7"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700;">MetadataDashboard</h1>
+                        <p style="margin: 0.25rem 0 0 0; color: #aaa; font-size: 0.95rem;">
+                            Metadatenmanager &amp; CoverArtArchive / MusicBrainz Studio für Jellyfin.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Direct Action Banner -->
+                <div style="margin-bottom: 2.5rem;">
+                    <a href="/Plugins/MetadataDashboard/Assets/metadata-dashboard.html" target="_blank" class="raised emby-button" style="background: #8a2be2; color: #fff; font-weight: 700; text-decoration: none; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.8rem 1.5rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        Metadaten-Studio Dashboard öffnen ➔
+                    </a>
+                </div>
+
+                <!-- Settings Form -->
+                <form id="metadataDashboardForm" class="paperList" style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(255, 255, 255, 0.08);">
+                    <h2 style="margin-top: 0; font-size: 1.2rem; margin-bottom: 1.25rem;">Provider- &amp; API-Optionen</h2>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom: 1.25rem;">
+                        <label>
+                            <input id="chkEnableCoverArtArchive" type="checkbox" is="emby-checkbox" checked>
+                            <span>CoverArtArchive Bild-Provider aktivieren</span>
+                        </label>
+                        <div class="fieldDescription" style="margin-left: 2rem; color: #888; font-size: 0.85rem;">
+                            Fragt bei fehlenden Album-Covern automatisch das CoverArtArchive (Internet Archive) über die MusicBrainz Release-ID ab.
+                        </div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom: 1.5rem;">
+                        <label>
+                            <input id="chkEnableAudit" type="checkbox" is="emby-checkbox" checked>
+                            <span>Automatischen Metadaten-Gesundheits-Audit aktivieren</span>
+                        </label>
+                        <div class="fieldDescription" style="margin-left: 2rem; color: #888; font-size: 0.85rem;">
+                            Ermittelt periodisch den Füllstand von Covern, MBIDs und Metadaten-Tags im Studio-Dashboard.
+                        </div>
+                    </div>
+
+                    <div class="inputContainer" style="margin-bottom: 1.25rem;">
+                        <label class="inputLabel" for="txtMusicBrainzMirror">MusicBrainz API Mirror</label>
+                        <input id="txtMusicBrainzMirror" type="text" is="emby-input" value="https://musicbrainz.org">
+                        <div class="fieldDescription" style="color: #888; font-size: 0.85rem;">Standard: <code>https://musicbrainz.org</code></div>
+                    </div>
+
+                    <div class="inputContainer" style="margin-bottom: 1.25rem;">
+                        <label class="inputLabel" for="txtCoverArtArchiveMirror">CoverArtArchive Mirror</label>
+                        <input id="txtCoverArtArchiveMirror" type="text" is="emby-input" value="https://coverartarchive.org">
+                        <div class="fieldDescription" style="color: #888; font-size: 0.85rem;">Standard: <code>https://coverartarchive.org</code></div>
+                    </div>
+
+                    <div class="inputContainer" style="margin-bottom: 1.5rem;">
+                        <label class="inputLabel" for="txtRateLimit">Rate-Limit Verzögerung (ms)</label>
+                        <input id="txtRateLimit" type="number" is="emby-input" value="1000" min="500" max="5000">
+                        <div class="fieldDescription" style="color: #888; font-size: 0.85rem;">Mindestabstand zwischen Abfragen (MusicBrainz Richtlinie: mind. 1000ms).</div>
+                    </div>
+
+                    <button type="submit" class="raised button-submit emby-button" style="background: #8a2be2; color: #fff; font-weight: 600; border-radius: 8px; padding: 0.7rem 1.5rem;">
+                        Einstellungen speichern
+                    </button>
+                </form>
+
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                'use strict';
+                var pluginId = 'c70012b6-0fc0-479e-a814-b5a09fcdd799';
+
+                function loadConfig() {
+                    if (window.ApiClient) {
+                        ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                            document.querySelector('#chkEnableCoverArtArchive').checked = config.EnableCoverArtArchiveProvider !== false;
+                            document.querySelector('#chkEnableAudit').checked = config.EnableAutomaticAudit !== false;
+                            document.querySelector('#txtMusicBrainzMirror').value = config.MusicBrainzMirror || 'https://musicbrainz.org';
+                            document.querySelector('#txtCoverArtArchiveMirror').value = config.CoverArtArchiveMirror || 'https://coverartarchive.org';
+                            document.querySelector('#txtRateLimit').value = config.RateLimitDelayMs || 1000;
+                        });
+                    }
+                }
+
+                var page = document.querySelector('#MetadataDashboardConfigPage');
+                page.addEventListener('pageshow', loadConfig);
+
+                var form = document.querySelector('#metadataDashboardForm');
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (window.ApiClient) {
+                        ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                            config.EnableCoverArtArchiveProvider = document.querySelector('#chkEnableCoverArtArchive').checked;
+                            config.EnableAutomaticAudit = document.querySelector('#chkEnableAudit').checked;
+                            config.MusicBrainzMirror = document.querySelector('#txtMusicBrainzMirror').value.trim();
+                            config.CoverArtArchiveMirror = document.querySelector('#txtCoverArtArchiveMirror').value.trim();
+                            config.RateLimitDelayMs = parseInt(document.querySelector('#txtRateLimit').value, 10) || 1000;
+
+                            ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
+                                if (window.Dashboard && Dashboard.alert) {
+                                    Dashboard.alert('MetadataDashboard Einstellungen erfolgreich gespeichert.');
+                                } else {
+                                    alert('MetadataDashboard Einstellungen erfolgreich gespeichert.');
+                                }
+                            });
+                        });
+                    }
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>

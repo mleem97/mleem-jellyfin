@@ -1,0 +1,19 @@
+{
+  "slug": "MetadataDashboard",
+  "name": "MetadataDashboard",
+  "guid": "c70012b6-0fc0-479e-a814-b5a09fcdd799",
+  "version": "1.0.0.0",
+  "targetAbi": "12.1.0.0",
+  "framework": "net10.0",
+  "project": "plugins/MetadataDashboard/MetadataDashboard.csproj",
+  "packagePrefix": "MetadataDashboard",
+  "assembly": "Jellyfin.Plugin.MetadataDashboard.dll",
+  "owner": "mleem97",
+  "category": "Metadata",
+  "overview": "Unified metadata management dashboard cross-referencing Spotify, Gracenote, MusicBrainz, and CoverArtArchive.",
+  "description": "Interactive music metadata audit and management studio. Inspect missing tags, query MusicBrainz & CoverArtArchive, cross-reference Spotify & Gracenote, and manage audio metadata in one dedicated interface.",
+  "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/MetadataDashboard/Web/assets/metadata-dashboard-icon.svg",
+  "artifacts": [
+    "Jellyfin.Plugin.MetadataDashboard.dll"
+  ]
+}

@@ -23,6 +23,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "plugins", "plugins", "{07D5
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaTools", "plugins\MediaTools\MediaTools.csproj", "{74FD0A13-BA87-4183-B892-A34CCD260BFD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetadataDashboard", "plugins\MetadataDashboard\MetadataDashboard.csproj", "{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -141,11 +143,24 @@ Global
 		{74FD0A13-BA87-4183-B892-A34CCD260BFD}.Release|x64.Build.0 = Release|Any CPU
 		{74FD0A13-BA87-4183-B892-A34CCD260BFD}.Release|x86.ActiveCfg = Release|Any CPU
 		{74FD0A13-BA87-4183-B892-A34CCD260BFD}.Release|x86.Build.0 = Release|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Debug|x64.Build.0 = Debug|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Debug|x86.Build.0 = Debug|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Release|x64.ActiveCfg = Release|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Release|x64.Build.0 = Release|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Release|x86.ActiveCfg = Release|Any CPU
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{74FD0A13-BA87-4183-B892-A34CCD260BFD} = {07D57EEB-2F50-60C4-C011-FE4FA775C9A8}
+		{A8F17278-F8CD-4795-AE7F-E336D56DCA2F} = {07D57EEB-2F50-60C4-C011-FE4FA775C9A8}
 	EndGlobalSection
 EndGlobal
