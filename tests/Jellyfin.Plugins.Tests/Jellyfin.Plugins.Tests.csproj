@@ -27,6 +27,7 @@
     <ProjectReference Include="../../plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj" />
     <ProjectReference Include="../../plugins/SpotifyProvider/SpotifyProvider.csproj" />
     <ProjectReference Include="../../plugins/GracenoteProvider/GracenoteProvider.csproj" />
+    <ProjectReference Include="../../plugins/MediaTools/MediaTools.csproj" />
   </ItemGroup>
 
 </Project>
