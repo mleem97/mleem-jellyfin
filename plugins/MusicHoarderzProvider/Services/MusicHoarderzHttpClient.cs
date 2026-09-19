@@ -338,7 +338,7 @@ public sealed partial class MusicHoarderzHttpClient : ICoverProvider
             return null;
         }
 
-        var url = ReadString(item, "url", "coverUrl", "imageUrl", "thumbnailUrl");
+        var url = ReadString(item, "url", "coverUrl", "cover_url", "imageUrl", "image_url", "thumbnailUrl", "thumbnail_url");
         if (string.IsNullOrWhiteSpace(url)
             || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
             || !NetworkGuard.IsPublicHttps(uri))

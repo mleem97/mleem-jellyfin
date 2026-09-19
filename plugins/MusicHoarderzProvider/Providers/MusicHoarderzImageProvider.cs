@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -58,10 +59,15 @@ public sealed partial class MusicHoarderzImageProvider : IRemoteImageProvider, I
     public int Order => 1;
 
     /// <inheritdoc />
-    public bool Supports(BaseItem item) => item is MusicAlbum;
+    public bool Supports(BaseItem item) => item is MusicAlbum || item is MusicArtist;
 
     /// <inheritdoc />
-    public IEnumerable<ImageType> GetSupportedImages(BaseItem item) => new[] { ImageType.Primary };
+    public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
+    {
+        return item is MusicArtist
+            ? new[] { ImageType.Primary, ImageType.Backdrop }
+            : new[] { ImageType.Primary };
+    }
 
     /// <inheritdoc />
     public async Task<IEnumerable<RemoteImageInfo>> GetImages(BaseItem item, CancellationToken cancellationToken)
@@ -73,7 +79,22 @@ public sealed partial class MusicHoarderzImageProvider : IRemoteImageProvider, I
             return Array.Empty<RemoteImageInfo>();
         }
 
-        if (item is not MusicAlbum album)
+        string title;
+        string artist;
+        int? year;
+        if (item is MusicAlbum album)
+        {
+            title = album.Name ?? string.Empty;
+            artist = album.AlbumArtist ?? string.Empty;
+            year = album.ProductionYear;
+        }
+        else if (item is MusicArtist musicArtist)
+        {
+            title = string.Empty;
+            artist = musicArtist.Name ?? string.Empty;
+            year = null;
+        }
+        else
         {
             return Array.Empty<RemoteImageInfo>();
         }
@@ -81,9 +102,9 @@ public sealed partial class MusicHoarderzImageProvider : IRemoteImageProvider, I
         try
         {
             var query = new CoverSearchQuery(
-                album.Name ?? string.Empty,
-                album.AlbumArtist ?? string.Empty,
-                album.ProductionYear,
+                title,
+                artist,
+                year,
                 configuration.MusicHoarderz.Country ?? "DE");
             var results = await _httpClient.SearchAsync(query, cancellationToken).ConfigureAwait(false);
             var scored = _scorer.Score(query, results, configuration.MinimumWidth, configuration.MinimumHeight);
@@ -98,14 +119,33 @@ public sealed partial class MusicHoarderzImageProvider : IRemoteImageProvider, I
                 }
 
                 StoreInCache(validated);
+                var providerDisplayName = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "MusicHoarderz [{0}] ({1}x{2})",
+                    candidate.Source.ToUpperInvariant(),
+                    validated.Width,
+                    validated.Height);
+
                 images.Add(new RemoteImageInfo
                 {
-                    ProviderName = Name,
+                    ProviderName = providerDisplayName,
                     Url = validated.Url,
                     Width = validated.Width,
                     Height = validated.Height,
                     Type = ImageType.Primary,
                 });
+
+                if (item is MusicArtist && validated.Width >= 1200)
+                {
+                    images.Add(new RemoteImageInfo
+                    {
+                        ProviderName = providerDisplayName,
+                        Url = validated.Url,
+                        Width = validated.Width,
+                        Height = validated.Height,
+                        Type = ImageType.Backdrop,
+                    });
+                }
             }
 
             return images;

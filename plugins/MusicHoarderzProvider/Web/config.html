@@ -1,50 +1,214 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8" />
     <title>MusicHoarderz Provider</title>
+    <style>
+        .mh-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .mh-badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-success { background: #00A3E0; color: #fff; }
+        .badge-source { background: #9C27B0; color: #fff; }
+        .badge-source.apple { background: #FA243C; color: #fff; }
+        .badge-source.spotify { background: #1DB954; color: #fff; }
+        .badge-source.deezer { background: #EF5466; color: #fff; }
+        .badge-source.tidal { background: #000000; color: #00FFFF; border: 1px solid #00FFFF; }
+        .badge-source.qobuz { background: #002244; color: #fff; }
+        .badge-source.beatport { background: #00FF95; color: #000; }
+        .badge-res { background: rgba(255, 255, 255, 0.15); color: #fff; }
+        .mh-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-top: 1rem;
+        }
+        .mh-item-card {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-size: 0.85rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.15s ease, border-color 0.15s ease;
+        }
+        .mh-item-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+        .mh-item-card img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            background: rgba(0,0,0,0.5);
+        }
+        .mh-item-title {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .mh-item-sub {
+            opacity: 0.7;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 0.5rem;
+        }
+        .mh-badges-row {
+            display: flex;
+            justify-content: center;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin-top: 0.25rem;
+        }
+    </style>
 </head>
 <body>
-    <div id="MusicHoarderzProviderConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+    <div id="MusicHoarderzProviderConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
         <div data-role="content">
             <div class="content-primary">
-                <h1>MusicHoarderz Cover & Metadata Provider</h1>
-                <p>Admin-only provider configuration for MusicHoarderz/COV, Spotify and YouTube.</p>
-                <div class="paperList" style="padding:1rem">
-                    <h2>Status</h2>
-                    <div id="musicHoarderzProviderStatus">Loading...</div>
-                    <p>No secrets are returned by the status endpoint.</p>
+                <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
+                    <img src="Plugins/MusicHoarderzProvider/Web/assets/musichoarderz-icon.svg" style="width:48px;height:48px;border-radius:8px;" onerror="this.style.display='none'" />
+                    <div>
+                        <h1 style="margin:0;">MusicHoarderz Cover- &amp; Metadaten-Provider</h1>
+                        <div style="opacity:0.7;font-size:0.9rem;">Multi-Plattform Ultra-HD Coverarts aus Apple Music, Spotify, Deezer, Tidal, Qobuz &amp; Bandcamp.</div>
+                    </div>
                 </div>
-                <div class="paperList" style="padding:1rem;margin-top:1rem">
-                    <h2>Spotify credentials</h2>
-                    <label>Client ID
-                        <input type="text" id="musicHoarderzSpotifyClientId" autocomplete="off" />
-                    </label>
-                    <label>Client Secret
-                        <input type="password" id="musicHoarderzSpotifyClientSecret" autocomplete="new-password" />
-                    </label>
-                    <label>Market
-                        <input type="text" id="musicHoarderzSpotifyMarket" placeholder="DE" />
-                    </label>
-                    <label><input type="checkbox" id="musicHoarderzSpotifyEnabled" /> Enabled</label>
+
+                <!-- Status Card -->
+                <div class="mh-card">
+                    <h2 style="margin-top:0;">Status</h2>
+                    <div id="musicHoarderzProviderStatus" style="font-weight:500;margin-bottom:0.5rem;">Lade Status...</div>
+                    <div style="font-size:0.85rem;opacity:0.7;">Sensible Anmeldedaten werden weder im Status noch in Logs zurückgegeben.</div>
                 </div>
-                <div class="paperList" style="padding:1rem;margin-top:1rem">
-                    <h2>YouTube credentials</h2>
-                    <label>API key
-                        <input type="password" id="musicHoarderzYouTubeKey" autocomplete="new-password" />
-                    </label>
-                    <label>Region code
-                        <input type="text" id="musicHoarderzYouTubeRegion" placeholder="DE" />
-                    </label>
-                    <label><input type="checkbox" id="musicHoarderzYouTubeEnabled" /> Enabled</label>
+
+                <!-- Provider Settings Card -->
+                <div class="mh-card">
+                    <h2 style="margin-top:0;">Cover- &amp; Filter-Einstellungen</h2>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" id="mhProviderEnabled" />
+                            <span>Plugin aktiviert</span>
+                        </label>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" id="mhCovEnabled" />
+                            <span>MusicHoarderz / COV-Engine aktiviert</span>
+                        </label>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" id="mhAutoSearchEnabled" />
+                            <span>Automatische Suche aktivieren</span>
+                        </label>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;margin-top:1rem;">
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="mhCountry">Bevorzugter Storefront / Ländercode</label>
+                            <input type="text" id="mhCountry" class="emby-input" placeholder="DE" maxlength="4" />
+                            <div class="fieldDescription">ISO-3166-1 Code (z. B. DE, US, GB).</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="mhMinWidth">Mindestbreite (Pixel)</label>
+                            <input type="number" id="mhMinWidth" class="emby-input" placeholder="1000" min="500" max="4000" step="100" />
+                            <div class="fieldDescription">Filtert kleinere Cover automatisch heraus (z. B. 1000, 1400, 2000).</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="mhMinHeight">Mindesthöhe (Pixel)</label>
+                            <input type="number" id="mhMinHeight" class="emby-input" placeholder="1000" min="500" max="4000" step="100" />
+                            <div class="fieldDescription">Mindesthöhe in Pixeln.</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:1rem;">
+                        <button id="btnSaveSettings" type="button" class="raised button-submit emby-button">Einstellungen speichern</button>
+                    </div>
                 </div>
-                <div style="margin-top:1rem">
-                    <button id="musicHoarderzSaveCredentials" type="button">Save credentials</button>
-                    <button id="musicHoarderzTestCredentials" type="button">Test credentials</button>
-                    <button id="musicHoarderzDeleteCredentials" type="button">Delete credentials</button>
+
+                <!-- Live Search Test Card -->
+                <div class="mh-card">
+                    <h2 style="margin-top:0;">🔍 Live-Cover-Tester &amp; Vorschau</h2>
+                    <p style="font-size:0.9rem;opacity:0.8;">Teste die Multi-Plattform-Suche direkt gegen die MusicHoarderz COV-Engine und prüfe Auflösungen und Quellen.</p>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;margin-bottom:1rem;">
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="searchArtist">Künstler (Artist)</label>
+                            <input type="text" id="searchArtist" class="emby-input" placeholder="z. B. Daft Punk" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel" for="searchAlbum">Album</label>
+                            <input type="text" id="searchAlbum" class="emby-input" placeholder="z. B. Discovery" />
+                        </div>
+                    </div>
+                    <button id="btnSearchCovers" type="button" class="raised emby-button" style="background:#00BCD4;color:#fff;">Cover suchen</button>
+                    <div id="searchTestResults" class="mh-grid">
+                        <div style="grid-column:1/-1;opacity:0.6;padding:1rem;text-align:center;">Gib Künstler oder Album ein und klicke auf „Cover suchen“.</div>
+                    </div>
                 </div>
-                <div class="paperList" style="padding:1rem;margin-top:1rem">
-                    <h2>Result</h2>
-                    <div id="musicHoarderzCredentialsResult">No action yet. Empty inputs never overwrite stored values.</div>
+
+                <!-- Spotify Credentials Card -->
+                <div class="mh-card">
+                    <h2 style="margin-top:0;">Spotify Fallback-Anmeldedaten</h2>
+                    <p style="font-size:0.85rem;opacity:0.7;">Optional: Kann als Fallback-Quelle für Albumcover genutzt werden.</p>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="musicHoarderzSpotifyClientId">Client ID</label>
+                        <input type="text" id="musicHoarderzSpotifyClientId" class="emby-input" autocomplete="off" />
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="musicHoarderzSpotifyClientSecret">Client Secret</label>
+                        <input type="password" id="musicHoarderzSpotifyClientSecret" class="emby-input" autocomplete="new-password" />
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="musicHoarderzSpotifyMarket">Markt</label>
+                        <input type="text" id="musicHoarderzSpotifyMarket" class="emby-input" placeholder="DE" />
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input type="checkbox" id="musicHoarderzSpotifyEnabled" /> <span>Spotify aktiviert</span></label>
+                    </div>
+                </div>
+
+                <!-- YouTube Credentials Card -->
+                <div class="mh-card">
+                    <h2 style="margin-top:0;">YouTube Fallback-Anmeldedaten</h2>
+                    <p style="font-size:0.85rem;opacity:0.7;">Optional: Kann als Fallback-Quelle genutzt werden.</p>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="musicHoarderzYouTubeKey">API-Schlüssel</label>
+                        <input type="password" id="musicHoarderzYouTubeKey" class="emby-input" autocomplete="new-password" />
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="musicHoarderzYouTubeRegion">Regionscode</label>
+                        <input type="text" id="musicHoarderzYouTubeRegion" class="emby-input" placeholder="DE" />
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input type="checkbox" id="musicHoarderzYouTubeEnabled" /> <span>YouTube aktiviert</span></label>
+                    </div>
+                </div>
+
+                <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+                    <button id="musicHoarderzSaveCredentials" type="button" class="raised button-submit emby-button">Anmeldedaten speichern</button>
+                    <button id="musicHoarderzTestCredentials" type="button" class="raised emby-button">Anmeldedaten testen</button>
+                    <button id="musicHoarderzDeleteCredentials" type="button" class="raised emby-button" style="background:#e24b4b;color:#fff;">Anmeldedaten löschen</button>
+                </div>
+
+                <div class="mh-card" style="margin-top:1.5rem;">
+                    <h3 style="margin-top:0;">Aktionsergebnis</h3>
+                    <div id="musicHoarderzCredentialsResult" style="opacity:0.8;">Bereit.</div>
                 </div>
             </div>
         </div>
@@ -77,7 +241,7 @@
                     });
                 }
 
-                function collect() {
+                function collectCredentials() {
                     return {
                         spotifyClientId: document.querySelector('#musicHoarderzSpotifyClientId').value,
                         spotifyClientSecret: document.querySelector('#musicHoarderzSpotifyClientSecret').value,
@@ -95,40 +259,151 @@
 
                 function load() {
                     getJson('Plugins/MusicHoarderzProvider/Status').then(function (data) {
-                        var status = 'Enabled: ' + data.enabled + ' · Write mode: ' + data.writeMode
-                            + ' · Spotify: ' + (data.spotifyConfigured ? 'configured' : 'missing')
-                            + ' (' + (data.spotifyClientIdMasked || '') + ')'
-                            + ' · YouTube: ' + (data.youTubeConfigured ? 'configured' : 'missing');
+                        var status = 'Plugin: ' + (data.enabled ? '🟢 Aktiv' : '⚪ Deaktiviert')
+                            + ' · COV: ' + (data.musicHoarderzEnabled ? '🟢 Aktiv' : '⚪ Deaktiviert')
+                            + ' · Land: ' + (data.country || 'DE')
+                            + ' · Min. Auflösung: ' + (data.minimumWidth || 1000) + 'x' + (data.minimumHeight || 1000)
+                            + ' · Spotify: ' + (data.spotifyConfigured ? '🟢 Konfiguriert' : '⚪ Nicht konfiguriert')
+                            + ' · YouTube: ' + (data.youTubeConfigured ? '🟢 Konfiguriert' : '⚪ Nicht konfiguriert');
                         document.querySelector('#musicHoarderzProviderStatus').textContent = status;
+
+                        document.querySelector('#mhProviderEnabled').checked = !!data.enabled;
+                        document.querySelector('#mhCovEnabled').checked = !!data.musicHoarderzEnabled;
+                        document.querySelector('#mhAutoSearchEnabled').checked = !!data.autoSearchEnabled;
+                        document.querySelector('#mhCountry').value = data.country || 'DE';
+                        document.querySelector('#mhMinWidth').value = data.minimumWidth || 1000;
+                        document.querySelector('#mhMinHeight').value = data.minimumHeight || 1000;
+
+                        document.querySelector('#musicHoarderzSpotifyEnabled').checked = !!data.spotifyEnabled;
+                        document.querySelector('#musicHoarderzYouTubeEnabled').checked = !!data.youtubeEnabled;
                     }).catch(function (error) {
-                        document.querySelector('#musicHoarderzProviderStatus').textContent = 'Failed to load status: ' + error.message;
+                        document.querySelector('#musicHoarderzProviderStatus').textContent = 'Fehler beim Laden: ' + error.message;
                     });
                 }
 
                 function bind() {
-                    document.querySelector('#musicHoarderzSaveCredentials').addEventListener('click', function () {
-                        sendJson('POST', 'Plugins/MusicHoarderzProvider/SaveCredentials', collect())
-                            .then(function (data) {
-                                showResult('Saved. Spotify configured: ' + data.spotifyConfigured + ', YouTube configured: ' + data.youTubeConfigured + '.');
+                    document.querySelector('#btnSaveSettings').addEventListener('click', function () {
+                        var settings = {
+                            enabled: document.querySelector('#mhProviderEnabled').checked,
+                            musicHoarderzEnabled: document.querySelector('#mhCovEnabled').checked,
+                            autoSearchEnabled: document.querySelector('#mhAutoSearchEnabled').checked,
+                            country: document.querySelector('#mhCountry').value.trim(),
+                            minimumWidth: parseInt(document.querySelector('#mhMinWidth').value, 10) || 1000,
+                            minimumHeight: parseInt(document.querySelector('#mhMinHeight').value, 10) || 1000
+                        };
+                        sendJson('POST', 'Plugins/MusicHoarderzProvider/SaveSettings', settings)
+                            .then(function () {
+                                showResult('Einstellungen erfolgreich gespeichert.');
                                 load();
                             })
-                            .catch(function (error) { showResult('Save failed: ' + error.message); });
+                            .catch(function (err) { showResult('Speichern fehlgeschlagen: ' + err.message); });
                     });
-                    document.querySelector('#musicHoarderzTestCredentials').addEventListener('click', function () {
-                        sendJson('POST', 'Plugins/MusicHoarderzProvider/TestCredentials', collect())
+
+                    document.querySelector('#btnSearchCovers').addEventListener('click', function () {
+                        var artist = document.querySelector('#searchArtist').value.trim();
+                        var album = document.querySelector('#searchAlbum').value.trim();
+                        var country = document.querySelector('#mhCountry').value.trim() || 'DE';
+                        var container = document.querySelector('#searchTestResults');
+
+                        if (!artist && !album) {
+                            if (window.Dashboard && Dashboard.alert) Dashboard.alert('Bitte gib einen Künstler oder ein Album ein.');
+                            return;
+                        }
+
+                        container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem;opacity:0.7;">Suche Cover auf MusicHoarderz...</div>';
+                        var url = 'Plugins/MusicHoarderzProvider/SearchTest?artist=' + encodeURIComponent(artist) + '&album=' + encodeURIComponent(album) + '&country=' + encodeURIComponent(country);
+                        getJson(url).then(function (items) {
+                            container.innerHTML = '';
+                            if (!items || items.length === 0) {
+                                container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem;opacity:0.7;">Keine passenden Cover gefunden (gefiltert nach Mindestauflösung).</div>';
+                                return;
+                            }
+
+                            items.forEach(function (item) {
+                                var card = document.createElement('div');
+                                card.className = 'mh-item-card';
+
+                                var img = document.createElement('img');
+                                img.src = item.url;
+                                img.loading = 'lazy';
+                                img.alt = (item.artist || '') + ' - ' + (item.title || '');
+
+                                var title = document.createElement('div');
+                                title.className = 'mh-item-title';
+                                title.textContent = item.title || album || 'Cover';
+
+                                var sub = document.createElement('div');
+                                sub.className = 'mh-item-sub';
+                                sub.textContent = item.artist || artist || '';
+
+                                var badges = document.createElement('div');
+                                badges.className = 'mh-badges-row';
+
+                                var srcClass = 'badge-source';
+                                var srcLower = (item.source || '').toLowerCase();
+                                if (srcLower.indexOf('apple') >= 0 || srcLower.indexOf('itunes') >= 0) srcClass += ' apple';
+                                else if (srcLower.indexOf('spotify') >= 0) srcClass += ' spotify';
+                                else if (srcLower.indexOf('deezer') >= 0) srcClass += ' deezer';
+                                else if (srcLower.indexOf('tidal') >= 0) srcClass += ' tidal';
+                                else if (srcLower.indexOf('qobuz') >= 0) srcClass += ' qobuz';
+                                else if (srcLower.indexOf('beatport') >= 0) srcClass += ' beatport';
+
+                                var srcBadge = document.createElement('span');
+                                srcBadge.className = 'mh-badge ' + srcClass;
+                                srcBadge.textContent = item.source || 'COV';
+
+                                var resBadge = document.createElement('span');
+                                resBadge.className = 'mh-badge badge-res';
+                                resBadge.textContent = (item.width && item.height) ? (item.width + '×' + item.height) : 'HD';
+
+                                badges.appendChild(srcBadge);
+                                badges.appendChild(resBadge);
+
+                                var link = document.createElement('a');
+                                link.href = item.url;
+                                link.target = '_blank';
+                                link.rel = 'noreferrer noopener';
+                                link.style.textDecoration = 'none';
+                                link.style.color = 'inherit';
+                                link.appendChild(img);
+
+                                card.appendChild(link);
+                                card.appendChild(title);
+                                card.appendChild(sub);
+                                card.appendChild(badges);
+
+                                container.appendChild(card);
+                            });
+                        }).catch(function (err) {
+                            container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem;color:#e24b4b;">Fehler bei der Abfrage: ' + err.message + '</div>';
+                        });
+                    });
+
+                    document.querySelector('#musicHoarderzSaveCredentials').addEventListener('click', function () {
+                        sendJson('POST', 'Plugins/MusicHoarderzProvider/SaveCredentials', collectCredentials())
                             .then(function (data) {
-                                showResult('Test: ' + data.message);
+                                showResult('Gespeichert. Spotify konfiguriert: ' + data.spotifyConfigured + ', YouTube konfiguriert: ' + data.youTubeConfigured + '.');
+                                load();
                             })
-                            .catch(function (error) { showResult('Test failed: ' + error.message); });
+                            .catch(function (error) { showResult('Speichern fehlgeschlagen: ' + error.message); });
                     });
+
+                    document.querySelector('#musicHoarderzTestCredentials').addEventListener('click', function () {
+                        sendJson('POST', 'Plugins/MusicHoarderzProvider/TestCredentials', collectCredentials())
+                            .then(function (data) {
+                                showResult('Verbindungstest: ' + data.message);
+                            })
+                            .catch(function (error) { showResult('Test fehlgeschlagen: ' + error.message); });
+                    });
+
                     document.querySelector('#musicHoarderzDeleteCredentials').addEventListener('click', function () {
-                        if (!window.confirm('Delete stored Spotify and YouTube credentials?')) return;
+                        if (!window.confirm('Gespeicherte Spotify- und YouTube-Anmeldedaten wirklich löschen?')) return;
                         sendJson('DELETE', 'Plugins/MusicHoarderzProvider/Credentials?provider=all', null)
                             .then(function () {
-                                showResult('Credentials deleted.');
+                                showResult('Anmeldedaten gelöscht.');
                                 load();
                             })
-                            .catch(function (error) { showResult('Delete failed: ' + error.message); });
+                            .catch(function (error) { showResult('Löschen fehlgeschlagen: ' + error.message); });
                     });
                 }
 

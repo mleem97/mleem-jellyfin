@@ -2,7 +2,7 @@
   "slug": "MusicHoarderzProvider",
   "name": "MusicHoarderz Cover & Metadata Provider",
   "guid": "f8d74b1c-3c97-4481-a3b3-6eb622d6ad58",
-  "version": "0.1.0.2",
+  "version": "1.0.0.1",
   "targetAbi": "12.1.0.0",
   "framework": "net10.0",
   "project": "plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj",
@@ -10,8 +10,9 @@
   "assembly": "Jellyfin.Plugin.MusicHoarderzProvider.dll",
   "owner": "mleem97",
   "category": "Metadata",
-  "overview": "Music cover and metadata provider baseline for Jellyfin.",
-  "description": "Provides the baseline for MusicHoarderz/COV cover lookup with admin-configured Spotify and YouTube fallback planned for later provider batches.",
+  "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/MusicHoarderzProvider/Web/assets/musichoarderz-icon.svg",
+  "overview": "Multi-platform cover art provider for music albums and artists via MusicHoarderz/COV.",
+  "description": "Provides ultra-high resolution cover lookup across Apple Music, Deezer, Spotify, Qobuz, Tidal, Bandcamp and Beatport with configurable minimum dimensions, scoring and live search preview.",
   "artifacts": [
     "Jellyfin.Plugin.MusicHoarderzProvider.dll"
   ]

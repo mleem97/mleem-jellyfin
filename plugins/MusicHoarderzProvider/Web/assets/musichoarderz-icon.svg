@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="mh-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9C27B0" />
+      <stop offset="50%" stop-color="#673AB7" />
+      <stop offset="100%" stop-color="#00BCD4" />
+    </linearGradient>
+    <filter id="mh-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3" />
+    </filter>
+  </defs>
+  <rect width="90" height="90" x="5" y="5" rx="18" fill="url(#mh-grad)" filter="url(#mh-shadow)" />
+  <!-- Vinyl / Disc Record outline -->
+  <circle cx="50" cy="50" r="32" fill="#121212" opacity="0.9" />
+  <circle cx="50" cy="50" r="26" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+  <circle cx="50" cy="50" r="20" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
+  <circle cx="50" cy="50" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1" />
+  <!-- Center Label -->
+  <circle cx="50" cy="50" r="10" fill="#E040FB" />
+  <circle cx="50" cy="50" r="3" fill="#121212" />
+  <!-- Artwork / Photo Badge overlay in corner -->
+  <rect x="54" y="52" width="28" height="24" rx="4" fill="#FFFFFF" opacity="0.95" />
+  <rect x="56" y="54" width="24" height="20" rx="3" fill="#00BCD4" />
+  <!-- Mountain / Picture icon in small badge -->
+  <polygon points="59,71 67,61 72,67 76,62 78,71" fill="#FFFFFF" opacity="0.9" />
+  <circle cx="63" cy="59" r="2" fill="#FFEB3B" />
+</svg>

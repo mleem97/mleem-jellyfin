@@ -25,6 +25,8 @@ public partial class ProviderController : ControllerBase
     private readonly CredentialStore _credentialStore;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ProviderController> _logger;
+    private readonly MusicHoarderzHttpClient? _musicHoarderzClient;
+    private readonly CoverMatchScorer? _scorer;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProviderController"/> class.
@@ -32,14 +34,20 @@ public partial class ProviderController : ControllerBase
     /// <param name="credentialStore">Credential store.</param>
     /// <param name="httpClientFactory">HTTP client factory.</param>
     /// <param name="logger">Logger.</param>
+    /// <param name="musicHoarderzClient">MusicHoarderz HTTP client.</param>
+    /// <param name="scorer">Cover match scorer.</param>
     public ProviderController(
         CredentialStore credentialStore,
         IHttpClientFactory httpClientFactory,
-        ILogger<ProviderController> logger)
+        ILogger<ProviderController> logger,
+        MusicHoarderzHttpClient? musicHoarderzClient = null,
+        CoverMatchScorer? scorer = null)
     {
         _credentialStore = credentialStore;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _musicHoarderzClient = musicHoarderzClient;
+        _scorer = scorer;
     }
 
     /// <summary>
@@ -57,6 +65,9 @@ public partial class ProviderController : ControllerBase
             Enabled = configuration?.Enabled ?? false,
             MusicHoarderzEnabled = configuration?.MusicHoarderz.Enabled ?? false,
             AutoSearchEnabled = configuration?.AutoSearchEnabled ?? false,
+            Country = configuration?.MusicHoarderz.Country ?? "DE",
+            MinimumWidth = configuration?.MinimumWidth ?? 1000,
+            MinimumHeight = configuration?.MinimumHeight ?? 1000,
             SpotifyEnabled = configuration?.Spotify.Enabled ?? false,
             SpotifyConfigured = !string.IsNullOrWhiteSpace(configuration?.Spotify.ClientId)
                 && !string.IsNullOrWhiteSpace(configuration?.Spotify.ClientSecretEncrypted),
@@ -66,6 +77,117 @@ public partial class ProviderController : ControllerBase
             YouTubeApiKeyMasked = _credentialStore.MaskEncrypted(configuration?.YouTube.ApiKeyEncrypted),
             WriteMode = configuration?.WriteMode ?? "JellyfinOnly"
         });
+    }
+
+    /// <summary>
+    /// Live search test for covers via MusicHoarderz/COV.
+    /// </summary>
+    /// <param name="artist">Artist name.</param>
+    /// <param name="album">Album name.</param>
+    /// <param name="country">Optional country code.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Scored cover search results.</returns>
+    [HttpGet("SearchTest")]
+    [HttpPost("SearchTest")]
+    [Authorize(Policy = "RequiresElevation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<CoverSearchItemDto>>> SearchTest(
+        [FromQuery] string? artist,
+        [FromQuery] string? album,
+        [FromQuery] string? country,
+        CancellationToken cancellationToken = default)
+    {
+        var artistName = artist?.Trim() ?? string.Empty;
+        var albumName = album?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(artistName) && string.IsNullOrWhiteSpace(albumName))
+        {
+            return Ok(Array.Empty<CoverSearchItemDto>());
+        }
+
+        var config = Plugin.Instance?.Configuration;
+        var selectedCountry = !string.IsNullOrWhiteSpace(country)
+            ? country.Trim()
+            : (config?.MusicHoarderz.Country ?? "DE");
+
+        var query = new Models.CoverSearchQuery(albumName, artistName, null, selectedCountry);
+        var client = _musicHoarderzClient ?? new MusicHoarderzHttpClient(
+            _httpClientFactory,
+            new Microsoft.Extensions.Logging.Abstractions.NullLogger<MusicHoarderzHttpClient>());
+        var scorer = _scorer ?? new CoverMatchScorer();
+
+        var results = await client.SearchAsync(query, cancellationToken).ConfigureAwait(false);
+        var minW = config?.MinimumWidth ?? 1000;
+        var minH = config?.MinimumHeight ?? 1000;
+        var scored = scorer.Score(query, results, minW, minH);
+
+        var dtos = new List<CoverSearchItemDto>();
+        foreach (var s in scored)
+        {
+            dtos.Add(new CoverSearchItemDto
+            {
+                Url = s.Url,
+                Width = s.Width,
+                Height = s.Height,
+                Source = s.Source,
+                Score = s.Score,
+                ScoreReason = s.ScoreReason,
+                Title = s.Title,
+                Artist = s.Artist
+            });
+        }
+
+        return Ok(dtos);
+    }
+
+    /// <summary>
+    /// Updates general MusicHoarderz provider settings.
+    /// </summary>
+    /// <param name="request">Settings update request.</param>
+    /// <returns>Updated status.</returns>
+    [HttpPost("SaveSettings")]
+    [Authorize(Policy = "RequiresElevation")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public ActionResult<ProviderStatus> SaveSettings([FromBody] SettingsUpdateRequest request)
+    {
+        var configuration = Plugin.Instance?.Configuration;
+        if (configuration is null || request is null)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, "Plugin configuration is not available.");
+        }
+
+        if (request.Enabled.HasValue)
+        {
+            configuration.Enabled = request.Enabled.Value;
+        }
+
+        if (request.MusicHoarderzEnabled.HasValue)
+        {
+            configuration.MusicHoarderz.Enabled = request.MusicHoarderzEnabled.Value;
+        }
+
+        if (request.AutoSearchEnabled.HasValue)
+        {
+            configuration.AutoSearchEnabled = request.AutoSearchEnabled.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Country))
+        {
+            configuration.MusicHoarderz.Country = request.Country.Trim().ToUpperInvariant();
+        }
+
+        if (request.MinimumWidth.HasValue && request.MinimumWidth.Value >= 100)
+        {
+            configuration.MinimumWidth = request.MinimumWidth.Value;
+        }
+
+        if (request.MinimumHeight.HasValue && request.MinimumHeight.Value >= 100)
+        {
+            configuration.MinimumHeight = request.MinimumHeight.Value;
+        }
+
+        Plugin.Instance?.SaveConfiguration();
+        return GetStatus();
     }
 
     /// <summary>
@@ -422,7 +544,104 @@ public class ProviderStatus
     public string YouTubeApiKeyMasked { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the preferred country code.
+    /// </summary>
+    public string Country { get; set; } = "DE";
+
+    /// <summary>
+    /// Gets or sets the minimum cover width.
+    /// </summary>
+    public int MinimumWidth { get; set; } = 1000;
+
+    /// <summary>
+    /// Gets or sets the minimum cover height.
+    /// </summary>
+    public int MinimumHeight { get; set; } = 1000;
+
+    /// <summary>
     /// Gets or sets the active write mode.
     /// </summary>
     public string WriteMode { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Cover search item returned by the live tester.
+/// </summary>
+public class CoverSearchItemDto
+{
+    /// <summary>
+    /// Gets or sets image URL.
+    /// </summary>
+    public string Url { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets image width in pixels.
+    /// </summary>
+    public int? Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets image height in pixels.
+    /// </summary>
+    public int? Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets image source name.
+    /// </summary>
+    public string Source { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets deterministic match score.
+    /// </summary>
+    public int Score { get; set; }
+
+    /// <summary>
+    /// Gets or sets human readable score reason.
+    /// </summary>
+    public string ScoreReason { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets album title delivered with the item.
+    /// </summary>
+    public string? Title { get; set; }
+
+    /// <summary>
+    /// Gets or sets artist name delivered with the item.
+    /// </summary>
+    public string? Artist { get; set; }
+}
+
+/// <summary>
+/// Settings update request for general provider properties.
+/// </summary>
+public class SettingsUpdateRequest
+{
+    /// <summary>
+    /// Gets or sets a value indicating whether the plugin is enabled.
+    /// </summary>
+    public bool? Enabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether MusicHoarderz/COV is enabled.
+    /// </summary>
+    public bool? MusicHoarderzEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether auto-search is enabled.
+    /// </summary>
+    public bool? AutoSearchEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets the preferred country code.
+    /// </summary>
+    public string? Country { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum cover width in pixels.
+    /// </summary>
+    public int? MinimumWidth { get; set; }
+
+    /// <summary>
+    /// Gets or sets the minimum cover height in pixels.
+    /// </summary>
+    public int? MinimumHeight { get; set; }
 }
