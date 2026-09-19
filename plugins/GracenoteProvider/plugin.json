@@ -10,8 +10,9 @@
   "assembly": "Jellyfin.Plugin.GracenoteProvider.dll",
   "owner": "mleem97",
   "category": "Metadata",
-  "overview": "Album metadata via Gracenote MusicID.",
-  "description": "Provides album metadata (title, year, genre, review, cover) via the Gracenote MusicID Web API with automatic user registration.",
+  "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/GracenoteProvider/Web/assets/gracenote-icon.svg",
+  "overview": "Album and artist metadata and cover artwork via Gracenote MusicID (GMD v2/v3).",
+  "description": "Provides album and artist metadata (titles, years, genres, reviews, bios) and cover art via Gracenote MusicID Web API v2/v3 with automatic registration and dual-protocol support.",
   "artifacts": [
     "Jellyfin.Plugin.GracenoteProvider.dll"
   ]

@@ -2,53 +2,271 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Gracenote Metadata Provider</title>
+    <title>Gracenote Metadaten- &amp; Cover-Provider</title>
+    <style>
+        .gn-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .gn-badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-success { background: #00A3E0; color: #fff; }
+        .badge-error { background: #e24b4b; color: #fff; }
+        .gn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .gn-item-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        .gn-item-card img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+        .gn-item-title {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .gn-item-sub {
+            opacity: 0.7;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
 </head>
 <body>
-<div id="gracenoteConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+<div id="gracenoteConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
     <div data-role="content">
         <div class="content-primary">
-            <h2>Gracenote Metadata Provider</h2>
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+                <svg width="36" height="36" viewBox="0 0 64 64">
+                    <rect width="64" height="64" rx="14" fill="#00A3E0" />
+                    <path d="M32 14c-9.94 0-18 8.06-18 18s8.06 18 18 18 18-8.06 18-18-8.06-18-18-18zm0 7c6.08 0 11 4.92 11 11s-4.92 11-11 11-11-4.92-11-11 4.92-11 11-11zm0 7a4 4 0 100 8 4 4 0 000-8z" fill="#FFFFFF" opacity="0.9" />
+                </svg>
+                <h2 style="margin:0;">Gracenote MusicID Provider (GMD v2 / v3)</h2>
+            </div>
+
             <form id="gracenoteConfigForm">
-                <div class="inputContainer">
-                    <label class="inputLabel" for="gracenoteClientId">Gracenote Client-ID</label>
-                    <input is="emby-input" type="text" id="gracenoteClientId" />
-                    <div class="fieldDescription">MusicID CLIENT. Die User-ID wird automatisch registriert.</div>
+                <div class="gn-card">
+                    <h3 style="margin-top:0;">API-Protokoll &amp; Authentifizierung</h3>
+                    <p style="opacity:0.8;font-size:0.9rem;">
+                        Wähle zwischen dem klassischen Gracenote XML-Dienst (GMD v2) oder dem modernen REST JSON-Dienst (GMD v3).
+                    </p>
+
+                    <div class="selectContainer" style="max-width:320px;margin-bottom:1rem;">
+                        <label class="selectLabel" for="gracenoteApiVersion">API-Version</label>
+                        <select is="emby-select" id="gracenoteApiVersion">
+                            <option value="v2">GMD v2 (MusicID Web API - XML)</option>
+                            <option value="v3">GMD v3 (Gracenote Music API - REST JSON)</option>
+                        </select>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="gracenoteClientId">Gracenote Client-ID</label>
+                        <input is="emby-input" type="text" id="gracenoteClientId" placeholder="z. B. 12345678-ABCD1234..." />
+                    </div>
+
+                    <div id="v2UserContainer" class="inputContainer">
+                        <label class="inputLabel" for="gracenoteUserId">Gracenote User-ID (Wird für GMD v2 automatisch registriert)</label>
+                        <input is="emby-input" type="text" id="gracenoteUserId" />
+                    </div>
+
+                    <div id="v3KeyContainer" class="inputContainer" style="display:none;">
+                        <label class="inputLabel" for="gracenoteApiKey">Gracenote API-Key (GMD v3)</label>
+                        <input is="emby-input" type="password" id="gracenoteApiKey" placeholder="API-Key aus dem Developer Portal" />
+                    </div>
+
+                    <div style="margin-top:1rem;display:flex;gap:1rem;align-items:center;">
+                        <button is="emby-button" type="button" id="btnTestGracenote" class="raised">
+                            <span>Registrierung / Testen</span>
+                        </button>
+                        <span id="testStatusMsg"></span>
+                    </div>
                 </div>
-                <label class="checkboxContainer">
-                    <input is="emby-checkbox" type="checkbox" id="enableGracenote" />
-                    <span>Aktiviert</span>
-                </label>
-                <div>
-                    <button is="emby-button" type="submit" class="raised button-submit block"><span>Speichern</span></button>
+
+                <div class="gn-card">
+                    <h3 style="margin-top:0;">Aktivierte Metadaten &amp; Cover</h3>
+                    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enableGracenote" />
+                            <span><strong>Gracenote Provider aktivieren</strong> (Hauptschalter)</span>
+                        </label>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enableAlbumMetadata" />
+                            <span><strong>Album-Metadaten</strong> (Titel, Jahr, Genres, Review)</span>
+                        </label>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enableArtistMetadata" />
+                            <span><strong>Künstler-Metadaten</strong> (Name, Genre, Biografie)</span>
+                        </label>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enableImageLookup" />
+                            <span><strong>Coverart-Abruf</strong> (Primäre Album- und Künstlerbilder)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:2rem;">
+                    <button is="emby-button" type="submit" class="raised button-submit block">
+                        <span>Konfiguration Speichern</span>
+                    </button>
                 </div>
             </form>
+
+            <div class="gn-card">
+                <h3 style="margin-top:0;">Live-Suchtest (Gracenote MusicID)</h3>
+                <p style="opacity:0.8;font-size:0.9rem;">
+                    Prüfe die Gracenote-Abfragen direkt aus dem Backend.
+                </p>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;">
+                    <div class="inputContainer" style="flex:1;min-width:240px;margin:0;">
+                        <label class="inputLabel" for="searchTestQuery">Suchbegriff</label>
+                        <input is="emby-input" type="text" id="searchTestQuery" placeholder="z. B. Random Access Memories..." />
+                    </div>
+                    <div class="selectContainer" style="width:160px;margin:0;">
+                        <label class="selectLabel" for="searchTestType">Typ</label>
+                        <select is="emby-select" id="searchTestType">
+                            <option value="album">Album</option>
+                            <option value="artist">Künstler</option>
+                        </select>
+                    </div>
+                    <button is="emby-button" type="button" id="btnRunSearchTest" class="raised">
+                        <span>Suchen</span>
+                    </button>
+                </div>
+                <div id="searchTestResults" class="gn-grid"></div>
+            </div>
         </div>
     </div>
+
     <script type="text/javascript">
         (function () {
             'use strict';
             var pluginId = 'a05dae4a-2e92-4303-8f16-a7ade62624b4';
-            document.querySelector('#gracenoteConfigPage').addEventListener('pageshow', function () {
+
+            function updateVisibility() {
+                var ver = document.querySelector('#gracenoteApiVersion').value;
+                document.querySelector('#v2UserContainer').style.display = ver === 'v2' ? 'block' : 'none';
+                document.querySelector('#v3KeyContainer').style.display = ver === 'v3' ? 'block' : 'none';
+            }
+
+            document.querySelector('#gracenoteApiVersion').addEventListener('change', updateVisibility);
+
+            function loadConfig() {
                 window.Dashboard.showLoadingMsg();
                 window.ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    document.querySelector('#gracenoteApiVersion').value = config.ApiVersion || 'v2';
                     document.querySelector('#gracenoteClientId').value = config.GracenoteClientId || '';
+                    document.querySelector('#gracenoteUserId').value = config.GracenoteUserId || '';
+                    document.querySelector('#gracenoteApiKey').value = config.ApiKey || '';
                     document.querySelector('#enableGracenote').checked = config.EnableGracenote !== false;
+                    document.querySelector('#enableAlbumMetadata').checked = config.EnableAlbumMetadata !== false;
+                    document.querySelector('#enableArtistMetadata').checked = config.EnableArtistMetadata !== false;
+                    document.querySelector('#enableImageLookup').checked = config.EnableImageLookup !== false;
+                    updateVisibility();
                     window.Dashboard.hideLoadingMsg();
                 });
-            });
+            }
+
+            document.querySelector('#gracenoteConfigPage').addEventListener('pageshow', loadConfig);
+
             document.querySelector('#gracenoteConfigForm').addEventListener('submit', function (e) {
                 e.preventDefault();
                 window.Dashboard.showLoadingMsg();
                 window.ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    config.ApiVersion = document.querySelector('#gracenoteApiVersion').value;
                     config.GracenoteClientId = document.querySelector('#gracenoteClientId').value;
+                    config.GracenoteUserId = document.querySelector('#gracenoteUserId').value;
+                    config.ApiKey = document.querySelector('#gracenoteApiKey').value;
                     config.EnableGracenote = document.querySelector('#enableGracenote').checked;
+                    config.EnableAlbumMetadata = document.querySelector('#enableAlbumMetadata').checked;
+                    config.EnableArtistMetadata = document.querySelector('#enableArtistMetadata').checked;
+                    config.EnableImageLookup = document.querySelector('#enableImageLookup').checked;
                     window.ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
                         window.Dashboard.hideLoadingMsg();
-                        window.Dashboard.alert('Gespeichert.');
+                        window.Dashboard.alert('Gracenote-Konfiguration gespeichert.');
                     });
                 });
                 return false;
+            });
+
+            document.querySelector('#btnTestGracenote').addEventListener('click', function () {
+                var statusMsg = document.querySelector('#testStatusMsg');
+                var clientId = document.querySelector('#gracenoteClientId').value.trim();
+                statusMsg.innerHTML = '<span style="opacity:0.7;">Prüfe Verbindung...</span>';
+                var url = window.ApiClient.getUrl('Plugins/GracenoteProvider/TestGracenote', { clientId: clientId });
+                window.ApiClient.fetch({ url: url, type: 'POST' }).then(function (resp) {
+                    return resp.json();
+                }).then(function (res) {
+                    if (res && res.valid) {
+                        statusMsg.innerHTML = '<span class="gn-badge badge-success">Erfolgreich</span> ' + (res.message || '');
+                        if (res.userId) {
+                            document.querySelector('#gracenoteUserId').value = res.userId;
+                        }
+                    } else {
+                        statusMsg.innerHTML = '<span class="gn-badge badge-error">Fehlgeschlagen</span> ' + (res ? res.message : 'Fehler');
+                    }
+                }).catch(function (err) {
+                    statusMsg.innerHTML = '<span class="gn-badge badge-error">Fehler</span> ' + (err.message || 'Server nicht erreichbar');
+                });
+            });
+
+            document.querySelector('#btnRunSearchTest').addEventListener('click', function () {
+                var query = document.querySelector('#searchTestQuery').value.trim();
+                var type = document.querySelector('#searchTestType').value;
+                var container = document.querySelector('#searchTestResults');
+                if (!query) {
+                    window.Dashboard.alert('Bitte gib einen Suchbegriff ein.');
+                    return;
+                }
+
+                container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1rem;">Suche läuft...</div>';
+                var url = window.ApiClient.getUrl('Plugins/GracenoteProvider/SearchTest', { query: query, type: type });
+                window.ApiClient.getJSON(url).then(function (items) {
+                    container.innerHTML = '';
+                    if (!items || items.length === 0) {
+                        container.innerHTML = '<div style="grid-column:1/-1;opacity:0.7;padding:1rem;">Keine Ergebnisse gefunden.</div>';
+                        return;
+                    }
+
+                    items.forEach(function (item) {
+                        var card = document.createElement('div');
+                        card.className = 'gn-item-card';
+                        var imgUrl = item.coverUrl || item.imageUrl || '';
+                        var title = item.title || item.name || '';
+                        var sub = item.artist || item.genre || (item.year ? 'Jahr: ' + item.year : '');
+
+                        card.innerHTML = (imgUrl ? '<img src="' + imgUrl + '" alt="cover" />' : '<div style="width:100%;aspect-ratio:1/1;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;">Kein Bild</div>')
+                            + '<div class="gn-item-title" title="' + title + '">' + title + '</div>'
+                            + '<div class="gn-item-sub" title="' + sub + '">' + sub + '</div>'
+                            + '<div style="font-size:0.75rem;opacity:0.5;margin-top:0.25rem;">GN_ID: ' + (item.gnId || '-') + '</div>';
+                        container.appendChild(card);
+                    });
+                }).catch(function (err) {
+                    container.innerHTML = '<div style="grid-column:1/-1;color:#e24b4b;padding:1rem;">Fehler bei der Suche: ' + (err.message || 'Verbindung fehlgeschlagen') + '</div>';
+                });
             });
         })();
     </script>

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,16 +19,19 @@ namespace Jellyfin.Plugin.GracenoteProvider.Providers;
 public sealed class GracenoteMetadataProvider : IRemoteMetadataProvider<MusicAlbum, AlbumInfo>, IHasOrder
 {
     private readonly GracenoteClient _gracenote;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<GracenoteMetadataProvider> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GracenoteMetadataProvider"/> class.
     /// </summary>
     /// <param name="gracenote">Gracenote client.</param>
+    /// <param name="httpClientFactory">HTTP client factory.</param>
     /// <param name="logger">Logger.</param>
-    public GracenoteMetadataProvider(GracenoteClient gracenote, ILogger<GracenoteMetadataProvider> logger)
+    public GracenoteMetadataProvider(GracenoteClient gracenote, IHttpClientFactory httpClientFactory, ILogger<GracenoteMetadataProvider> logger)
     {
         _gracenote = gracenote;
+        _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
@@ -44,16 +46,16 @@ public sealed class GracenoteMetadataProvider : IRemoteMetadataProvider<MusicAlb
     {
         var result = new MetadataResult<MusicAlbum> { HasMetadata = false };
         var config = Plugin.Instance?.Configuration;
-        if (config is null || !config.EnableGracenote || string.IsNullOrWhiteSpace(config.GracenoteClientId))
+        if (config is null || !config.EnableGracenote || !config.EnableAlbumMetadata)
         {
             return result;
         }
 
         try
         {
-            var artist = info.AlbumArtists.Count > 0 ? info.AlbumArtists[0] : info.Name;
-            var userId = await EnsureUserIdAsync(config, cancellationToken).ConfigureAwait(false);
-            var matches = await _gracenote.SearchAlbumAsync(config.GracenoteClientId, userId, artist, info.Name, cancellationToken).ConfigureAwait(false);
+            await EnsureUserIdAsync(config, cancellationToken).ConfigureAwait(false);
+            var artist = info.AlbumArtists.Count > 0 ? info.AlbumArtists[0] : (info.Name ?? string.Empty);
+            var matches = await _gracenote.SearchAlbumAsync(config, artist, info.Name ?? string.Empty, cancellationToken).ConfigureAwait(false);
             if (matches.Count == 0)
             {
                 return result;
@@ -92,30 +94,40 @@ public sealed class GracenoteMetadataProvider : IRemoteMetadataProvider<MusicAlb
     public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(AlbumInfo searchInfo, CancellationToken cancellationToken)
     {
         var config = Plugin.Instance?.Configuration;
-        if (config is null || !config.EnableGracenote || string.IsNullOrWhiteSpace(config.GracenoteClientId))
+        if (config is null || !config.EnableGracenote || !config.EnableAlbumMetadata)
         {
             return Array.Empty<RemoteSearchResult>();
         }
 
         try
         {
-            var artist = searchInfo.AlbumArtists.Count > 0 ? searchInfo.AlbumArtists[0] : searchInfo.Name;
-            var userId = await EnsureUserIdAsync(config, cancellationToken).ConfigureAwait(false);
-            var matches = await _gracenote.SearchAlbumAsync(config.GracenoteClientId, userId, artist, searchInfo.Name, cancellationToken).ConfigureAwait(false);
+            await EnsureUserIdAsync(config, cancellationToken).ConfigureAwait(false);
+            var artist = searchInfo.AlbumArtists.Count > 0 ? searchInfo.AlbumArtists[0] : string.Empty;
+            var matches = await _gracenote.SearchAlbumAsync(config, artist, searchInfo.Name, cancellationToken).ConfigureAwait(false);
             var results = new List<RemoteSearchResult>();
-            foreach (var m in matches)
+
+            foreach (var match in matches)
             {
-                results.Add(new RemoteSearchResult
+                var r = new RemoteSearchResult
                 {
-                    Name = m.Title,
-                    AlbumArtist = string.IsNullOrWhiteSpace(m.Artist) ? null : new RemoteSearchResult { Name = m.Artist },
-                    ProductionYear = m.Year,
-                    ProviderIds = string.IsNullOrWhiteSpace(m.GnId)
-                        ? new Dictionary<string, string>()
-                        : new Dictionary<string, string> { ["Gracenote"] = m.GnId },
-                    ImageUrl = string.IsNullOrWhiteSpace(m.CoverUrl) ? null : m.CoverUrl,
-                    Overview = string.IsNullOrWhiteSpace(m.Review) ? null : m.Review,
-                });
+                    Name = match.Title,
+                    SearchProviderName = Name,
+                    ProductionYear = match.Year,
+                    Overview = match.Review,
+                    ImageUrl = match.CoverUrl,
+                };
+
+                if (!string.IsNullOrWhiteSpace(match.GnId))
+                {
+                    r.ProviderIds["Gracenote"] = match.GnId;
+                }
+
+                if (!string.IsNullOrWhiteSpace(match.Artist))
+                {
+                    r.Artists = new[] { new RemoteSearchResult { Name = match.Artist } };
+                }
+
+                results.Add(r);
             }
 
             return results;
@@ -130,19 +142,26 @@ public sealed class GracenoteMetadataProvider : IRemoteMetadataProvider<MusicAlb
     /// <inheritdoc />
     public Task<HttpResponseMessage> GetImageResponse(string url, CancellationToken cancellationToken)
     {
-        throw new NotSupportedException("Gracenote provider does not serve images directly.");
+        var client = _httpClientFactory.CreateClient("gracenote");
+        return client.GetAsync(url, cancellationToken);
     }
 
-    private async Task<string> EnsureUserIdAsync(PluginConfiguration config, CancellationToken cancellationToken)
+    private async Task EnsureUserIdAsync(PluginConfiguration config, CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(config.GracenoteUserId))
+        if (string.Equals(config.ApiVersion, "v2", StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(config.GracenoteUserId)
+            && !string.IsNullOrWhiteSpace(config.GracenoteClientId))
         {
-            return config.GracenoteUserId;
+            try
+            {
+                var userId = await _gracenote.RegisterAsync(config.GracenoteClientId, cancellationToken).ConfigureAwait(false);
+                config.GracenoteUserId = userId;
+                Plugin.Instance?.SaveConfiguration();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-register Gracenote client");
+            }
         }
-
-        var userId = await _gracenote.RegisterAsync(config.GracenoteClientId, cancellationToken).ConfigureAwait(false);
-        config.GracenoteUserId = userId;
-        Plugin.Instance?.SaveConfiguration();
-        return userId;
     }
 }

@@ -44,7 +44,11 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             new PluginPageInfo
             {
                 Name = "GracenoteProvider",
-                EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Web.config.html", GetType().Namespace)
+                EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Web.config.html", GetType().Namespace),
+                EnableInMainMenu = true,
+                MenuSection = "server",
+                MenuIcon = "audiotrack",
+                DisplayName = "Gracenote Provider"
             }
         };
     }
