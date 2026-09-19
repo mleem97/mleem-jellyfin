@@ -158,5 +158,24 @@
     "overview": "Toolkit fuer Musikbibliotheken mit Spotify UX via Paradox.",
     "owner": "mleem97",
     "category": "General"
+  },
+  {
+    "guid": "8e4d2f17-5a33-4c91-b921-dfa724180c55",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "- feat(mediatools): add universal media normalizer, split-movie merger, MKV converter and stream deduplicator (7141ef1)\n- chore(release): publish MusicHoarderzProvider (8188665)\n- chore(release): publish GracenoteProvider (1a447d9)\n- chore(release): publish SpotifyProvider (330ec0f)\n- feat(manifest): add imageUrl support for plugin catalog icon (4cc2ebe)\n- chore(release): publish HddDisplay (3ec1fdc)\n- chore(release): publish HddDisplay (9a94f94)\n- feat(musictoolkit): make Spotify music dashboard actually reachable (32a8372)\n- refactor: consolidate MusicToolkit into the central plugin library (aa9b854)\n- fix(release): switch manifest checksums to MD5 and repair published packages (f4f356e)\n- chore(release): publish HddDisplay, MusicSuite, MusicHoarderzProvider, SpotifyProvider, GracenoteProvider (3c2b383)\n- fix: repair Spotify/Gracenote builds, sync workflows and manifest metadata (8c492b8)\n- refactor: rename BetterMusicDisplay to MusicSuite, update HddDisplay, CI and docs (6dcc780)\n- chore(release): publish MusicHoarderzProvider (ce9e9ba)\n- chore(release): publish MusicHoarderzProvider (34665d9)\n- build: track three Jellyfin plugins (5c0e705)\n- manifest: register three-plugin library (373e47c)\n- build: describe Jellyfin plugin library projects (b3f6f2d)\n- manifest: add MusicDashboard entry (2f503e7)\n- Prepare repository for multiple Jellyfin plugins (bd98daa)\n- Update manifest for v1.0.0.20 release (a619d49)\n- Update manifest for v1.0.0.19 release (690a727)\n- Update manifest for v1.0.0.18 release (c0cfcbf)\n- Update manifest for v1.0.0.17 release (8907fcd)\n- Update manifest for v1.0.0.16 release (2566169)\n- Update manifest for v1.0.0.10 release (55e9e9b)\n- Update manifest for v1.0.0.9 release (c49357d)\n- Update manifest for v1.0.0.8 release (ae12b90)\n- Update manifest for v1.0.0.7 release (1cd0e09)\n- Update manifest for v1.0.0.3 release (185edd5)\n- Update manifest for v1.0.0.2 release (2f71f6d)\n- Prepare manifest template placeholders for automated release metadata (729d49b)\n- Add automated release workflow with generated manifest checksum (5e2e64d)\n- Rename plugin to HDD Display and update description (a860dee)\n- Add Jellyfin manifest and upgrade report updates for .NET 9 (7e6281c)\n- Initial commit (1cb6f6b)",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/MediaTools-v1.0.0.0/MediaTools_1.0.0.0.zip",
+        "checksum": "D0A2E98264A611F245659433E45FB829",
+        "timestamp": "2026-09-19T17:44:37Z"
+      }
+    ],
+    "name": "MediaTools",
+    "description": "Comprehensive media optimization tool for Jellyfin: intelligently cleans release filenames without SQLite foreign-key breaks, merges multi-part CD1/CD2 movies via FFmpeg concat, batch remuxes legacy containers into MKV with subtitles, and detects byte-accurate audio/video duplicates.",
+    "overview": "Media management swiss army knife: zero-interruption renaming, split-movie merging, MKV remuxing and stream deduplication.",
+    "owner": "mleem97",
+    "category": "General",
+    "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/MediaTools/Web/assets/mediatools-icon.svg"
   }
 ]
