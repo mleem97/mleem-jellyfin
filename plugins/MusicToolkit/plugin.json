@@ -2,7 +2,7 @@
   "slug": "MusicToolkit",
   "name": "Music Toolkit & Spotify UX",
   "guid": "9f3e582a-281b-4b21-8c43-b295cbfa51de",
-  "version": "1.0.0.0",
+  "version": "1.0.0.1",
   "targetAbi": "12.1.0.0",
   "framework": "net10.0",
   "project": "plugins/MusicToolkit/MusicToolkit.csproj",

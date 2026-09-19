@@ -93,6 +93,14 @@
     "guid": "9f3e582a-281b-4b21-8c43-b295cbfa51de",
     "versions": [
       {
+        "version": "1.0.0.1",
+        "changelog": "- feat: wire Spotify music dashboard into PluginPages sidebar and inject redirect loader via FileTransformation\n- fix: use real Paradox PluginPages/FileTransformation contracts (JObject payloads) instead of guessed signatures",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/mleem97/mleem-jellyfin/releases/download/MusicToolkit-v1.0.0.1/MusicToolkit_1.0.0.1.zip",
+        "checksum": "AD143B5BED1F49D4F9235F3580646D82",
+        "timestamp": "2026-09-19T04:13:05Z"
+      },
+      {
         "version": "1.0.0.0",
         "changelog": "Initial MusicToolkit release: filename hygiene, audio dedup, Gracenote/MusicHoarderz integration, Spotify UX via Paradox.",
         "targetAbi": "12.1.0.0",

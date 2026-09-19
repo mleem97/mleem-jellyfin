@@ -2,11 +2,15 @@ using System;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace Jellyfin.Plugin.MusicToolkit.Integrations;
 
 /// <summary>
 /// Loosely-coupled bridge into the IAmParadox27 plugin ecosystem via reflection (fail-open).
+/// Uses the real PluginPages/FileTransformation contracts:
+///   - PluginPages.PluginInterface.RegisterPage(JObject { id, url, displayText, icon })
+///   - FileTransformation.PluginInterface.RegisterTransformation(JObject { id, fileNamePattern, callbackAssembly, callbackClass, callbackMethod })
 /// </summary>
 public static class ParadoxBridge
 {
@@ -26,15 +30,8 @@ public static class ParadoxBridge
         }
 
         _initialized = true;
-        try
-        {
-            TryRegisterPage();
-            TryRegisterTransformations();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "ParadoxBridge initialization failed (fail-open, native music UI kept)");
-        }
+        TryRegisterPage();
+        TryRegisterTransformations();
     }
 
     private static void TryRegisterPage()
@@ -42,7 +39,7 @@ public static class ParadoxBridge
         var pageInterface = FindType("Jellyfin.Plugin.PluginPages.PluginInterface");
         if (pageInterface is null)
         {
-            _logger?.LogInformation("Paradox PluginPages not installed; skipping /pages/spotify-music registration");
+            _logger?.LogInformation("Paradox PluginPages not installed; skipping sidebar page registration");
             return;
         }
 
@@ -54,30 +51,20 @@ public static class ParadoxBridge
             return;
         }
 
-        // Best-effort signature: RegisterPage(route, name, section, icon, resourcePath)
         try
         {
-            var parameters = register.GetParameters();
-            if (parameters.Length >= 4)
+            var payload = new JObject
             {
-                var args = new object?[parameters.Length];
-                args[0] = "/pages/spotify-music";
-                args[1] = "Musik";
-                args[2] = "library";
-                args[3] = "audiotrack";
-                if (parameters.Length > 4)
-                {
-                    args[4] = "Jellyfin.Plugin.MusicToolkit.Web.spotify-dashboard.html";
-                }
-
-                for (var i = 5; i < args.Length; i++)
-                {
-                    args[i] = parameters[i].HasDefaultValue ? parameters[i].DefaultValue : null;
-                }
-
-                register.Invoke(null, args);
-                _logger?.LogInformation("Registered Spotify dashboard at /pages/spotify-music via Paradox");
-            }
+                ["id"] = "musictoolkit-spotify",
+                ["url"] = "/MusicToolkit/asset/dashboard",
+                ["displayText"] = "Musik",
+                ["icon"] = "audiotrack",
+                ["isEnabledAssembly"] = "Jellyfin.Plugin.MusicToolkit",
+                ["isEnabledClass"] = "PageGate",
+                ["isEnabledMethod"] = "IsEnabled",
+            };
+            register.Invoke(null, new object?[] { payload });
+            _logger?.LogInformation("Registered Spotify dashboard link via Paradox PluginPages");
         }
         catch (Exception ex)
         {
@@ -104,10 +91,18 @@ public static class ParadoxBridge
 
         try
         {
-            // Inject theme CSS into <head> of index.html and redirect JS before </body>.
-            register.Invoke(null, new object?[] { "index.html", "<head>", "spotify-theme.css", "head-prepend" });
-            register.Invoke(null, new object?[] { "index.html", "</body>", "music-redirect.js", "body-append" });
-            _logger?.LogInformation("Registered Spotify theme + redirect transformations via Paradox");
+            // Exact assembly full name required: FileTransformation matches Assembly.FullName exactly.
+            var assemblyName = typeof(WebTransformer).Assembly.FullName;
+            var payload = new JObject
+            {
+                ["id"] = Guid.Parse("3f6d8d5e-2a44-4a1e-9c31-5b7f0d8e9a21"),
+                ["fileNamePattern"] = "index.html",
+                ["callbackAssembly"] = assemblyName,
+                ["callbackClass"] = "Jellyfin.Plugin.MusicToolkit.Integrations.WebTransformer",
+                ["callbackMethod"] = "TransformIndex",
+            };
+            register.Invoke(null, new object?[] { payload });
+            _logger?.LogInformation("Registered index.html transformation (Spotify theme + music redirect loader) via Paradox FileTransformation");
         }
         catch (Exception ex)
         {
