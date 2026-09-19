@@ -10,8 +10,9 @@
   "assembly": "Jellyfin.Plugin.SpotifyProvider.dll",
   "owner": "mleem97",
   "category": "Metadata",
-  "overview": "Album and artist covers via Spotify.",
-  "description": "Provides primary artwork for albums and artists via the Spotify Web API using Client Credentials authentication.",
+  "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/SpotifyProvider/Web/assets/spotify-icon.svg",
+  "overview": "Metadata, tracklist and coverart provider for music, audiobooks and podcasts via Spotify.",
+  "description": "Provides metadata and high-resolution cover art for music albums, artists, songs, audiobooks and podcasts via the Spotify Web API using Client Credentials authentication.",
   "artifacts": [
     "Jellyfin.Plugin.SpotifyProvider.dll"
   ]

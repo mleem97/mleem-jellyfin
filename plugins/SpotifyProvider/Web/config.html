@@ -3,49 +3,174 @@
 <head>
     <meta charset="utf-8" />
     <title>Spotify Cover &amp; Metadata Provider</title>
+    <style>
+        .spotify-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .spotify-badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-success { background: #1db954; color: #000; }
+        .badge-error { background: #e24b4b; color: #fff; }
+        .spotify-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .spotify-item-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        .spotify-item-card img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+        .spotify-item-title {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .spotify-item-sub {
+            opacity: 0.7;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
 </head>
 <body>
-<div id="spotifyConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+<div id="spotifyConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
     <div data-role="content">
         <div class="content-primary">
-            <h2>Spotify Cover &amp; Metadata Provider</h2>
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="#1db954">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.497 17.307c-.218.358-.684.473-1.042.254-2.858-1.746-6.457-2.14-10.697-1.171-.41.094-.817-.163-.911-.573-.094-.41.163-.817.573-.911 4.639-1.06 8.608-.61 11.82 1.359.358.219.474.685.257 1.042zm1.468-3.26c-.274.446-.856.59-1.302.316-3.272-2.012-8.261-2.595-12.133-1.419-.502.152-1.034-.134-1.186-.636-.153-.502.134-1.033.636-1.186 4.425-1.343 9.914-.695 13.669 1.622.446.275.59.857.316 1.303zm.126-3.393C15.176 8.32 8.71 8.106 4.975 9.24c-.604.184-1.242-.162-1.426-.766-.183-.604.163-1.242.766-1.425 4.29-1.302 11.43-1.055 16.037 1.68.544.323.722 1.026.399 1.57-.323.544-1.026.723-1.571.4z"/>
+                </svg>
+                <h2 style="margin:0;">Spotify Metadaten- &amp; Cover-Provider</h2>
+            </div>
+            
             <form id="spotifyConfigForm">
-                <div class="inputContainer">
-                    <label class="inputLabel" for="spotifyClientId">Spotify Client-ID</label>
-                    <input is="emby-input" type="text" id="spotifyClientId" />
+                <div class="spotify-card">
+                    <h3 style="margin-top:0;">API-Zugangsdaten (Spotify Developer)</h3>
+                    <p style="opacity:0.8;font-size:0.9rem;">
+                        Erstelle eine App im <a href="https://developer.spotify.com/dashboard" target="_blank" style="color:#1db954;">Spotify Developer Dashboard</a> und trage hier Client-ID und Client-Secret ein.
+                    </p>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="spotifyClientId">Spotify Client-ID</label>
+                        <input is="emby-input" type="text" id="spotifyClientId" required />
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="spotifyClientSecret">Spotify Client-Secret</label>
+                        <input is="emby-input" type="password" id="spotifyClientSecret" required />
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="spotifyMarket">Standard-Markt (Ländercode)</label>
+                        <input is="emby-input" type="text" id="spotifyMarket" value="DE" style="max-width:120px;" />
+                    </div>
+                    <div style="margin-top:1rem;display:flex;gap:1rem;align-items:center;">
+                        <button is="emby-button" type="button" id="btnTestCredentials" class="raised">
+                            <span>Verbindung testen</span>
+                        </button>
+                        <span id="testStatusMsg"></span>
+                    </div>
                 </div>
-                <div class="inputContainer">
-                    <label class="inputLabel" for="spotifyClientSecret">Spotify Client-Secret</label>
-                    <input is="emby-input" type="password" id="spotifyClientSecret" />
+
+                <div class="spotify-card">
+                    <h3 style="margin-top:0;">Aktivierte Medien &amp; Metadaten</h3>
+                    <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enableMusicMetadata" />
+                            <span><strong>Musik-Metadaten</strong> (Alben, Künstler &amp; Tracks)</span>
+                        </label>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enableAudiobookMetadata" />
+                            <span><strong>Hörbuch-Metadaten</strong> (Books via Spotify Audiobooks API)</span>
+                        </label>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enablePodcastMetadata" />
+                            <span><strong>Podcasts &amp; Shows</strong> (Shows &amp; Episoden)</span>
+                        </label>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enableSpotifyLookup" />
+                            <span><strong>Coverart-Abruf</strong> (Hochauflösende Primärbilder)</span>
+                        </label>
+                    </div>
                 </div>
-                <div class="inputContainer">
-                    <label class="inputLabel" for="spotifyMarket">Market</label>
-                    <input is="emby-input" type="text" id="spotifyMarket" />
-                </div>
-                <label class="checkboxContainer">
-                    <input is="emby-checkbox" type="checkbox" id="enableSpotifyLookup" />
-                    <span>Aktiviert</span>
-                </label>
-                <div>
-                    <button is="emby-button" type="submit" class="raised button-submit block"><span>Speichern</span></button>
+
+                <div style="margin-bottom:2rem;">
+                    <button is="emby-button" type="submit" class="raised button-submit block">
+                        <span>Konfiguration Speichern</span>
+                    </button>
                 </div>
             </form>
+
+            <div class="spotify-card">
+                <h3 style="margin-top:0;">Live-Metadaten-Testkonsole</h3>
+                <p style="opacity:0.8;font-size:0.9rem;">
+                    Teste die Spotify-Suche und Vorschau direkt hier im Admin-Dashboard.
+                </p>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;">
+                    <div class="inputContainer" style="flex:1;min-width:240px;margin:0;">
+                        <label class="inputLabel" for="searchTestQuery">Suchbegriff</label>
+                        <input is="emby-input" type="text" id="searchTestQuery" placeholder="z. B. Daft Punk, Harry Potter..." />
+                    </div>
+                    <div class="selectContainer" style="width:160px;margin:0;">
+                        <label class="selectLabel" for="searchTestType">Medientyp</label>
+                        <select is="emby-select" id="searchTestType">
+                            <option value="album">Album</option>
+                            <option value="artist">Künstler</option>
+                            <option value="audiobook">Hörbuch</option>
+                            <option value="track">Track</option>
+                        </select>
+                    </div>
+                    <button is="emby-button" type="button" id="btnRunSearchTest" class="raised">
+                        <span>Suchen</span>
+                    </button>
+                </div>
+                <div id="searchTestResults" class="spotify-grid"></div>
+            </div>
         </div>
     </div>
+
     <script type="text/javascript">
         (function () {
             'use strict';
             var pluginId = '67de1daa-c9fe-497a-9ca2-dc303abb717b';
-            document.querySelector('#spotifyConfigPage').addEventListener('pageshow', function () {
+
+            function loadConfig() {
                 window.Dashboard.showLoadingMsg();
                 window.ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                     document.querySelector('#spotifyClientId').value = config.ClientId || '';
                     document.querySelector('#spotifyClientSecret').value = config.ClientSecret || '';
                     document.querySelector('#spotifyMarket').value = config.Market || 'DE';
+                    document.querySelector('#enableMusicMetadata').checked = config.EnableMusicMetadata !== false;
+                    document.querySelector('#enableAudiobookMetadata').checked = config.EnableAudiobookMetadata !== false;
+                    document.querySelector('#enablePodcastMetadata').checked = config.EnablePodcastMetadata !== false;
                     document.querySelector('#enableSpotifyLookup').checked = config.EnableImageLookup !== false;
                     window.Dashboard.hideLoadingMsg();
                 });
-            });
+            }
+
+            document.querySelector('#spotifyConfigPage').addEventListener('pageshow', loadConfig);
+
             document.querySelector('#spotifyConfigForm').addEventListener('submit', function (e) {
                 e.preventDefault();
                 window.Dashboard.showLoadingMsg();
@@ -53,13 +178,78 @@
                     config.ClientId = document.querySelector('#spotifyClientId').value;
                     config.ClientSecret = document.querySelector('#spotifyClientSecret').value;
                     config.Market = document.querySelector('#spotifyMarket').value;
+                    config.EnableMusicMetadata = document.querySelector('#enableMusicMetadata').checked;
+                    config.EnableAudiobookMetadata = document.querySelector('#enableAudiobookMetadata').checked;
+                    config.EnablePodcastMetadata = document.querySelector('#enablePodcastMetadata').checked;
                     config.EnableImageLookup = document.querySelector('#enableSpotifyLookup').checked;
                     window.ApiClient.updatePluginConfiguration(pluginId, config).then(function () {
                         window.Dashboard.hideLoadingMsg();
-                        window.Dashboard.alert('Gespeichert.');
+                        window.Dashboard.alert('Spotify-Konfiguration gespeichert.');
                     });
                 });
                 return false;
+            });
+
+            document.querySelector('#btnTestCredentials').addEventListener('click', function () {
+                var statusMsg = document.querySelector('#testStatusMsg');
+                statusMsg.innerHTML = '<span style="opacity:0.7;">Prüfe Verbindung...</span>';
+                var url = window.ApiClient.getUrl('Plugins/SpotifyProvider/TestCredentials');
+                window.ApiClient.fetch({ url: url, type: 'POST' }).then(function (resp) {
+                    return resp.json();
+                }).then(function (res) {
+                    if (res && res.Success) {
+                        statusMsg.innerHTML = '<span class="spotify-badge badge-success">Erfolgreich verbunden</span> ' + (res.Message || '');
+                    } else {
+                        statusMsg.innerHTML = '<span class="spotify-badge badge-error">Fehlgeschlagen</span> ' + (res ? res.Message : 'Unbekannter Fehler');
+                    }
+                }).catch(function (err) {
+                    statusMsg.innerHTML = '<span class="spotify-badge badge-error">Fehler</span> ' + (err.message || 'Server nicht erreichbar');
+                });
+            });
+
+            document.querySelector('#btnRunSearchTest').addEventListener('click', function () {
+                var query = document.querySelector('#searchTestQuery').value.trim();
+                var type = document.querySelector('#searchTestType').value;
+                var container = document.querySelector('#searchTestResults');
+                if (!query) {
+                    window.Dashboard.alert('Bitte gib einen Suchbegriff ein.');
+                    return;
+                }
+
+                container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1rem;">Suche läuft...</div>';
+                var url = window.ApiClient.getUrl('Plugins/SpotifyProvider/SearchTest', { query: query, type: type });
+                window.ApiClient.getJSON(url).then(function (data) {
+                    container.innerHTML = '';
+                    var items = [];
+                    if (type === 'album' && data.albums) items = data.albums.items || [];
+                    else if (type === 'artist' && data.artists) items = data.artists.items || [];
+                    else if (type === 'audiobook' && data.audiobooks) items = data.audiobooks.items || [];
+                    else if (type === 'track' && data.tracks) items = data.tracks.items || [];
+
+                    if (items.length === 0) {
+                        container.innerHTML = '<div style="grid-column:1/-1;opacity:0.7;padding:1rem;">Keine Ergebnisse gefunden.</div>';
+                        return;
+                    }
+
+                    items.forEach(function (item) {
+                        var card = document.createElement('div');
+                        card.className = 'spotify-item-card';
+                        var imgUrl = (item.images && item.images.length > 0) ? item.images[0].url : 
+                                     (item.album && item.album.images && item.album.images.length > 0) ? item.album.images[0].url : '';
+                        var sub = '';
+                        if (item.artists && item.artists.length > 0) sub = item.artists.map(function (a) { return a.name; }).join(', ');
+                        else if (item.authors && item.authors.length > 0) sub = item.authors.map(function (a) { return a.name; }).join(', ');
+                        else if (item.release_date) sub = item.release_date;
+
+                        card.innerHTML = (imgUrl ? '<img src="' + imgUrl + '" alt="cover" />' : '<div style="width:100%;aspect-ratio:1/1;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;margin-bottom:0.5rem;">Kein Bild</div>')
+                            + '<div class="spotify-item-title" title="' + (item.name || '') + '">' + (item.name || '') + '</div>'
+                            + '<div class="spotify-item-sub" title="' + sub + '">' + sub + '</div>'
+                            + '<div style="font-size:0.75rem;opacity:0.5;margin-top:0.25rem;">ID: ' + item.id + '</div>';
+                        container.appendChild(card);
+                    });
+                }).catch(function (err) {
+                    container.innerHTML = '<div style="grid-column:1/-1;color:#e24b4b;padding:1rem;">Fehler bei der Suche: ' + (err.message || 'Verbindung fehlgeschlagen') + '</div>';
+                });
             });
         })();
     </script>

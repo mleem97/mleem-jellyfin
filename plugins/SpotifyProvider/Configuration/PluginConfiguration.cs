@@ -23,6 +23,21 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool EnableImageLookup { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether music album &amp; artist metadata lookup is enabled.
+    /// </summary>
+    public bool EnableMusicMetadata { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether audiobook metadata lookup is enabled.
+    /// </summary>
+    public bool EnableAudiobookMetadata { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether podcast &amp; show metadata lookup is enabled.
+    /// </summary>
+    public bool EnablePodcastMetadata { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets the Spotify market for searches.
     /// </summary>
     public string Market { get; set; } = "DE";

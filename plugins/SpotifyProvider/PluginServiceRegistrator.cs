@@ -17,5 +17,6 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
     {
         _ = applicationHost;
         serviceCollection.AddSingleton<SpotifyAuthService>();
+        serviceCollection.AddSingleton<SpotifyApiClient>();
     }
 }

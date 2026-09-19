@@ -1,11 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.SpotifyProvider.Services;
@@ -24,19 +20,19 @@ namespace Jellyfin.Plugin.SpotifyProvider.Providers;
 public sealed class SpotifyImageProvider : IRemoteImageProvider, IHasOrder
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly SpotifyAuthService _auth;
+    private readonly SpotifyApiClient _apiClient;
     private readonly ILogger<SpotifyImageProvider> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SpotifyImageProvider"/> class.
     /// </summary>
     /// <param name="httpClientFactory">HTTP client factory.</param>
-    /// <param name="auth">Spotify auth service.</param>
+    /// <param name="apiClient">Spotify API client.</param>
     /// <param name="logger">Logger.</param>
-    public SpotifyImageProvider(IHttpClientFactory httpClientFactory, SpotifyAuthService auth, ILogger<SpotifyImageProvider> logger)
+    public SpotifyImageProvider(IHttpClientFactory httpClientFactory, SpotifyApiClient apiClient, ILogger<SpotifyImageProvider> logger)
     {
         _httpClientFactory = httpClientFactory;
-        _auth = auth;
+        _apiClient = apiClient;
         _logger = logger;
     }
 
@@ -47,7 +43,7 @@ public sealed class SpotifyImageProvider : IRemoteImageProvider, IHasOrder
     public int Order => 3;
 
     /// <inheritdoc />
-    public bool Supports(BaseItem item) => item is MusicAlbum or MusicArtist;
+    public bool Supports(BaseItem item) => item is MusicAlbum or MusicArtist or Book or Audio;
 
     /// <inheritdoc />
     public IEnumerable<ImageType> GetSupportedImages(BaseItem item) => new[] { ImageType.Primary };
@@ -56,18 +52,34 @@ public sealed class SpotifyImageProvider : IRemoteImageProvider, IHasOrder
     public async Task<IEnumerable<RemoteImageInfo>> GetImages(BaseItem item, CancellationToken cancellationToken)
     {
         var config = Plugin.Instance?.Configuration;
-        if (config is null || !config.EnableImageLookup)
+        if (config is null || !config.EnableImageLookup || string.IsNullOrWhiteSpace(config.ClientId))
         {
             return Array.Empty<RemoteImageInfo>();
         }
 
         try
         {
-            var token = await _auth.GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
-            var images = item is MusicAlbum album
-                ? await SearchAlbumImagesAsync(album, token, config.Market, cancellationToken).ConfigureAwait(false)
-                : await SearchArtistImagesAsync(item.Name, token, config.Market, cancellationToken).ConfigureAwait(false);
-            return images;
+            if (item is MusicAlbum album)
+            {
+                return await GetAlbumImagesAsync(album, config.Market, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (item is MusicArtist artist)
+            {
+                return await GetArtistImagesAsync(artist.Name, config.Market, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (item is Book book)
+            {
+                return await GetAudiobookImagesAsync(book, config.Market, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (item is Audio audio)
+            {
+                return await GetTrackImagesAsync(audio, config.Market, cancellationToken).ConfigureAwait(false);
+            }
+
+            return Array.Empty<RemoteImageInfo>();
         }
         catch (Exception ex)
         {
@@ -83,133 +95,119 @@ public sealed class SpotifyImageProvider : IRemoteImageProvider, IHasOrder
         return client.GetAsync(url, cancellationToken);
     }
 
-    private async Task<IReadOnlyList<RemoteImageInfo>> SearchAlbumImagesAsync(MusicAlbum album, string token, string market, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<RemoteImageInfo>> GetAlbumImagesAsync(MusicAlbum album, string market, CancellationToken cancellationToken)
     {
-        var query = "album:" + (album.Name ?? string.Empty);
+        if (album.ProviderIds.TryGetValue("Spotify", out var spotifyId) && !string.IsNullOrWhiteSpace(spotifyId))
+        {
+            var details = await _apiClient.GetAlbumAsync(spotifyId, market, cancellationToken).ConfigureAwait(false);
+            if (details?.Images != null && details.Images.Count > 0)
+            {
+                return MapImages(details.Images);
+            }
+        }
+
+        var query = "album:" + (album.Name ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(album.AlbumArtist))
         {
-            query += " artist:" + album.AlbumArtist;
+            query += " artist:" + album.AlbumArtist.Trim();
         }
 
-        var url = "https://api.spotify.com/v1/search?q=" + Uri.EscapeDataString(query)
-            + "&type=album&market=" + Uri.EscapeDataString(market)
-            + "&limit=5";
-
-        var payload = await GetJsonAsync<SpotifySearchResponse>(url, token, cancellationToken).ConfigureAwait(false);
-        var result = new List<RemoteImageInfo>();
-        foreach (var a in payload?.Albums?.Items ?? Enumerable.Empty<SpotifyAlbum>())
+        var search = await _apiClient.SearchAsync(query, "album", market, 5, cancellationToken).ConfigureAwait(false);
+        var list = new List<RemoteImageInfo>();
+        foreach (var item in search?.Albums?.Items ?? Enumerable.Empty<SpotifyAlbumDto>())
         {
-            var best = a.Images?.OrderByDescending(i => i.Width ?? 0).FirstOrDefault();
-            if (best is null || string.IsNullOrWhiteSpace(best.Url))
+            if (item.Images != null)
             {
-                continue;
+                list.AddRange(MapImages(item.Images));
             }
+        }
 
-            result.Add(new RemoteImageInfo
+        return list;
+    }
+
+    private async Task<IReadOnlyList<RemoteImageInfo>> GetArtistImagesAsync(string? artistName, string market, CancellationToken cancellationToken)
+    {
+        var query = "artist:" + (artistName ?? string.Empty).Trim();
+        var search = await _apiClient.SearchAsync(query, "artist", market, 5, cancellationToken).ConfigureAwait(false);
+        var list = new List<RemoteImageInfo>();
+        foreach (var item in search?.Artists?.Items ?? Enumerable.Empty<SpotifyArtistDto>())
+        {
+            if (item.Images != null)
+            {
+                list.AddRange(MapImages(item.Images));
+            }
+        }
+
+        return list;
+    }
+
+    private async Task<IReadOnlyList<RemoteImageInfo>> GetAudiobookImagesAsync(Book book, string market, CancellationToken cancellationToken)
+    {
+        if (book.ProviderIds.TryGetValue("Spotify", out var spotifyId) && !string.IsNullOrWhiteSpace(spotifyId))
+        {
+            var details = await _apiClient.GetAudiobookAsync(spotifyId, market, cancellationToken).ConfigureAwait(false);
+            if (details?.Images != null && details.Images.Count > 0)
+            {
+                return MapImages(details.Images);
+            }
+        }
+
+        var search = await _apiClient.SearchAsync((book.Name ?? string.Empty).Trim(), "audiobook", market, 5, cancellationToken).ConfigureAwait(false);
+        var list = new List<RemoteImageInfo>();
+        foreach (var item in search?.Audiobooks?.Items ?? Enumerable.Empty<SpotifyAudiobookDto>())
+        {
+            if (item.Images != null)
+            {
+                list.AddRange(MapImages(item.Images));
+            }
+        }
+
+        return list;
+    }
+
+    private async Task<IReadOnlyList<RemoteImageInfo>> GetTrackImagesAsync(Audio audio, string market, CancellationToken cancellationToken)
+    {
+        if (audio.ProviderIds.TryGetValue("Spotify", out var spotifyId) && !string.IsNullOrWhiteSpace(spotifyId))
+        {
+            var details = await _apiClient.GetTrackAsync(spotifyId, market, cancellationToken).ConfigureAwait(false);
+            if (details?.Album?.Images != null && details.Album.Images.Count > 0)
+            {
+                return MapImages(details.Album.Images);
+            }
+        }
+
+        var query = "track:" + (audio.Name ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(audio.Album))
+        {
+            query += " album:" + audio.Album.Trim();
+        }
+
+        var search = await _apiClient.SearchAsync(query, "track", market, 5, cancellationToken).ConfigureAwait(false);
+        var list = new List<RemoteImageInfo>();
+        foreach (var item in search?.Tracks?.Items ?? Enumerable.Empty<SpotifyTrackDto>())
+        {
+            if (item.Album?.Images != null)
+            {
+                list.AddRange(MapImages(item.Album.Images));
+            }
+        }
+
+        return list;
+    }
+
+    private List<RemoteImageInfo> MapImages(IEnumerable<SpotifyImageDto> images)
+    {
+        return images
+            .Where(i => !string.IsNullOrWhiteSpace(i.Url))
+            .OrderByDescending(i => i.Width ?? 0)
+            .Select(i => new RemoteImageInfo
             {
                 ProviderName = Name,
-                Url = best.Url,
-                Width = best.Width,
-                Height = best.Height,
+                Url = i.Url,
+                Width = i.Width,
+                Height = i.Height,
                 Type = ImageType.Primary,
-            });
-        }
-
-        return result;
-    }
-
-    private async Task<IReadOnlyList<RemoteImageInfo>> SearchArtistImagesAsync(string? artist, string token, string market, CancellationToken cancellationToken)
-    {
-        var url = "https://api.spotify.com/v1/search?q=" + Uri.EscapeDataString("artist:" + (artist ?? string.Empty))
-            + "&type=artist&market=" + Uri.EscapeDataString(market)
-            + "&limit=5";
-
-        var payload = await GetJsonAsync<SpotifyArtistSearchResponse>(url, token, cancellationToken).ConfigureAwait(false);
-        var result = new List<RemoteImageInfo>();
-        foreach (var a in payload?.Artists?.Items ?? Enumerable.Empty<SpotifyArtist>())
-        {
-            var best = a.Images?.OrderByDescending(i => i.Width ?? 0).FirstOrDefault();
-            if (best is null || string.IsNullOrWhiteSpace(best.Url))
-            {
-                continue;
-            }
-
-            result.Add(new RemoteImageInfo
-            {
-                ProviderName = Name,
-                Url = best.Url,
-                Width = best.Width,
-                Height = best.Height,
-                Type = ImageType.Primary,
-            });
-        }
-
-        return result;
-    }
-
-    private async Task<T?> GetJsonAsync<T>(string url, string token, CancellationToken cancellationToken)
-        where T : class
-    {
-        var client = _httpClientFactory.CreateClient("spotify");
-        client.Timeout = TimeSpan.FromSeconds(20);
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            _auth.Invalidate();
-            return null;
-        }
-
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken).ConfigureAwait(false);
-    }
-
-    private sealed class SpotifySearchResponse
-    {
-        [JsonPropertyName("albums")]
-        public SpotifyAlbumPage? Albums { get; set; }
-    }
-
-    private sealed class SpotifyAlbumPage
-    {
-        [JsonPropertyName("items")]
-        public List<SpotifyAlbum> Items { get; set; } = new();
-    }
-
-    private sealed class SpotifyAlbum
-    {
-        [JsonPropertyName("images")]
-        public List<SpotifyImage>? Images { get; set; }
-    }
-
-    private sealed class SpotifyArtistSearchResponse
-    {
-        [JsonPropertyName("artists")]
-        public SpotifyArtistPage? Artists { get; set; }
-    }
-
-    private sealed class SpotifyArtistPage
-    {
-        [JsonPropertyName("items")]
-        public List<SpotifyArtist> Items { get; set; } = new();
-    }
-
-    private sealed class SpotifyArtist
-    {
-        [JsonPropertyName("images")]
-        public List<SpotifyImage>? Images { get; set; }
-    }
-
-    private sealed class SpotifyImage
-    {
-        [JsonPropertyName("url")]
-        public string Url { get; set; } = string.Empty;
-
-        [JsonPropertyName("width")]
-        public int? Width { get; set; }
-
-        [JsonPropertyName("height")]
-        public int? Height { get; set; }
+            })
+            .ToList();
     }
 }

@@ -88,6 +88,10 @@
         <!-- disable warning CA5394: Do not use insecure randomness -->
         <Rule Id="CA5394" Action="Info" />
 
+        <!-- disable warning CA1002: Change List to Collection -->
+        <Rule Id="CA1002" Action="None" />
+        <!-- disable warning CA2227: Collection properties should be read only -->
+        <Rule Id="CA2227" Action="None" />
         <!-- disable warning CA1054: Change the type of parameter url from string to System.Uri -->
         <Rule Id="CA1054" Action="None" />
         <!-- disable warning CA1055: URI return values should not be strings -->
