@@ -6,3 +6,5 @@ artifacts
 node_modules/
 release-assets/
 __pycache__/
+.local
+.archive/

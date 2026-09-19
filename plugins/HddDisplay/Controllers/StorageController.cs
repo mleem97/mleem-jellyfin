@@ -241,6 +241,7 @@ public class StorageController : HddDisplayAdminControllerBase
             "movies" => "movies",
             "tvshows" => "tvshows",
             "music" => "music",
+            "books" or "audiobooks" => "books",
             "homevideos" => "video",
             "mixed" => "mixed",
             _ => "other"

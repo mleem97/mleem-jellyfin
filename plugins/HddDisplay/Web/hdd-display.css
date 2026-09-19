@@ -1,0 +1,396 @@
+/* HDD Display & Storage Dashboard Stylesheet */
+.hdd-display-page {
+    padding: 1.5em 2em;
+    max-width: 1400px;
+    margin: 0 auto;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Header & Controls */
+.hdd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5em;
+    flex-wrap: wrap;
+    gap: 1em;
+}
+
+.hdd-title-area {
+    display: flex;
+    align-items: center;
+    gap: 0.8em;
+}
+
+.hdd-title-area svg {
+    color: #00a4dc;
+}
+
+.hdd-title-area h2 {
+    margin: 0;
+    font-size: 1.8em;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.hdd-actions {
+    display: flex;
+    gap: 0.75em;
+}
+
+.hdd-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    background: rgba(0, 164, 220, 0.2);
+    border: 1px solid rgba(0, 164, 220, 0.4);
+    color: #00a4dc;
+    padding: 0.6em 1.2em;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.hdd-btn:hover {
+    background: rgba(0, 164, 220, 0.35);
+    border-color: #00a4dc;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(0, 164, 220, 0.3);
+}
+
+.hdd-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Global Storage Bar */
+.global-storage-card {
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1.5em;
+    margin-bottom: 2em;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.global-storage-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.8em;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.global-storage-title {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.global-storage-metric {
+    font-size: 1.1em;
+    color: #aaaaaa;
+}
+
+.global-storage-metric strong {
+    color: #00a4dc;
+}
+
+/* Orientierungs-Legende (Visueller Guide) */
+.storage-legend-container {
+    background: rgba(20, 20, 20, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    margin-bottom: 2em;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.legend-toggle-header {
+    padding: 1em 1.5em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.legend-toggle-header:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.legend-toggle-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    font-weight: 600;
+    font-size: 1.05em;
+    color: #ffffff;
+}
+
+.legend-toggle-icon {
+    transition: transform 0.2s ease;
+}
+
+.storage-legend-container.collapsed .legend-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.storage-legend-container.collapsed .legend-content-grid {
+    display: none;
+}
+
+.legend-content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5em;
+    padding: 1.5em;
+}
+
+.legend-column h4 {
+    margin: 0 0 0.8em 0;
+    font-size: 0.95em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #888888;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 0.4em;
+}
+
+.legend-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7em;
+}
+
+.legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6em;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.legend-item-title {
+    font-weight: 600;
+    color: #eeeeee;
+}
+
+.legend-item-desc {
+    color: #999999;
+    font-size: 0.85em;
+}
+
+/* Progress Bar Component */
+.hdd-progress-track {
+    height: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 7px;
+    overflow: hidden;
+    display: flex;
+    position: relative;
+}
+
+.hdd-progress-segment {
+    height: 100%;
+    transition: width 0.4s ease;
+}
+
+.seg-movies { background-color: #5591c7; }
+.seg-tvshows { background-color: #7aa95c; }
+.seg-music { background-color: #b78ad6; }
+.seg-books { background-color: #e5a93c; }
+.seg-other { background-color: #888888; }
+.seg-free { background-color: transparent; }
+
+/* Drive Cards Grid */
+.drive-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 1.5em;
+    margin-bottom: 2em;
+}
+
+.drive-card {
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1.5em;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2em;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.drive-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.drive-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5em;
+}
+
+.drive-mount-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2em;
+}
+
+.drive-mount-path {
+    font-size: 1.15em;
+    font-weight: 600;
+    color: #ffffff;
+    word-break: break-all;
+}
+
+.drive-device-label {
+    font-size: 0.85em;
+    color: #888888;
+}
+
+.drive-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+    align-items: center;
+}
+
+.badge {
+    padding: 0.25em 0.6em;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.badge-fs-local { background: rgba(0, 164, 220, 0.2); color: #00a4dc; border: 1px solid rgba(0, 164, 220, 0.4); }
+.badge-fs-pool { background: rgba(183, 138, 214, 0.2); color: #b78ad6; border: 1px solid rgba(183, 138, 214, 0.4); }
+.badge-fs-net { background: rgba(229, 169, 60, 0.2); color: #e5a93c; border: 1px solid rgba(229, 169, 60, 0.4); }
+
+.badge-status-ok { background: rgba(82, 181, 75, 0.2); color: #52B54B; }
+.badge-status-warn { background: rgba(255, 160, 0, 0.2); color: #FFA000; }
+.badge-status-crit { background: rgba(229, 57, 53, 0.2); color: #E53935; }
+
+.badge-role-transcode { background: rgba(255, 215, 0, 0.2); color: #FFD700; border: 1px solid rgba(255, 215, 0, 0.4); }
+.badge-role-readonly { background: rgba(200, 200, 200, 0.2); color: #dddddd; border: 1px solid rgba(200, 200, 200, 0.4); }
+
+.drive-metrics-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.9em;
+}
+
+.drive-metrics-free {
+    color: #cccccc;
+}
+
+.drive-metrics-free strong {
+    color: #ffffff;
+}
+
+.drive-metrics-pct {
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+/* Libraries linked to drive */
+.drive-libraries {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 0.8em;
+}
+
+.drive-libraries-label {
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #777777;
+}
+
+.drive-libraries-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+}
+
+.lib-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.3em 0.6em;
+    border-radius: 4px;
+    font-size: 0.8em;
+    background: rgba(255, 255, 255, 0.05);
+    color: #dddddd;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* System telemetry (GPU & paths) */
+.system-telemetry-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5em;
+    margin-bottom: 2em;
+}
+
+.telemetry-card {
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1.5em;
+}
+
+.telemetry-card h3 {
+    margin: 0 0 1em 0;
+    font-size: 1.1em;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.telemetry-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5em 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 0.9em;
+}
+
+.telemetry-item:last-child {
+    border-bottom: none;
+}
+
+.telemetry-label {
+    color: #999999;
+}
+
+.telemetry-value {
+    color: #ffffff;
+    font-weight: 500;
+}

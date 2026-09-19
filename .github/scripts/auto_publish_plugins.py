@@ -315,8 +315,9 @@ def main() -> int:
         update_manifest(metadata, new_version, changelog, zip_path)
         release_data.append((metadata, new_version, changelog, zip_path))
 
-    run(["git", "config", "user.name", "github-actions[bot]"])
-    run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        run(["git", "config", "user.name", "github-actions[bot]"])
+        run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
     commit_and_push(slugs)
 
     for metadata, version, changelog, zip_path in release_data:

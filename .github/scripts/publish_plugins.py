@@ -109,15 +109,16 @@ def main() -> int:
         )
         release_data.append((metadata, new_version, changelog, zip_path))
 
-    publisher.run(["git", "config", "user.name", "github-actions[bot]"])
-    publisher.run(
-        [
-            "git",
-            "config",
-            "user.email",
-            "41898282+github-actions[bot]@users.noreply.github.com",
-        ]
-    )
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        publisher.run(["git", "config", "user.name", "github-actions[bot]"])
+        publisher.run(
+            [
+                "git",
+                "config",
+                "user.email",
+                "41898282+github-actions[bot]@users.noreply.github.com",
+            ]
+        )
     publisher.commit_and_push(slugs)
 
     for metadata, version, changelog, zip_path in release_data:

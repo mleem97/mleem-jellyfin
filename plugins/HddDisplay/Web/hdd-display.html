@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>Speicher &amp; Festplatten - HDD Display</title>
+    <link rel="stylesheet" href="/Plugins/HddDisplay/Assets/hdd-display.css">
+</head>
+<body style="margin: 0; background: transparent;">
+    <div id="hdd-display-root" class="hdd-display-page">
+        <!-- Header -->
+        <div class="hdd-header">
+            <div class="hdd-title-area">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="16" rx="2" ry="2" />
+                    <line x1="3" y1="15" x2="21" y2="15" />
+                    <circle cx="7" cy="17.5" r="1" fill="#52B54B" stroke="none" />
+                    <circle cx="10.5" cy="17.5" r="1" fill="#00a4dc" stroke="none" />
+                    <path d="M7 8h10M7 11h6" stroke-opacity="0.6" stroke-width="1.5" />
+                </svg>
+                <h2>Speicher &amp; Festplatten</h2>
+            </div>
+            <div class="hdd-actions">
+                <button id="btn-refresh" class="hdd-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    Aktualisieren
+                </button>
+            </div>
+        </div>
+
+        <!-- Global Storage Summary -->
+        <div class="global-storage-card">
+            <div class="global-storage-header">
+                <div class="global-storage-title">Gesamter Medienspeicher</div>
+                <div id="global-storage-metric" class="global-storage-metric">Lade Speicherdaten...</div>
+            </div>
+            <div id="global-progress-track" class="hdd-progress-track">
+                <!-- Segments rendered dynamically -->
+            </div>
+        </div>
+
+        <!-- Orientierungs-Legende (Visueller Guide) -->
+        <div id="storage-legend" class="storage-legend-container">
+            <div id="legend-header" class="legend-toggle-header">
+                <div class="legend-toggle-title">
+                    <span>🧭</span> Orientierungs-Legende &amp; Systemstatus
+                </div>
+                <svg class="legend-toggle-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="legend-content-grid">
+                <!-- Spalte 1: Füllstände & Warnstufen -->
+                <div class="legend-column">
+                    <h4>1. Füllstands- &amp; Warnstufen</h4>
+                    <ul class="legend-list">
+                        <li class="legend-item">
+                            <span class="badge badge-status-ok">🟢 Normal (&lt; 80%)</span>
+                            <div class="legend-item-desc">Ausreichend Puffer für Medien und Temp-Writes.</div>
+                        </li>
+                        <li class="legend-item">
+                            <span class="badge badge-status-warn">🟡 Warnstufe (80% – 90%)</span>
+                            <div class="legend-item-desc">Speicher wird knapp; Bereinigung empfohlen.</div>
+                        </li>
+                        <li class="legend-item">
+                            <span class="badge badge-status-crit">🔴 Kritisch (&gt; 90%)</span>
+                            <div class="legend-item-desc">Gefahr von Schreibabbrüchen, Transcode-Stopps oder SQLite-DB-Locks.</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Spalte 2: Dateisystem-Typen & Pools -->
+                <div class="legend-column">
+                    <h4>2. Dateisysteme &amp; Pools</h4>
+                    <ul class="legend-list">
+                        <li class="legend-item">
+                            <span class="badge badge-fs-local">🟦 Lokal</span>
+                            <div class="legend-item-desc">ext4, XFS, NTFS, Btrfs – Direkt angebundenes Block-Device.</div>
+                        </li>
+                        <li class="legend-item">
+                            <span class="badge badge-fs-pool">🟪 Pools</span>
+                            <div class="legend-item-desc">ZFS, Btrfs-Raid – Software-RAID oder dynamischer Speicherpool.</div>
+                        </li>
+                        <li class="legend-item">
+                            <span class="badge badge-fs-net">🟨 Netzwerk</span>
+                            <div class="legend-item-desc">NFS, SMB, CIFS – Remote-Freigabe; Latenzen beachten.</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Spalte 3: Spezielle Rollen-Indikatoren -->
+                <div class="legend-column">
+                    <h4>3. Rollen-Indikatoren &amp; Segmente</h4>
+                    <ul class="legend-list">
+                        <li class="legend-item">
+                            <span class="badge badge-role-transcode">⚡ Transcoding-Drive</span>
+                            <div class="legend-item-desc">Laufwerk für temporäre Transcode-Caches (mind. 20 GB Puffer).</div>
+                        </li>
+                        <li class="legend-item">
+                            <span class="badge badge-role-readonly">🛡️ Read-Only</span>
+                            <div class="legend-item-desc">Dateisystem ist nur lesend eingehängt.</div>
+                        </li>
+                        <li class="legend-item">
+                            <div class="legend-item-desc" style="display: flex; gap: 0.4em; flex-wrap: wrap; margin-top: 0.2em;">
+                                <span style="color:#5591c7">■ Filme</span>
+                                <span style="color:#7aa95c">■ Serien</span>
+                                <span style="color:#b78ad6">■ Musik</span>
+                                <span style="color:#e5a93c">■ Bücher</span>
+                                <span style="color:#888888">■ Sonstiges</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drive Cards Grid -->
+        <h3 style="margin: 0 0 1em 0; color: #ffffff;">Erkannte Laufwerke &amp; Mountpoints</h3>
+        <div id="drive-cards-container" class="drive-cards-grid">
+            <!-- Cards rendered dynamically -->
+        </div>
+
+        <!-- System Telemetry Row -->
+        <div class="system-telemetry-row">
+            <div class="telemetry-card">
+                <h3>⚡ Transcoder &amp; GPU Telemetrie</h3>
+                <div id="gpu-telemetry-content">
+                    <div class="telemetry-item">
+                        <span class="telemetry-label">Status</span>
+                        <span class="telemetry-value" id="gpu-status">Wird geprüft...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="telemetry-card">
+                <h3>📁 Jellyfin Systempfade</h3>
+                <div id="system-paths-content">
+                    <div class="telemetry-item">
+                        <span class="telemetry-label">Systemdaten</span>
+                        <span class="telemetry-value" id="system-paths-status">Wird geladen...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/Plugins/HddDisplay/Assets/hdd-display.js"></script>
+</body>
+</html>

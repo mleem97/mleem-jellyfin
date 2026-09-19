@@ -34,6 +34,8 @@
             case 'movies': return '#5591c7';
             case 'tvshows': return '#7aa95c';
             case 'music': return '#b78ad6';
+            case 'books':
+            case 'audiobooks': return '#e5a93c';
             case 'video': return '#d6a85c';
             case 'mixed': return '#888888';
             default: return '#666666';
@@ -129,6 +131,13 @@
         const actions = document.createElement('div');
         actions.style.cssText = 'display:flex;align-items:center;gap:8px';
         header.appendChild(actions);
+
+        const detailsLink = document.createElement('a');
+        detailsLink.href = '#!/pages/hdd-display';
+        detailsLink.className = 'raised emby-button';
+        detailsLink.textContent = 'Details ➔';
+        detailsLink.style.cssText = 'font-size:11px;padding:5px 10px;min-height:auto;text-decoration:none;color:inherit;display:inline-flex;align-items:center';
+        actions.appendChild(detailsLink);
 
         const button = document.createElement('button');
         button.id = REFRESH_BUTTON_ID;
