@@ -97,7 +97,7 @@ python .github/scripts/package_smoke_test.py
 
 Plugin releases are automated from `main`.
 
-The `Auto Publish Plugins` workflow is started manually with a selected plugin and either an exact four-part version or a configured bump type. It builds and validates the plugin, creates a ZIP package, updates `manifest.json`, verifies the SHA-256 checksum and publishes the GitHub release.
+The `Auto Publish Plugins` workflow is started manually with a selected plugin and either an exact four-part version or a configured bump type. It builds and validates the plugin, creates a ZIP package, updates `manifest.json`, verifies the MD5 checksum (required by Jellyfin) and publishes the GitHub release.
 
 ## Versioning
 
