@@ -2,7 +2,7 @@
   "slug": "GracenoteProvider",
   "name": "Gracenote Metadata Provider",
   "guid": "a05dae4a-2e92-4303-8f16-a7ade62624b4",
-  "version": "1.0.0.0",
+  "version": "1.0.0.1",
   "targetAbi": "12.1.0.0",
   "framework": "net10.0",
   "project": "plugins/GracenoteProvider/GracenoteProvider.csproj",
