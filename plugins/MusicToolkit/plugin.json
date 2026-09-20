@@ -10,6 +10,7 @@
   "assembly": "Jellyfin.Plugin.MusicToolkit.dll",
   "owner": "mleem97",
   "category": "General",
+  "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/MusicToolkit/Web/assets/musictoolkit-icon.svg",
   "overview": "Toolkit fuer Musikbibliotheken mit Spotify UX via Paradox.",
   "description": "Cleans cryptic audio filenames, deduplicates audio streams by content hash, integrates MusicHoarderz/Gracenote and serves a Spotify-style music dashboard via the Paradox plugin ecosystem.",
   "artifacts": [

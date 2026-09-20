@@ -57,7 +57,7 @@ plugins:
     metadata: "plugins/MediaTools/plugin.json"
     project: "plugins/MediaTools/MediaTools.csproj"
     packagePrefix: "MediaTools"
-    guid: "a2b8e391-7d12-4c6e-8f92-5b3a17e0892c"
+    guid: "8e4d2f17-5a33-4c91-b921-dfa724180c55"
     targetAbi: "12.1.0.0"
     framework: "net10.0"
   - slug: "MetadataDashboard"

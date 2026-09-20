@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <defs>
+    <linearGradient id="lyrics-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff007f"/>
+      <stop offset="50%" stop-color="#7928ca"/>
+      <stop offset="100%" stop-color="#2a0845"/>
+    </linearGradient>
+    <linearGradient id="lyrics-glow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0"/>
+    </linearGradient>
+    <filter id="lyrics-shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Base Squircle -->
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#lyrics-bg)" filter="url(#lyrics-shadow)"/>
+  <rect x="8" y="8" width="112" height="56" rx="28" fill="url(#lyrics-glow)"/>
+
+  <!-- Border Highlight -->
+  <rect x="8.5" y="8.5" width="111" height="111" rx="27.5" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+
+  <!-- Lyrics / Microphone Graphic -->
+  <g transform="translate(26, 26)" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Speech / Lyrics bubble -->
+    <path d="M6 10 C6 5.5 9.5 2 14 2 L62 2 C66.5 2 70 5.5 70 10 L70 46 C70 50.5 66.5 54 62 54 L34 54 L20 68 L20 54 L14 54 C9.5 54 6 50.5 6 46 Z" stroke-width="3.5" fill="rgba(255, 255, 255, 0.08)"/>
+    
+    <!-- Lyric Text Lines -->
+    <line x1="20" y1="18" x2="56" y2="18" stroke-width="4" stroke="#00ffcc"/>
+    <line x1="20" y1="28" x2="48" y2="28" stroke-width="4" stroke="#ffffff"/>
+    <line x1="20" y1="38" x2="40" y2="38" stroke-width="4" stroke="#ff80bf"/>
+  </g>
+</svg>

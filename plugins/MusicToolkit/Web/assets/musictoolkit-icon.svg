@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-grad-toolkit" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1db954"/>
+      <stop offset="50%" stop-color="#191414"/>
+      <stop offset="100%" stop-color="#121212"/>
+    </linearGradient>
+    <linearGradient id="glow-grad-toolkit" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0"/>
+    </linearGradient>
+    <filter id="shadow-toolkit" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Base Squircle -->
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#bg-grad-toolkit)" filter="url(#shadow-toolkit)"/>
+  <rect x="8" y="8" width="112" height="56" rx="28" fill="url(#glow-grad-toolkit)"/>
+
+  <!-- Border Highlight -->
+  <rect x="8.5" y="8.5" width="111" height="111" rx="27.5" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+
+  <!-- Audio Waveform & Wrench Graphic -->
+  <g transform="translate(24, 24)" stroke="#1db954" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Equalizer Bars / Sound waves -->
+    <line x1="8" y1="40" x2="8" y2="48" stroke-width="4" stroke="#ffffff"/>
+    <line x1="16" y1="32" x2="16" y2="56" stroke-width="4" stroke="#1db954"/>
+    <line x1="24" y1="24" x2="24" y2="64" stroke-width="4" stroke="#1ed760"/>
+    <line x1="32" y1="36" x2="32" y2="52" stroke-width="4" stroke="#ffffff"/>
+    <line x1="40" y1="20" x2="40" y2="68" stroke-width="4" stroke="#1db954"/>
+    
+    <!-- Music note & wrench overlay -->
+    <path d="M50 18 L68 12 L68 46" stroke="#ffffff" stroke-width="4"/>
+    <circle cx="62" cy="48" r="6.5" fill="#1db954" stroke="none"/>
+
+    <!-- Tool / Sparkle -->
+    <path d="M56 62 L60 66 L72 54" stroke="#00ffcc" stroke-width="4"/>
+  </g>
+</svg>
