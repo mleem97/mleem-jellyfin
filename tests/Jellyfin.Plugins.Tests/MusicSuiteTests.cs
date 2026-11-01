@@ -28,7 +28,7 @@ public sealed class MusicSuiteTests
     public async Task WebBridgeStartupHonorsCancellationAndToleratesAbsentOptionalPlugins()
     {
         var service = new MusicSuiteStartupService(new ParadoxBridge(NullLogger<ParadoxBridge>.Instance));
-        Assert.Throws<OperationCanceledException>(() => { service.StartAsync(new CancellationToken(canceled: true)); });
+        await Assert.ThrowsAsync<OperationCanceledException>(() => service.StartAsync(new CancellationToken(canceled: true)));
         await service.StartAsync(CancellationToken.None);
         await service.StopAsync(CancellationToken.None);
     }
