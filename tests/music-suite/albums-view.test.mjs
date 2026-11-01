@@ -399,7 +399,7 @@ test('scroll position restores from sessionStorage on mount', async () => {
   const harness = await createHarness(server);
   try {
     const lib = harness.dom.window.MusicSuiteAlbumsLib;
-    harness.dom.window.sessionStorage.setItem(lib.scrollKey('restore|parent'), '321');
+    harness.dom.window.sessionStorage.setItem(lib.scrollKey(USER_ID + '|restore|parent'), '321');
     const { context } = mountArgs(server, 'restore|parent');
     const helpers = {
       apiGet: (url) => server.handle(url),
@@ -480,4 +480,85 @@ test('failed context validation keeps the native view (fail-open)', async () => 
   } finally {
     dom.window.close();
   }
+});
+
+test('loader reveals a successfully mounted album view and restores native markup on navigation', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server, `#/music/albums?topParentId=${PARENT_ID}`);
+  try {
+    const document = harness.dom.window.document;
+    document.body.innerHTML = '<div data-role="page"><div data-role="content"><div class="itemsContainer" style="display:grid" aria-hidden="false">Native albums</div></div></div>';
+    harness.dom.window.BetterMusicDisplayAlbums.refresh();
+    await delay(150);
+    const native = document.querySelector('.itemsContainer');
+    const injected = document.querySelector('#better-music-display-albums');
+    assert.ok(injected);
+    assert.equal(injected.hidden, false, 'a successful mount must be visible');
+    assert.equal(native.style.display, 'none');
+    const albumCalls = server.state.calls.filter((url) => /\/Albums\?/.test(url)).length;
+    await delay(120);
+    assert.equal(server.state.calls.filter((url) => /\/Albums\?/.test(url)).length, albumCalls, 'own DOM updates must not remount');
+    harness.dom.window.location.hash = '#/home';
+    await delay(120);
+    assert.equal(document.querySelector('#better-music-display-albums'), null);
+    assert.equal(native.style.display, 'grid');
+    assert.equal(native.getAttribute('aria-hidden'), 'false');
+  } finally { harness.dom.window.close(); }
+});
+
+for (const total of [0, 10, 1000, 10000]) {
+  test(`library with ${total} albums remains bounded and can revisit earlier albums`, async () => {
+    const server = createServer({ total });
+    const harness = await createHarness(server);
+    try {
+      const { context, helpers } = mountArgs(server);
+      const container = harness.dom.window.document.createElement('section');
+      harness.dom.window.document.body.appendChild(container);
+      await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+      for (let start = 50; start < total; start += 50) {
+        intersect(harness);
+        await delay(0);
+        assert.ok(container.querySelectorAll('.ms-album-card').length <= 500);
+      }
+      if (!total) {
+        assert.match(container.querySelector('.ms-albums-status').textContent, /No albums found/);
+        return;
+      }
+      assert.equal(container.querySelector('.ms-album-title').textContent, 'Album 0');
+      if (total <= 500) return;
+      let scrollY = 0;
+      Object.defineProperty(harness.dom.window, 'scrollY', { get: () => scrollY, configurable: true });
+      container.querySelector('.ms-albums-spacer-top').getBoundingClientRect = () => ({ top: -scrollY });
+      container.querySelector('.ms-albums-grid').getBoundingClientRect = () => ({ width: 1000 });
+      scrollY = 50000;
+      harness.dom.window.dispatchEvent(new harness.dom.window.Event('scroll'));
+      await delay(30);
+      assert.notEqual(container.querySelector('.ms-album-title').textContent, 'Album 0');
+      assert.ok(parseFloat(container.querySelector('.ms-albums-spacer-top').style.height) > 0);
+      assert.ok(container.querySelectorAll('.ms-album-card').length <= 500);
+      scrollY = 0;
+      harness.dom.window.dispatchEvent(new harness.dom.window.Event('scroll'));
+      await delay(30);
+      assert.equal(container.querySelector('.ms-album-title').textContent, 'Album 0', 'earlier albums must not be discarded');
+    } finally { harness.dom.window.close(); }
+  });
+}
+
+test('back navigation restores loaded pages and filters without refetching page zero', async () => {
+  const server = createServer({ total: 150 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server, 'back-navigation');
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    intersect(harness);
+    await delay(10);
+    assert.equal(container.querySelectorAll('.ms-album-card').length, 100);
+    harness.dom.window.MusicSuiteAlbumsRenderer.unmount(container);
+    const firstPages = server.state.calls.filter((url) => url.includes('StartIndex=0')).length;
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    assert.equal(container.querySelectorAll('.ms-album-card').length, 100);
+    assert.equal(server.state.calls.filter((url) => url.includes('StartIndex=0')).length, firstPages);
+  } finally { harness.dom.window.close(); }
 });
