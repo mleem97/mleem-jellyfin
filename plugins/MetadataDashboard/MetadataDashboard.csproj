@@ -8,8 +8,6 @@
     <Version>1.0.0.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- NU1903: transitive Microsoft.Kiota.Abstractions via Jellyfin.* 12.1.0 (upstream); keep as warning, not error -->
-    <WarningsNotAsErrors>NU1903</WarningsNotAsErrors>
     <NoWarn>$(NoWarn);1591;SA1611;SA1615;CA3003;CA1873;SA1201;CA1034;CA1861;CA1307;CA5351;CA2007;CA2024;SA1116;SA1117;CA1848;CA1822;CA1054;CA1056;SA1214;SA1516</NoWarn>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
