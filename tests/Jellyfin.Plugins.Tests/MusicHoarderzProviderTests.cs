@@ -57,7 +57,7 @@ public class MusicHoarderzProviderTests
         });
 
         var factory = new MusicHoarderzTestHttpClientFactory(handler);
-        var client = new MusicHoarderzHttpClient(factory, MusicHoarderzNoopLogger<MusicHoarderzHttpClient>.Instance, "https://covers.example.com", "DE");
+        var client = new MusicHoarderzHttpClient(factory, MusicHoarderzNoopLogger<MusicHoarderzHttpClient>.Instance, "https://covers.example.com", "DE", (_, _) => Task.FromResult(new[] { IPAddress.Parse("93.184.216.34") }));
         var scorer = new CoverMatchScorer();
         var store = new CredentialStore(MusicHoarderzNoopLogger<CredentialStore>.Instance, Path.GetTempPath());
 
@@ -99,7 +99,7 @@ public class MusicHoarderzProviderTests
         var factory = new MusicHoarderzTestHttpClientFactory(handler);
         var client = new MusicHoarderzHttpClient(factory, MusicHoarderzNoopLogger<MusicHoarderzHttpClient>.Instance);
         var scorer = new CoverMatchScorer();
-        var validator = new CoverImageValidator(factory, MusicHoarderzNoopLogger<CoverImageValidator>.Instance);
+        var validator = new CoverImageValidator(factory, MusicHoarderzNoopLogger<CoverImageValidator>.Instance, new MusicHoarderzTestImageDecoder());
         return new MusicHoarderzImageProvider(client, scorer, validator, MusicHoarderzNoopLogger<MusicHoarderzImageProvider>.Instance);
     }
 }
