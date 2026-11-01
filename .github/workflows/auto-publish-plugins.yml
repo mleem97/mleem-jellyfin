@@ -4,18 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       plugin:
-        description: 'Plugin slug to publish'
+        description: 'Plugin slug from plugins/<Slug>/plugin.json to publish'
         required: true
-        type: choice
-        options:
-          - HddDisplay
-          - MusicSuite
-          - MusicHoarderzProvider
-          - SpotifyProvider
-          - GracenoteProvider
-          - MusicToolkit
-          - MediaTools
-          - MetadataDashboard
+        type: string
       bump:
         description: 'Version bump when no exact version is supplied'
         required: false

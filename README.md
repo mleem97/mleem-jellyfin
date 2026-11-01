@@ -1,5 +1,10 @@
 # mleem Jellyfin Plugins
 
+Development is integrated in [`dev`](https://github.com/mleem97/mleem-jellyfin/tree/dev).
+See [Monorepo maintenance](docs/MONOREPO_MAINTENANCE.md) for new-plugin scaffolding,
+central package updates, independent releases and the pinned
+[IAmParadox source submodules](external/README.md).
+
 A monorepo for Marvin's Jellyfin plugins. Every folder in `plugins/` is an independent plugin with its own GUID, version, assembly, metadata and release package.
 
 ## Install published plugins

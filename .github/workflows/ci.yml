@@ -29,11 +29,13 @@ jobs:
         with:
           node-version: '22.x'
       - name: Validate Python release scripts
-        run: python -m compileall -q .github/scripts
+        run: python -m compileall -q .github/scripts tools
       - name: Test release tooling
         run: python -m unittest discover -s tests/release-tooling -v
       - name: Validate plugin metadata and catalog
         run: python .github/scripts/validate_repository.py
+      - name: Validate upstream source pins and runtime dependencies
+        run: python tools/validate_dependencies.py
       - name: Restore repository solution
         run: dotnet restore Jellyfin.Plugins.sln --locked-mode
       - name: Build repository solution

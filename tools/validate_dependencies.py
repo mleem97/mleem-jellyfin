@@ -24,10 +24,12 @@ def validate(root: pathlib.Path, initialized: bool = False) -> int:
         raise ValueError("Unsupported dependency metadata schema")
     modules = configparser.RawConfigParser()
     modules.read(root / ".gitmodules")
-    configured = {
-        modules.get(section, "path"): modules.get(section, "url")
-        for section in modules.sections()
-    }
+    configured: dict[str, str] = {}
+    for section in modules.sections():
+        path = modules.get(section, "path")
+        if path in configured:
+            raise ValueError(f"Duplicate .gitmodules path: {path}")
+        configured[path] = modules.get(section, "url")
     dependencies = document["plugins"]
     by_id = {entry["id"]: entry for entry in dependencies}
     if len(by_id) != len(dependencies):
@@ -35,7 +37,7 @@ def validate(root: pathlib.Path, initialized: bool = False) -> int:
     paths: set[str] = set()
     for entry in dependencies:
         path = pathlib.PurePosixPath(entry["path"])
-        if path.is_absolute() or ".." in path.parts or path.parts[0] != "external":
+        if not path.parts or path.is_absolute() or ".." in path.parts or path.parts[0] != "external":
             raise ValueError(f"Unsafe dependency path: {path}")
         if entry["path"] in paths:
             raise ValueError(f"Duplicate dependency path: {path}")
@@ -44,12 +46,16 @@ def validate(root: pathlib.Path, initialized: bool = False) -> int:
             raise ValueError(f"Submodule URL mismatch: {path}")
         if not re.fullmatch(r"[0-9a-f]{40}", entry["commit"]):
             raise ValueError(f"Invalid pinned commit: {path}")
+        if not re.fullmatch(r"\d+\.\d+\.\d+", entry["jellyfinVersion"]):
+            raise ValueError(f"Invalid Jellyfin version: {path}")
         staged = git(root, "ls-files", "--stage", "--", str(path)).split()
         if len(staged) < 4 or staged[:3] != ["160000", entry["commit"], "0"]:
             raise ValueError(f"Gitlink does not match dependency metadata: {path}")
         for required in entry.get("requiredPlugins", []):
             if required not in by_id:
                 raise ValueError(f"Unknown dependency {required} required by {entry['id']}")
+            if by_id[required]["jellyfinVersion"] != entry["jellyfinVersion"]:
+                raise ValueError(f"Incompatible runtime dependency versions: {entry['id']} and {required}")
         if initialized:
             checkout = root / path
             if git(checkout, "rev-parse", "HEAD") != entry["commit"]:
@@ -99,7 +105,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         return validate(ROOT, args.initialized)
-    except (KeyError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+    except (KeyError, ValueError, OSError, configparser.Error, subprocess.CalledProcessError) as exc:
         print(f"Dependency validation failed: {exc}", file=sys.stderr)
         return 1
 
