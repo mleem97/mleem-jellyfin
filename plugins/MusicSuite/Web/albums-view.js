@@ -10,19 +10,25 @@
         container: null,
         nativeView: null,
         nativeDisplay: '',
+        nativeAriaHidden: null,
         observer: null,
         retryTimer: null,
         requestSerial: 0,
         activeRouteKey: ''
     };
 
-    function apiGet(url) {
+    function apiGet(url, options) {
         const apiClient = window.ApiClient;
-        if (apiClient && apiClient.getJSON && apiClient.getUrl) {
+        const signal = options && options.signal;
+        if (!signal && apiClient && apiClient.getJSON && apiClient.getUrl) {
             return apiClient.getJSON(apiClient.getUrl(url));
         }
-
-        return fetch(url, { credentials: 'same-origin' }).then(function (response) {
+        const resolved = apiClient && apiClient.getUrl ? apiClient.getUrl(url) : url;
+        const headers = { Accept: 'application/json' };
+        if (apiClient && typeof apiClient.accessToken === 'function' && apiClient.accessToken()) {
+            headers['X-Emby-Token'] = apiClient.accessToken();
+        }
+        return window.fetch(resolved, { credentials: 'same-origin', headers: headers, signal: signal }).then(function (response) {
             if (!response.ok) throw new Error('HTTP ' + response.status);
             return response.json();
         });
@@ -126,6 +132,7 @@
     function hideNativeView() {
         if (!runtime.nativeView) return;
         runtime.nativeDisplay = runtime.nativeView.style.display;
+        runtime.nativeAriaHidden = runtime.nativeView.getAttribute('aria-hidden');
         runtime.nativeView.style.display = 'none';
         runtime.nativeView.setAttribute('aria-hidden', 'true');
     }
@@ -133,11 +140,12 @@
     function restoreNativeView() {
         if (!runtime.nativeView) return;
         runtime.nativeView.style.display = runtime.nativeDisplay;
-        runtime.nativeView.removeAttribute('aria-hidden');
+        if (runtime.nativeAriaHidden === null) runtime.nativeView.removeAttribute('aria-hidden');
+        else runtime.nativeView.setAttribute('aria-hidden', runtime.nativeAriaHidden);
     }
 
-    function cleanupView() {
-        runtime.requestSerial += 1;
+    function cleanupView(invalidate) {
+        if (invalidate !== false) runtime.requestSerial += 1;
         if (runtime.renderer && runtime.container && typeof runtime.renderer.unmount === 'function') {
             try {
                 runtime.renderer.unmount(runtime.container);
@@ -150,6 +158,7 @@
         runtime.container = null;
         runtime.nativeView = null;
         runtime.nativeDisplay = '';
+        runtime.nativeAriaHidden = null;
         runtime.activeRouteKey = '';
     }
 
@@ -171,7 +180,7 @@
 
         const key = routeKey(parentId);
         if (runtime.container && runtime.activeRouteKey === key) return;
-        cleanupView();
+        cleanupView(false);
         const container = createContainer(page, nativeView, parentId);
         if (!container) {
             scheduleSync(250);
@@ -187,7 +196,9 @@
             routeKey: key
         };
 
-        Promise.resolve(runtime.renderer.mount(container, context, helpers))
+        Promise.resolve().then(function () {
+            return runtime.renderer.mount(container, context, helpers);
+        })
             .then(function (mounted) {
                 if (serial !== runtime.requestSerial || runtime.container !== container) return;
                 if (mounted === false) {
@@ -198,17 +209,21 @@
                 hideNativeView();
             })
             .catch(function (error) {
+                if (serial !== runtime.requestSerial || runtime.container !== container) return;
                 console.warn('Better MusicDisplay Albums view failed; native view restored.', error);
                 cleanupView();
             });
     }
 
-    function syncRoute() {
+    function syncRoute(force) {
         const parentId = routeParentId();
         if (!parentId || !routeLooksLikeAlbums() || !runtime.renderer) {
             cleanupView();
             return;
         }
+
+        if (!force && runtime.container && runtime.container.isConnected
+            && runtime.activeRouteKey === routeKey(parentId)) return;
 
         const serial = ++runtime.requestSerial;
         apiGet('Plugins/MusicSuite/Albums/Context?parentId=' + encodeURIComponent(parentId))
@@ -223,22 +238,31 @@
                 activate(parentId, context, serial);
             })
             .catch(function (error) {
+                if (serial !== runtime.requestSerial) return;
                 console.warn('Better MusicDisplay context validation failed; native view retained.', error);
                 cleanupView();
             });
     }
 
-    function scheduleSync(delay) {
+    function scheduleSync(delay, force) {
         if (runtime.retryTimer !== null) window.clearTimeout(runtime.retryTimer);
         runtime.retryTimer = window.setTimeout(function () {
             runtime.retryTimer = null;
-            syncRoute();
+            syncRoute(force);
         }, delay);
     }
 
     function startObserver() {
         if (runtime.observer || !document.body) return;
-        runtime.observer = new MutationObserver(function () { scheduleSync(75); });
+        runtime.observer = new MutationObserver(function (records) {
+            const outside = records.some(function (record) {
+                const target = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+                if (target && target.closest && target.closest('#' + CONTAINER_ID)) return false;
+                const changed = Array.from(record.addedNodes || []).concat(Array.from(record.removedNodes || []));
+                return !changed.length || changed.some(function (node) { return node.id !== CONTAINER_ID; });
+            });
+            if (outside) scheduleSync(75);
+        });
         runtime.observer.observe(document.body, {
             childList: true,
             subtree: true,
@@ -262,7 +286,7 @@
                 runtime.renderer = null;
             }
         },
-        refresh: function () { scheduleSync(0); },
+        refresh: function () { scheduleSync(0, true); },
         apiGet: apiGet
     };
     window.BetterMusicDisplayAlbums = publicApi;
@@ -589,23 +613,27 @@
     const lib = window.MusicSuiteAlbumsLib;
     const GRID_STYLE_ID = 'musicsuite-albums-style';
     const activeMounts = new Map();
+    const viewSnapshots = new Map();
 
     const GRID_CSS = '.ms-albums-toolbar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:.75rem}' +
         '.ms-albums-toolbar input[type=search]{min-width:12rem;flex:1 1 12rem}' +
         '.ms-albums-toolbar label{display:inline-flex;align-items:center;gap:.35rem}' +
-        '.ms-albums-grid{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(var(--ms-tile,168px),1fr))}' +
+        '.ms-albums-grid{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--ms-tile,168px)),1fr))}' +
         '.ms-albums-grid[data-tile=Small]{--ms-tile:120px}' +
         '.ms-albums-grid[data-tile=Medium]{--ms-tile:168px}' +
         '.ms-albums-grid[data-tile=Large]{--ms-tile:232px}' +
-        '.ms-album-card{display:flex;flex-direction:column;gap:.35rem;cursor:pointer;border-radius:.5rem;padding:.35rem}' +
+        '.ms-album-card{display:flex;flex-direction:column;gap:.35rem;cursor:pointer;border-radius:.5rem;padding:.35rem;min-width:0}' +
         '.ms-album-card:focus-visible{outline:2px solid currentColor;outline-offset:2px}' +
         '.ms-album-cover{display:block;aspect-ratio:1/1;overflow:hidden;border-radius:.4rem;background:rgba(127,127,127,.25)}' +
         '.ms-album-cover img{width:100%;height:100%;object-fit:cover;display:block}' +
         '.ms-album-cover-missing{display:flex;width:100%;height:100%;align-items:center;justify-content:center;font-size:2rem}' +
-        '.ms-album-meta{display:flex;flex-direction:column;line-height:1.25}' +
+        '.ms-album-meta{display:flex;flex-direction:column;line-height:1.25;height:4.25rem;overflow:hidden}' +
+        '.ms-album-title,.ms-album-artist{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
         '.ms-album-title{font-weight:600}' +
         '.ms-albums-status{margin-top:.75rem;min-height:1.5rem}' +
-        '.ms-albums-sentinel{width:100%;height:1px}';
+        '.ms-albums-sentinel{width:100%;height:1px}' +
+        '.ms-albums-spacer{height:0;pointer-events:none}' +
+        '@media(max-width:480px){.ms-albums-toolbar>label{max-width:100%}.ms-albums-toolbar input{max-width:100%;box-sizing:border-box}}';
 
     function ensureGridStyle(doc) {
         try {
@@ -665,35 +693,29 @@
 
     function fetchAlbums(apiGet, url, signal) {
         if (signal && signal.aborted) return Promise.reject(new Error('Aborted.'));
-        // ApiClient-Pfad kennt kein Abort-Signal; Stale-Guard verwirft alte Antworten.
-        return apiGet(url);
+        return apiGet(url, { signal: signal });
     }
 
     function sendJson(url, method, body) {
-        try {
-            const apiClient = window.ApiClient;
-            const payload = body === undefined ? undefined : JSON.stringify(body);
-            if (apiClient && typeof apiClient.ajax === 'function') {
-                return apiClient.ajax({
-                    type: method,
-                    url: typeof apiClient.getUrl === 'function' ? apiClient.getUrl(url) : url,
-                    data: payload,
-                    contentType: 'application/json'
-                }).catch(function () { return null; });
-            }
-        } catch (error) {
-            return Promise.resolve(null);
+        const apiClient = window.ApiClient;
+        const payload = body === undefined ? undefined : JSON.stringify(body);
+        const resolved = apiClient && typeof apiClient.getUrl === 'function' ? apiClient.getUrl(url) : url;
+        if (apiClient && typeof apiClient.ajax === 'function') {
+            return Promise.resolve(apiClient.ajax({
+                type: method, url: resolved, data: payload,
+                contentType: 'application/json', dataType: 'json'
+            }));
         }
-        try {
-            return fetch(url, {
-                method: method,
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: payload
-            }).then(function () { return null; }).catch(function () { return null; });
-        } catch (error) {
-            return Promise.resolve(null);
+        const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+        if (apiClient && typeof apiClient.accessToken === 'function' && apiClient.accessToken()) {
+            headers['X-Emby-Token'] = apiClient.accessToken();
         }
+        return window.fetch(resolved, {
+            method: method, credentials: 'same-origin', headers: headers, body: payload
+        }).then(function (response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.status === 204 ? null : response.json();
+        });
     }
 
     function createToolbar(doc, state, callbacks) {
@@ -726,7 +748,8 @@
             '<button type="button" data-tile="Medium" aria-pressed="true" title="Medium tiles">M</button>' +
             '<button type="button" data-tile="Large" aria-pressed="false" title="Large tiles">L</button>' +
             '</span>' +
-            '<button type="button" class="ms-albums-reset">Reset layout</button>';
+            '<button type="button" class="ms-albums-reset">Reset layout</button>' +
+            '<span class="ms-layout-feedback" role="status" aria-live="polite"></span>';
 
         const search = toolbar.querySelector('.ms-albums-search');
         const sort = toolbar.querySelector('.ms-albums-sort');
@@ -738,6 +761,11 @@
 
         sort.value = state.filters.sortBy;
         order.value = state.filters.sortOrder;
+        search.value = state.filters.searchTerm;
+        genre.value = state.filters.genre;
+        year.value = state.filters.year;
+        fav.checked = state.filters.isFavorite;
+        missing.checked = state.filters.missingCover;
 
         search.addEventListener('input', function () { callbacks.onSearch(search.value); });
         genre.addEventListener('input', function () { callbacks.onGenre(genre.value); });
@@ -802,19 +830,28 @@
                 : context.SearchDebounceMs),
             lib.DEFAULT_DEBOUNCE_MS);
 
+        const userId = currentUserId();
+        const snapshotKey = String(userId || '') + '|' + routeKeyValue;
+        const snapshot = viewSnapshots.get(snapshotKey);
         const state = {
-            filters: lib.createFilterState(),
-            items: [],
-            seen: {},
-            nextStart: 0,
-            hasMore: true,
+            filters: lib.createFilterState(snapshot && snapshot.filters),
+            items: snapshot ? snapshot.items.slice() : [],
+            seen: snapshot ? Object.assign({}, snapshot.seen) : {},
+            nextStart: snapshot ? snapshot.nextStart : 0,
+            hasMore: snapshot ? snapshot.hasMore : true,
+            total: snapshot ? snapshot.total : null,
             loading: false,
             guard: lib.createSequenceGuard(),
             aborter: null,
             debounceTimer: null,
-            tileSize: 'Medium',
-            canCustomize: true,
-            userId: null,
+            filterPending: false,
+            tileSize: lib.resolveTileSize({ TileSize: context && (context.defaultTileSize || context.DefaultTileSize) }, 'Medium'),
+            canCustomize: false,
+            userSettings: {},
+            savedSettings: {},
+            settingsRevision: 0,
+            settingsQueue: Promise.resolve(),
+            userId: userId,
             destroyed: false
         };
         let grid = null;
@@ -823,6 +860,30 @@
         let toolbar = null;
         let observer = null;
         let scrollTicking = false;
+        let topSpacer = null;
+        let bottomSpacer = null;
+        let renderedStart = -1;
+        let renderedEnd = -1;
+        let renderedColumns = 0;
+
+        function scrollParent() {
+            for (let node = container.parentElement; node; node = node.parentElement) {
+                const style = window.getComputedStyle(node);
+                if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight) return node;
+            }
+            return null;
+        }
+
+        function scrollPosition() {
+            const parent = scrollParent();
+            return parent ? parent.scrollTop : (window.scrollY || 0);
+        }
+
+        function scrollToPosition(value) {
+            const parent = scrollParent();
+            if (parent) parent.scrollTop = value;
+            else window.scrollTo(0, value);
+        }
 
         function setStatus(mode, message) {
             if (!status || state.destroyed) return;
@@ -841,30 +902,49 @@
             }
         }
 
-        function enforceDomCap() {
-            if (!grid) return;
-            let cards = grid.querySelectorAll('.ms-album-card');
-            if (cards.length <= lib.DEFAULT_DOM_CAP) return;
-            const overflow = cards.length - lib.DEFAULT_DOM_CAP;
-            for (let i = 0; i < overflow; i += 1) {
-                const first = grid.querySelector('.ms-album-card');
-                if (!first) break;
-                grid.removeChild(first);
-            }
-        }
-
-        function appendItems(fresh) {
-            if (!grid || !fresh.length) return;
-            const html = fresh.map(function (item) {
+        function renderWindow(force, restoredScroll) {
+            if (!grid || state.destroyed) return;
+            const style = window.getComputedStyle(grid);
+            const gap = parseFloat(style.rowGap || style.gap) || 12;
+            const tile = { Small: 120, Medium: 168, Large: 232 }[state.tileSize] || 168;
+            const width = grid.getBoundingClientRect().width || container.clientWidth || 1024;
+            const columns = Math.max(1, Math.floor((width + gap) / (tile + gap)));
+            const card = grid.querySelector('.ms-album-card');
+            const rowHeight = (card && card.getBoundingClientRect().height)
+                || ((width - gap * (columns - 1)) / columns + 84);
+            const stride = rowHeight + gap;
+            const parent = scrollParent();
+            const viewportTop = parent ? parent.getBoundingClientRect().top : 0;
+            const visibleOffset = Math.max(0, viewportTop - topSpacer.getBoundingClientRect().top
+                + (restoredScroll === undefined ? 0 : restoredScroll - scrollPosition()));
+            const firstRow = Math.max(0, Math.floor(visibleOffset / stride) - 3);
+            const windowSize = Math.max(columns, Math.floor(lib.DEFAULT_DOM_CAP / columns) * columns);
+            const lastStart = Math.max(0, Math.ceil((state.items.length - windowSize) / columns) * columns);
+            const start = Math.min(firstRow * columns, lastStart);
+            const end = Math.min(state.items.length, start + windowSize);
+            topSpacer.style.height = (Math.floor(start / columns) * stride) + 'px';
+            bottomSpacer.style.height = (Math.ceil((state.items.length - end) / columns) * stride) + 'px';
+            if (!force && start === renderedStart && end === renderedEnd && columns === renderedColumns) return;
+            const focusedId = doc.activeElement && doc.activeElement.getAttribute('data-album-id');
+            const html = state.items.slice(start, end).map(function (item) {
                 const id = item && (item.Id !== undefined && item.Id !== null ? item.Id : item.id);
                 return lib.albumCardHtml(item, id ? coverUrl(apiClient, id) : '');
             }).join('');
-            grid.insertAdjacentHTML('beforeend', html);
-            enforceDomCap();
+            grid.innerHTML = html;
+            renderedStart = start;
+            renderedEnd = end;
+            renderedColumns = columns;
+            if (focusedId) {
+                const focused = Array.from(grid.querySelectorAll('[data-album-id]')).find(function (node) {
+                    return node.getAttribute('data-album-id') === focusedId;
+                });
+                if (focused) focused.focus({ preventScroll: true });
+            }
         }
 
         function loadPage(isFirst, isReset) {
             if (state.destroyed || !state.hasMore) return Promise.resolve(false);
+            if (state.filterPending && isReset !== true) return Promise.resolve(false);
             // Filter-Reset bricht einen laufenden Request ab und startet neu;
             // reines Nachladen (Sentinel/Retry) respektiert den In-Flight-Guard.
             if (state.loading && isReset !== true) return Promise.resolve(false);
@@ -876,6 +956,7 @@
             state.loading = true;
             if (state.items.length === 0) setStatus('loading');
             const token = state.guard.issue();
+            const requestedStart = state.nextStart;
             const query = lib.buildAlbumsQuery({
                 startIndex: state.nextStart,
                 limit: batchSize,
@@ -893,9 +974,9 @@
                     if (state.destroyed || !state.guard.isCurrent(token)) return false;
                     const page = readPage(payload);
                     if (!page) throw new Error('Invalid album page.');
+                    if (page.hasMore && page.nextStart <= requestedStart) throw new Error('Album paging did not advance.');
                     const fresh = lib.mergeAlbumPage(state.seen, page.items);
                     state.items = state.items.concat(fresh);
-                    state.items = lib.applyDomCap(state.items, 10000);
                     state.nextStart = page.nextStart;
                     state.hasMore = page.hasMore;
                     const total = payload && (payload.TotalRecordCount !== undefined && payload.TotalRecordCount !== null
@@ -903,20 +984,25 @@
                         : payload.totalRecordCount);
                     if (Number.isFinite(Number(total))) state.total = Number(total);
                     else if (state.total === undefined) state.total = null;
-                    appendItems(fresh);
+                    renderWindow();
                     state.loading = false;
-                    if (!state.items.length) setStatus('empty');
+                    if (!state.items.length && !state.hasMore) setStatus('empty');
+                    else if (!state.items.length) setStatus('loading');
                     else if (!state.hasMore) setStatus('ready');
                     else setStatus('ready');
                     restoreScrollOnce();
                     observeSentinel();
+                    if (page.hasMore && !page.items.length) {
+                        window.setTimeout(function () {
+                            if (state.guard.isCurrent(token)) loadPage(false).catch(function () { /* inline retry */ });
+                        }, 0);
+                    }
                     return true;
                 })
                 .catch(function (error) {
                     if (state.destroyed) return false;
                     if ((aborter && aborter.signal && aborter.signal.aborted)
                         || !state.guard.isCurrent(token)) {
-                        state.loading = false;
                         return false;
                     }
                     state.loading = false;
@@ -930,6 +1016,17 @@
         }
 
         function resetAndLoad() {
+            if (state.debounceTimer !== null) window.clearTimeout(state.debounceTimer);
+            state.debounceTimer = null;
+            state.filterPending = false;
+            scrollRestored = true;
+            viewSnapshots.delete(snapshotKey);
+            try {
+                lib.saveScrollPosition(window.sessionStorage, snapshotKey, 0);
+                const parent = scrollParent();
+                const viewportTop = parent ? parent.getBoundingClientRect().top : 0;
+                scrollToPosition(Math.max(0, scrollPosition() + toolbar.getBoundingClientRect().top - viewportTop));
+            } catch (error) { /* optional scroll restoration */ }
             const filters = state.filters;
             const reset = lib.resetPaging({ filters: filters });
             state.filters = reset.filters;
@@ -938,6 +1035,10 @@
             state.nextStart = reset.nextStart;
             state.hasMore = reset.hasMore;
             state.total = null;
+            renderedStart = -1;
+            renderedEnd = -1;
+            if (topSpacer) topSpacer.style.height = '0px';
+            if (bottomSpacer) bottomSpacer.style.height = '0px';
             if (grid) grid.innerHTML = '';
             setStatus('loading');
             return loadPage(true, true).catch(function (error) {
@@ -949,6 +1050,7 @@
 
         function scheduleSearch(value) {
             state.filters.searchTerm = String(value || '').trim();
+            invalidatePendingFilter();
             if (state.debounceTimer !== null) window.clearTimeout(state.debounceTimer);
             state.debounceTimer = window.setTimeout(function () {
                 state.debounceTimer = null;
@@ -958,11 +1060,19 @@
 
         function scheduleGenre(value) {
             state.filters.genre = String(value || '').trim();
+            invalidatePendingFilter();
             if (state.debounceTimer !== null) window.clearTimeout(state.debounceTimer);
             state.debounceTimer = window.setTimeout(function () {
                 state.debounceTimer = null;
                 resetAndLoad();
             }, debounceMs);
+        }
+
+        function invalidatePendingFilter() {
+            state.filterPending = true;
+            state.guard.issue();
+            if (state.aborter) state.aborter.abort();
+            state.loading = false;
         }
 
         let scrollRestored = false;
@@ -971,24 +1081,25 @@
             scrollRestored = true;
             let saved = 0;
             try {
-                saved = lib.readScrollPosition(window.sessionStorage, routeKeyValue);
+                saved = snapshot ? snapshot.scroll : lib.readScrollPosition(window.sessionStorage, snapshotKey);
             } catch (error) {
                 saved = 0;
             }
             if (saved > 0) {
                 try {
                     window.requestAnimationFrame(function () {
-                        try { window.scrollTo(0, saved); } catch (error) { /* fail-open */ }
+                        if (state.destroyed) return;
+                        try { renderWindow(true, saved); scrollToPosition(saved); } catch (error) { /* fail-open */ }
                     });
                 } catch (error) {
-                    try { window.scrollTo(0, saved); } catch (ignored) { /* fail-open */ }
+                    try { scrollToPosition(saved); } catch (ignored) { /* fail-open */ }
                 }
             }
         }
 
         function persistScroll() {
             try {
-                lib.saveScrollPosition(window.sessionStorage, routeKeyValue, window.scrollY || 0);
+                lib.saveScrollPosition(window.sessionStorage, snapshotKey, scrollPosition());
             } catch (error) {
                 // sessionStorage ist optional.
             }
@@ -1001,6 +1112,7 @@
                 const after = function () {
                     scrollTicking = false;
                     if (state.destroyed) return;
+                    renderWindow();
                     persistScroll();
                     fallbackSentinelCheck();
                 };
@@ -1024,7 +1136,14 @@
         }
 
         function observeSentinel() {
-            if (!sentinel || state.destroyed || observer) return;
+            if (!sentinel || state.destroyed) return;
+            if (observer) {
+                if (typeof observer.unobserve === 'function') {
+                    observer.unobserve(sentinel);
+                    observer.observe(sentinel);
+                }
+                return;
+            }
             try {
                 if (typeof window.IntersectionObserver !== 'function') return;
                 observer = new window.IntersectionObserver(function (entries) {
@@ -1054,6 +1173,18 @@
             }
         }
 
+        function onCoverError(event) {
+            const image = event.target;
+            if (!image || image.tagName !== 'IMG' || !grid.contains(image)) return;
+            const card = image.closest('.ms-album-card');
+            const fallback = doc.createElement('span');
+            fallback.className = 'ms-album-cover-missing';
+            fallback.setAttribute('aria-hidden', 'true');
+            fallback.textContent = card.querySelector('.ms-album-title').textContent.charAt(0) || '?';
+            image.replaceWith(fallback);
+            card.setAttribute('data-missing-cover', 'true');
+        }
+
         function onGridKeydown(event) {
             try {
                 const card = event.target && event.target.closest
@@ -1072,6 +1203,7 @@
         function openAlbum(id) {
             if (!id) return;
             try {
+                persistSnapshot();
                 window.location.hash = '#/details?id=' + encodeURIComponent(id);
             } catch (error) {
                 // Fail-open.
@@ -1094,7 +1226,37 @@
 
         function persistTileSize(tileSize) {
             if (!state.userId || state.canCustomize !== true) return;
-            sendJson(lib.settingsUrl(state.userId), 'PUT', { TileSize: tileSize });
+            const settings = Object.assign({}, state.userSettings);
+            delete settings.tileSize;
+            settings.TileSize = tileSize;
+            state.userSettings = settings;
+            queueSettingsWrite('PUT', settings);
+        }
+
+        function layoutFeedback(message) {
+            const node = toolbar && toolbar.querySelector('.ms-layout-feedback');
+            if (node && !state.destroyed) node.textContent = message;
+        }
+
+        function queueSettingsWrite(method, settings) {
+            const revision = ++state.settingsRevision;
+            layoutFeedback('Saving layout\u2026');
+            // Serialize saves so a slower earlier write cannot overwrite the latest choice.
+            state.settingsQueue = state.settingsQueue.then(function () {
+                return sendJson(lib.settingsUrl(state.userId), method, settings);
+            }).then(function (response) {
+                if (response && (response.Settings || response.settings)) return response;
+                return method === 'DELETE' ? apiGet(lib.settingsUrl(state.userId)) : { Settings: settings };
+            }).then(function (response) {
+                state.savedSettings = Object.assign({}, response.Settings || response.settings);
+                if (state.destroyed || revision !== state.settingsRevision) return;
+                applySettingsResponse(response);
+                layoutFeedback('Layout saved.');
+            }).catch(function () {
+                if (state.destroyed || revision !== state.settingsRevision) return;
+                applySettingsResponse({ Settings: state.savedSettings });
+                layoutFeedback('Layout could not be saved. Your previous settings were restored.');
+            });
         }
 
         function applySettingsResponse(response) {
@@ -1108,7 +1270,9 @@
             }
             const settings = response.Settings || response.settings;
             if (settings) {
+                state.userSettings = Object.assign({}, settings);
                 state.tileSize = applyTileSize(grid, toolbar, lib.resolveTileSize(settings, state.tileSize));
+                renderWindow(true);
             }
         }
 
@@ -1117,51 +1281,23 @@
             if (!state.userId) return;
             apiGet(lib.settingsUrl(state.userId)).then(function (response) {
                 if (state.destroyed) return;
+                state.savedSettings = Object.assign({}, response.Settings || response.settings || {});
                 applySettingsResponse(response);
             }).catch(function () {
-                // Fail-open: Admin-Defaults bleiben aktiv.
+                layoutFeedback('Layout settings are unavailable. Administrator defaults remain active.');
             });
         }
 
         function onTileSize(tileSize) {
             if (state.canCustomize !== true || !grid || !toolbar) return;
             state.tileSize = applyTileSize(grid, toolbar, tileSize);
+            renderWindow(true);
             persistTileSize(state.tileSize);
         }
 
         function onResetLayout() {
             if (state.canCustomize !== true || !state.userId) return;
-            const url = lib.settingsUrl(state.userId);
-            const apiClient = window.ApiClient;
-            const done = function (response) {
-                if (state.destroyed) return;
-                if (response && (response.Settings || response.settings)) {
-                    applySettingsResponse(response);
-                } else {
-                    state.tileSize = applyTileSize(grid, toolbar, 'Medium');
-                }
-            };
-            try {
-                if (apiClient && typeof apiClient.ajax === 'function') {
-                    apiClient.ajax({
-                        type: 'DELETE',
-                        url: typeof apiClient.getUrl === 'function' ? apiClient.getUrl(url) : url
-                    }).then(done).catch(function () {
-                        if (!state.destroyed) state.tileSize = applyTileSize(grid, toolbar, 'Medium');
-                    });
-                    return;
-                }
-            } catch (error) {
-                // Fail-open: lokaler Reset.
-            }
-            try {
-                fetch(url, { method: 'DELETE', credentials: 'same-origin' })
-                    .then(function () { return null; })
-                    .then(done)
-                    .catch(function () { done(null); });
-            } catch (error) {
-                done(null);
-            }
+            queueSettingsWrite('DELETE');
         }
 
         const callbacks = {
@@ -1184,7 +1320,20 @@
             onResetLayout: onResetLayout
         };
 
+        function persistSnapshot() {
+            if (!state.items.length || state.filterPending) return;
+            viewSnapshots.delete(snapshotKey);
+            viewSnapshots.set(snapshotKey, {
+                items: state.items.slice(), seen: Object.assign({}, state.seen),
+                nextStart: state.nextStart, hasMore: state.hasMore, total: state.total,
+                filters: lib.createFilterState(state.filters), scroll: scrollPosition()
+            });
+            while (viewSnapshots.size > 3) viewSnapshots.delete(viewSnapshots.keys().next().value);
+        }
+
         function destroy() {
+            if (state.destroyed) return;
+            persistSnapshot();
             state.destroyed = true;
             try { activeMounts.delete(container); } catch (error) { /* noop */ }
             if (state.debounceTimer !== null) {
@@ -1199,16 +1348,22 @@
             }
             observer = null;
             try { persistScroll(); } catch (error) { /* noop */ }
-            try { window.removeEventListener('scroll', onWindowScroll); } catch (error) { /* noop */ }
+            try {
+                window.removeEventListener('scroll', onWindowScroll, true);
+                window.removeEventListener('resize', onWindowScroll);
+            } catch (error) { /* noop */ }
             try {
                 if (grid) {
                     grid.removeEventListener('click', onGridClick);
                     grid.removeEventListener('keydown', onGridKeydown);
+                    grid.removeEventListener('error', onCoverError, true);
                 }
                 if (status) status.removeEventListener('click', onStatusClick);
             } catch (error) { /* noop */ }
             try { container.innerHTML = ''; } catch (error) { /* noop */ }
             grid = null;
+            topSpacer = null;
+            bottomSpacer = null;
             status = null;
             sentinel = null;
             toolbar = null;
@@ -1222,6 +1377,12 @@
             grid.className = 'ms-albums-grid';
             grid.setAttribute('role', 'list');
             grid.setAttribute('aria-label', 'Albums');
+            topSpacer = doc.createElement('div');
+            topSpacer.className = 'ms-albums-spacer ms-albums-spacer-top';
+            topSpacer.setAttribute('aria-hidden', 'true');
+            bottomSpacer = doc.createElement('div');
+            bottomSpacer.className = 'ms-albums-spacer ms-albums-spacer-bottom';
+            bottomSpacer.setAttribute('aria-hidden', 'true');
             sentinel = doc.createElement('div');
             sentinel.className = 'ms-albums-sentinel';
             sentinel.setAttribute('aria-hidden', 'true');
@@ -1231,20 +1392,33 @@
             status.setAttribute('aria-live', 'polite');
 
             container.appendChild(toolbar);
+            container.appendChild(topSpacer);
             container.appendChild(grid);
+            container.appendChild(bottomSpacer);
             container.appendChild(sentinel);
             container.appendChild(status);
 
             state.tileSize = applyTileSize(grid, toolbar, state.tileSize);
+            lockCustomization(toolbar, true);
             grid.addEventListener('click', onGridClick);
             grid.addEventListener('keydown', onGridKeydown);
+            grid.addEventListener('error', onCoverError, true);
             status.addEventListener('click', onStatusClick);
-            window.addEventListener('scroll', onWindowScroll, { passive: true });
+            window.addEventListener('scroll', onWindowScroll, { passive: true, capture: true });
+            window.addEventListener('resize', onWindowScroll);
             try { container.setAttribute('data-route-key', routeKeyValue); } catch (error) { /* noop */ }
             activeMounts.set(container, destroy);
 
             loadSettings();
-            initialPromise = loadPage(true);
+            if (snapshot) {
+                renderWindow(true);
+                setStatus('ready');
+                restoreScrollOnce();
+                observeSentinel();
+                initialPromise = Promise.resolve(true);
+            } else {
+                initialPromise = loadPage(true);
+            }
         } catch (error) {
             destroy();
             return Promise.resolve(false);
@@ -1267,16 +1441,6 @@
             else if (container) container.innerHTML = '';
         } catch (error) {
             // Fail-open.
-        }
-        try {
-            if (container) {
-                const routeKeyValue = container.getAttribute('data-route-key') || '';
-                if (routeKeyValue) {
-                    lib.saveScrollPosition(window.sessionStorage, routeKeyValue, window.scrollY || 0);
-                }
-            }
-        } catch (error) {
-            // sessionStorage ist optional.
         }
     }
 

@@ -19,5 +19,6 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<IUserMusicSettingsStore, UserMusicSettingsStore>();
         serviceCollection.AddScoped<IAlbumQueryService, AlbumQueryService>();
         serviceCollection.AddSingleton<Integrations.ParadoxBridge>();
+        serviceCollection.AddHostedService<MusicSuiteStartupService>();
     }
 }
