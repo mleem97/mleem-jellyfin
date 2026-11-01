@@ -17,13 +17,18 @@
         activeRouteKey: ''
     };
 
-    function apiGet(url) {
+    function apiGet(url, options) {
         const apiClient = window.ApiClient;
-        if (apiClient && apiClient.getJSON && apiClient.getUrl) {
+        const signal = options && options.signal;
+        if (!signal && apiClient && apiClient.getJSON && apiClient.getUrl) {
             return apiClient.getJSON(apiClient.getUrl(url));
         }
-
-        return fetch(url, { credentials: 'same-origin' }).then(function (response) {
+        const resolved = apiClient && apiClient.getUrl ? apiClient.getUrl(url) : url;
+        const headers = { Accept: 'application/json' };
+        if (apiClient && typeof apiClient.accessToken === 'function' && apiClient.accessToken()) {
+            headers['X-Emby-Token'] = apiClient.accessToken();
+        }
+        return window.fetch(resolved, { credentials: 'same-origin', headers: headers, signal: signal }).then(function (response) {
             if (!response.ok) throw new Error('HTTP ' + response.status);
             return response.json();
         });
@@ -688,8 +693,7 @@
 
     function fetchAlbums(apiGet, url, signal) {
         if (signal && signal.aborted) return Promise.reject(new Error('Aborted.'));
-        // ApiClient-Pfad kennt kein Abort-Signal; Stale-Guard verwirft alte Antworten.
-        return apiGet(url);
+        return apiGet(url, { signal: signal });
     }
 
     function sendJson(url, method, body) {
@@ -844,6 +848,7 @@
             guard: lib.createSequenceGuard(),
             aborter: null,
             debounceTimer: null,
+            filterPending: false,
             tileSize: 'Medium',
             canCustomize: true,
             userId: userId,
@@ -939,6 +944,7 @@
 
         function loadPage(isFirst, isReset) {
             if (state.destroyed || !state.hasMore) return Promise.resolve(false);
+            if (state.filterPending && isReset !== true) return Promise.resolve(false);
             // Filter-Reset bricht einen laufenden Request ab und startet neu;
             // reines Nachladen (Sentinel/Retry) respektiert den In-Flight-Guard.
             if (state.loading && isReset !== true) return Promise.resolve(false);
@@ -950,6 +956,7 @@
             state.loading = true;
             if (state.items.length === 0) setStatus('loading');
             const token = state.guard.issue();
+            const requestedStart = state.nextStart;
             const query = lib.buildAlbumsQuery({
                 startIndex: state.nextStart,
                 limit: batchSize,
@@ -967,6 +974,7 @@
                     if (state.destroyed || !state.guard.isCurrent(token)) return false;
                     const page = readPage(payload);
                     if (!page) throw new Error('Invalid album page.');
+                    if (page.hasMore && page.nextStart <= requestedStart) throw new Error('Album paging did not advance.');
                     const fresh = lib.mergeAlbumPage(state.seen, page.items);
                     state.items = state.items.concat(fresh);
                     state.nextStart = page.nextStart;
@@ -978,18 +986,23 @@
                     else if (state.total === undefined) state.total = null;
                     renderWindow();
                     state.loading = false;
-                    if (!state.items.length) setStatus('empty');
+                    if (!state.items.length && !state.hasMore) setStatus('empty');
+                    else if (!state.items.length) setStatus('loading');
                     else if (!state.hasMore) setStatus('ready');
                     else setStatus('ready');
                     restoreScrollOnce();
                     observeSentinel();
+                    if (page.hasMore && !page.items.length) {
+                        window.setTimeout(function () {
+                            if (state.guard.isCurrent(token)) loadPage(false).catch(function () { /* inline retry */ });
+                        }, 0);
+                    }
                     return true;
                 })
                 .catch(function (error) {
                     if (state.destroyed) return false;
                     if ((aborter && aborter.signal && aborter.signal.aborted)
                         || !state.guard.isCurrent(token)) {
-                        state.loading = false;
                         return false;
                     }
                     state.loading = false;
@@ -1003,6 +1016,17 @@
         }
 
         function resetAndLoad() {
+            if (state.debounceTimer !== null) window.clearTimeout(state.debounceTimer);
+            state.debounceTimer = null;
+            state.filterPending = false;
+            scrollRestored = true;
+            viewSnapshots.delete(snapshotKey);
+            try {
+                lib.saveScrollPosition(window.sessionStorage, snapshotKey, 0);
+                const parent = scrollParent();
+                const viewportTop = parent ? parent.getBoundingClientRect().top : 0;
+                scrollToPosition(Math.max(0, scrollPosition() + toolbar.getBoundingClientRect().top - viewportTop));
+            } catch (error) { /* optional scroll restoration */ }
             const filters = state.filters;
             const reset = lib.resetPaging({ filters: filters });
             state.filters = reset.filters;
@@ -1026,6 +1050,7 @@
 
         function scheduleSearch(value) {
             state.filters.searchTerm = String(value || '').trim();
+            invalidatePendingFilter();
             if (state.debounceTimer !== null) window.clearTimeout(state.debounceTimer);
             state.debounceTimer = window.setTimeout(function () {
                 state.debounceTimer = null;
@@ -1035,11 +1060,19 @@
 
         function scheduleGenre(value) {
             state.filters.genre = String(value || '').trim();
+            invalidatePendingFilter();
             if (state.debounceTimer !== null) window.clearTimeout(state.debounceTimer);
             state.debounceTimer = window.setTimeout(function () {
                 state.debounceTimer = null;
                 resetAndLoad();
             }, debounceMs);
+        }
+
+        function invalidatePendingFilter() {
+            state.filterPending = true;
+            state.guard.issue();
+            if (state.aborter) state.aborter.abort();
+            state.loading = false;
         }
 
         let scrollRestored = false;

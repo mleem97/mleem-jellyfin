@@ -34,6 +34,7 @@ function createServer(options = {}) {
   const state = {
     calls: [],
     ajaxCalls: [],
+    fetchCalls: [],
     failFirstPage: options.failFirstPage ?? false,
     failLaterPages: options.failLaterPages ?? false,
     canCustomize: options.canCustomize ?? true,
@@ -116,10 +117,15 @@ async function createHarness(server, hash = '#/home') {
   };
   const scrolled = [];
   dom.window.scrollTo = (x, y) => scrolled.push([x, y]);
+  dom.window.fetch = (url, options) => {
+    server.state.fetchCalls.push({ url, options });
+    return server.handle(url).then((data) => ({ ok: true, json: async () => data }));
+  };
   dom.window.ApiClient = {
     getUrl: (url) => `/${url}`,
     getJSON: (url) => server.handle(url),
     getCurrentUserId: () => USER_ID,
+    accessToken: () => 'test-session-token',
     ajax: (ajaxOptions) => {
       server.state.ajaxCalls.push(ajaxOptions);
       if (ajaxOptions.type === 'DELETE') return Promise.resolve({});
@@ -560,5 +566,108 @@ test('back navigation restores loaded pages and filters without refetching page 
     await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
     assert.equal(container.querySelectorAll('.ms-album-card').length, 100);
     assert.equal(server.state.calls.filter((url) => url.includes('StartIndex=0')).length, firstPages);
+  } finally { harness.dom.window.close(); }
+});
+
+test('authenticated album requests pass AbortSignal to fetch and cancel the replaced query', async () => {
+  const server = createServer({ total: 60 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    helpers.apiGet = harness.dom.window.BetterMusicDisplayAlbums.apiGet;
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    const original = server.state.fetchCalls.at(-1);
+    assert.ok(original.options.signal);
+    assert.equal(original.options.headers['X-Emby-Token'], 'test-session-token');
+    const search = container.querySelector('.ms-albums-search');
+    search.value = 'new query';
+    search.dispatchEvent(new harness.dom.window.Event('input', { bubbles: true }));
+    assert.equal(original.options.signal.aborted, true, 'cancel immediately when typing begins');
+    await delay(150);
+    const latest = server.state.fetchCalls.at(-1);
+    assert.equal(latest.options.signal.aborted, false);
+    assert.match(latest.url, /SearchTerm=new\+query/);
+  } finally { harness.dom.window.close(); }
+});
+
+test('outdated rejection does not release the newer request lock', async () => {
+  const server = createServer({ total: 120 });
+  const harness = await createHarness(server);
+  const pending = [];
+  try {
+    const { context, helpers } = mountArgs(server);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    helpers.apiGet = (url) => url.includes('/Settings')
+      ? server.handle(url)
+      : new Promise((resolve, reject) => pending.push({ url, resolve, reject }));
+    const mounting = harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    pending[0].resolve({ Items: [makeItem(0)], NextStartIndex: 1, HasMore: true });
+    await mounting;
+    const order = container.querySelector('.ms-albums-order');
+    order.value = 'Descending';
+    order.dispatchEvent(new harness.dom.window.Event('change', { bubbles: true }));
+    order.value = 'Ascending';
+    order.dispatchEvent(new harness.dom.window.Event('change', { bubbles: true }));
+    assert.equal(pending.length, 3);
+    pending[1].reject(new Error('superseded failure'));
+    await delay(10);
+    intersect(harness);
+    await delay(10);
+    assert.equal(pending.length, 3, 'active page must remain locked against duplicate sentinel events');
+    pending[2].resolve({ Items: [makeItem(4)], NextStartIndex: null, HasMore: false });
+    await delay(10);
+    assert.equal(container.querySelector('.ms-album-title').textContent, 'Album 4');
+  } finally { harness.dom.window.close(); }
+});
+
+test('empty intermediate missing-cover pages continue until a real match or the end', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    helpers.apiGet = async (url) => {
+      if (url.includes('/Settings')) return server.handle(url);
+      if (url.includes('StartIndex=0')) return { Items: [], NextStartIndex: 1000, HasMore: true };
+      return { Items: [makeItem(1001)], NextStartIndex: null, HasMore: false };
+    };
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    await delay(30);
+    assert.equal(container.querySelector('.ms-album-title').textContent, 'Album 1001');
+  } finally { harness.dom.window.close(); }
+});
+
+test('combined filters and clearing search restart at page zero and reset scroll', async () => {
+  const server = createServer({ total: 120 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    intersect(harness);
+    await delay(10);
+    const search = container.querySelector('.ms-albums-search');
+    search.value = 'jazz';
+    search.dispatchEvent(new harness.dom.window.Event('input', { bubbles: true }));
+    const favorite = container.querySelector('.ms-albums-fav');
+    favorite.checked = true;
+    favorite.dispatchEvent(new harness.dom.window.Event('change', { bubbles: true }));
+    await delay(10);
+    let latest = server.state.calls.filter((url) => /\/Albums\?/.test(url)).at(-1);
+    assert.match(latest, /SearchTerm=jazz/);
+    assert.match(latest, /IsFavorite=true/);
+    assert.match(latest, /StartIndex=0/);
+    search.value = '';
+    search.dispatchEvent(new harness.dom.window.Event('input', { bubbles: true }));
+    await delay(150);
+    latest = server.state.calls.filter((url) => /\/Albums\?/.test(url)).at(-1);
+    assert.ok(!latest.includes('SearchTerm='));
+    assert.match(latest, /StartIndex=0/);
+    assert.ok(harness.scrolled.some(([, y]) => y === 0));
   } finally { harness.dom.window.close(); }
 });
