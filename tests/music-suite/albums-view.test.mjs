@@ -34,6 +34,7 @@ function createServer(options = {}) {
   const state = {
     calls: [],
     ajaxCalls: [],
+    fetchCalls: [],
     failFirstPage: options.failFirstPage ?? false,
     failLaterPages: options.failLaterPages ?? false,
     canCustomize: options.canCustomize ?? true,
@@ -116,10 +117,15 @@ async function createHarness(server, hash = '#/home') {
   };
   const scrolled = [];
   dom.window.scrollTo = (x, y) => scrolled.push([x, y]);
+  dom.window.fetch = (url, options) => {
+    server.state.fetchCalls.push({ url, options });
+    return server.handle(url).then((data) => ({ ok: true, json: async () => data }));
+  };
   dom.window.ApiClient = {
     getUrl: (url) => `/${url}`,
     getJSON: (url) => server.handle(url),
     getCurrentUserId: () => USER_ID,
+    accessToken: () => 'test-session-token',
     ajax: (ajaxOptions) => {
       server.state.ajaxCalls.push(ajaxOptions);
       if (ajaxOptions.type === 'DELETE') return Promise.resolve({});
@@ -399,7 +405,7 @@ test('scroll position restores from sessionStorage on mount', async () => {
   const harness = await createHarness(server);
   try {
     const lib = harness.dom.window.MusicSuiteAlbumsLib;
-    harness.dom.window.sessionStorage.setItem(lib.scrollKey('restore|parent'), '321');
+    harness.dom.window.sessionStorage.setItem(lib.scrollKey(USER_ID + '|restore|parent'), '321');
     const { context } = mountArgs(server, 'restore|parent');
     const helpers = {
       apiGet: (url) => server.handle(url),
@@ -480,4 +486,303 @@ test('failed context validation keeps the native view (fail-open)', async () => 
   } finally {
     dom.window.close();
   }
+});
+
+test('loader reveals a successfully mounted album view and restores native markup on navigation', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server, `#/music/albums?topParentId=${PARENT_ID}`);
+  try {
+    const document = harness.dom.window.document;
+    document.body.innerHTML = '<div data-role="page"><div data-role="content"><div class="itemsContainer" style="display:grid" aria-hidden="false">Native albums</div></div></div>';
+    harness.dom.window.BetterMusicDisplayAlbums.refresh();
+    await delay(150);
+    const native = document.querySelector('.itemsContainer');
+    const injected = document.querySelector('#better-music-display-albums');
+    assert.ok(injected);
+    assert.equal(injected.hidden, false, 'a successful mount must be visible');
+    assert.equal(native.style.display, 'none');
+    const albumCalls = server.state.calls.filter((url) => /\/Albums\?/.test(url)).length;
+    await delay(120);
+    assert.equal(server.state.calls.filter((url) => /\/Albums\?/.test(url)).length, albumCalls, 'own DOM updates must not remount');
+    harness.dom.window.location.hash = '#/home';
+    await delay(120);
+    assert.equal(document.querySelector('#better-music-display-albums'), null);
+    assert.equal(native.style.display, 'grid');
+    assert.equal(native.getAttribute('aria-hidden'), 'false');
+  } finally { harness.dom.window.close(); }
+});
+
+for (const total of [0, 10, 1000, 10000]) {
+  test(`library with ${total} albums remains bounded and can revisit earlier albums`, async () => {
+    const server = createServer({ total });
+    const harness = await createHarness(server);
+    try {
+      const { context, helpers } = mountArgs(server);
+      const container = harness.dom.window.document.createElement('section');
+      harness.dom.window.document.body.appendChild(container);
+      await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+      for (let start = 50; start < total; start += 50) {
+        intersect(harness);
+        await delay(0);
+        assert.ok(container.querySelectorAll('.ms-album-card').length <= 500);
+      }
+      if (!total) {
+        assert.match(container.querySelector('.ms-albums-status').textContent, /No albums found/);
+        return;
+      }
+      assert.equal(container.querySelector('.ms-album-title').textContent, 'Album 0');
+      if (total <= 500) return;
+      let scrollY = 0;
+      Object.defineProperty(harness.dom.window, 'scrollY', { get: () => scrollY, configurable: true });
+      container.querySelector('.ms-albums-spacer-top').getBoundingClientRect = () => ({ top: -scrollY });
+      container.querySelector('.ms-albums-grid').getBoundingClientRect = () => ({ width: 1000 });
+      scrollY = 50000;
+      harness.dom.window.dispatchEvent(new harness.dom.window.Event('scroll'));
+      await delay(30);
+      assert.notEqual(container.querySelector('.ms-album-title').textContent, 'Album 0');
+      assert.ok(parseFloat(container.querySelector('.ms-albums-spacer-top').style.height) > 0);
+      assert.ok(container.querySelectorAll('.ms-album-card').length <= 500);
+      scrollY = 0;
+      harness.dom.window.dispatchEvent(new harness.dom.window.Event('scroll'));
+      await delay(30);
+      assert.equal(container.querySelector('.ms-album-title').textContent, 'Album 0', 'earlier albums must not be discarded');
+    } finally { harness.dom.window.close(); }
+  });
+}
+
+test('back navigation restores loaded pages and filters without refetching page zero', async () => {
+  const server = createServer({ total: 150 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server, 'back-navigation');
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    intersect(harness);
+    await delay(10);
+    assert.equal(container.querySelectorAll('.ms-album-card').length, 100);
+    harness.dom.window.MusicSuiteAlbumsRenderer.unmount(container);
+    const firstPages = server.state.calls.filter((url) => url.includes('StartIndex=0')).length;
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    assert.equal(container.querySelectorAll('.ms-album-card').length, 100);
+    assert.equal(server.state.calls.filter((url) => url.includes('StartIndex=0')).length, firstPages);
+  } finally { harness.dom.window.close(); }
+});
+
+test('authenticated album requests pass AbortSignal to fetch and cancel the replaced query', async () => {
+  const server = createServer({ total: 60 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    helpers.apiGet = harness.dom.window.BetterMusicDisplayAlbums.apiGet;
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    const original = server.state.fetchCalls.at(-1);
+    assert.ok(original.options.signal);
+    assert.equal(original.options.headers['X-Emby-Token'], 'test-session-token');
+    const search = container.querySelector('.ms-albums-search');
+    search.value = 'new query';
+    search.dispatchEvent(new harness.dom.window.Event('input', { bubbles: true }));
+    assert.equal(original.options.signal.aborted, true, 'cancel immediately when typing begins');
+    await delay(150);
+    const latest = server.state.fetchCalls.at(-1);
+    assert.equal(latest.options.signal.aborted, false);
+    assert.match(latest.url, /SearchTerm=new\+query/);
+  } finally { harness.dom.window.close(); }
+});
+
+test('outdated rejection does not release the newer request lock', async () => {
+  const server = createServer({ total: 120 });
+  const harness = await createHarness(server);
+  const pending = [];
+  try {
+    const { context, helpers } = mountArgs(server);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    helpers.apiGet = (url) => url.includes('/Settings')
+      ? server.handle(url)
+      : new Promise((resolve, reject) => pending.push({ url, resolve, reject }));
+    const mounting = harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    pending[0].resolve({ Items: [makeItem(0)], NextStartIndex: 1, HasMore: true });
+    await mounting;
+    const order = container.querySelector('.ms-albums-order');
+    order.value = 'Descending';
+    order.dispatchEvent(new harness.dom.window.Event('change', { bubbles: true }));
+    order.value = 'Ascending';
+    order.dispatchEvent(new harness.dom.window.Event('change', { bubbles: true }));
+    assert.equal(pending.length, 3);
+    pending[1].reject(new Error('superseded failure'));
+    await delay(10);
+    intersect(harness);
+    await delay(10);
+    assert.equal(pending.length, 3, 'active page must remain locked against duplicate sentinel events');
+    pending[2].resolve({ Items: [makeItem(4)], NextStartIndex: null, HasMore: false });
+    await delay(10);
+    assert.equal(container.querySelector('.ms-album-title').textContent, 'Album 4');
+  } finally { harness.dom.window.close(); }
+});
+
+test('empty intermediate missing-cover pages continue until a real match or the end', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    helpers.apiGet = async (url) => {
+      if (url.includes('/Settings')) return server.handle(url);
+      if (url.includes('StartIndex=0')) return { Items: [], NextStartIndex: 1000, HasMore: true };
+      return { Items: [makeItem(1001)], NextStartIndex: null, HasMore: false };
+    };
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    await delay(30);
+    assert.equal(container.querySelector('.ms-album-title').textContent, 'Album 1001');
+  } finally { harness.dom.window.close(); }
+});
+
+test('combined filters and clearing search restart at page zero and reset scroll', async () => {
+  const server = createServer({ total: 120 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    intersect(harness);
+    await delay(10);
+    const search = container.querySelector('.ms-albums-search');
+    search.value = 'jazz';
+    search.dispatchEvent(new harness.dom.window.Event('input', { bubbles: true }));
+    const favorite = container.querySelector('.ms-albums-fav');
+    favorite.checked = true;
+    favorite.dispatchEvent(new harness.dom.window.Event('change', { bubbles: true }));
+    await delay(10);
+    let latest = server.state.calls.filter((url) => /\/Albums\?/.test(url)).at(-1);
+    assert.match(latest, /SearchTerm=jazz/);
+    assert.match(latest, /IsFavorite=true/);
+    assert.match(latest, /StartIndex=0/);
+    search.value = '';
+    search.dispatchEvent(new harness.dom.window.Event('input', { bubbles: true }));
+    await delay(150);
+    latest = server.state.calls.filter((url) => /\/Albums\?/.test(url)).at(-1);
+    assert.ok(!latest.includes('SearchTerm='));
+    assert.match(latest, /StartIndex=0/);
+    assert.ok(harness.scrolled.some(([, y]) => y === 0));
+  } finally { harness.dom.window.close(); }
+});
+
+test('layout saves preserve other preferences and rejected writes restore the saved value', async () => {
+  const server = createServer({ total: 10, settingsTileSize: 'Small' });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    helpers.apiGet = async (url) => url.includes('/Settings')
+      ? { CanCustomize: true, Settings: { TileSize: 'Small', AlbumLayout: 'List', SortPreferences: { albums: 'DateCreated' }, EnabledSections: { artists: false } } }
+      : server.handle(url);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    harness.dom.window.ApiClient.ajax = (options) => {
+      server.state.ajaxCalls.push(options);
+      return Promise.reject(new Error('HTTP 403'));
+    };
+    container.querySelector('[data-tile="Large"]').click();
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Large');
+    await delay(10);
+    const body = JSON.parse(server.state.ajaxCalls[0].data);
+    assert.equal(body.AlbumLayout, 'List');
+    assert.equal(body.SortPreferences.albums, 'DateCreated');
+    assert.equal(body.EnabledSections.artists, false);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+    assert.match(container.querySelector('.ms-layout-feedback').textContent, /could not be saved/);
+  } finally { harness.dom.window.close(); }
+});
+
+test('layout remains locked until server permission is known and reset uses actual admin defaults', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server);
+  let resolveSettings;
+  try {
+    const { context, helpers } = mountArgs(server);
+    context.defaultTileSize = 'Small';
+    helpers.apiGet = (url) => url.includes('/Settings')
+      ? new Promise((resolve) => { resolveSettings = resolve; }) : server.handle(url);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    assert.equal(container.querySelector('[data-tile="Large"]').disabled, true);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+    resolveSettings({ CanCustomize: true, Settings: { TileSize: 'Large' } });
+    await delay(10);
+    harness.dom.window.ApiClient.ajax = async (options) => {
+      assert.equal(options.type, 'DELETE');
+      return { Settings: { TileSize: 'Small' } };
+    };
+    container.querySelector('.ms-albums-reset').click();
+    await delay(10);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+  } finally { harness.dom.window.close(); }
+});
+
+test('rapid layout changes are serialized in selection order', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server);
+  const writes = [];
+  try {
+    const { context, helpers } = mountArgs(server);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    harness.dom.window.ApiClient.ajax = (options) => new Promise((resolve) => writes.push({ options, resolve }));
+    container.querySelector('[data-tile="Large"]').click();
+    container.querySelector('[data-tile="Small"]').click();
+    await delay(10);
+    assert.equal(writes.length, 1);
+    assert.equal(JSON.parse(writes[0].options.data).TileSize, 'Large');
+    writes[0].resolve({ Settings: { TileSize: 'Large' } });
+    await delay(10);
+    assert.equal(writes.length, 2);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+    writes[1].resolve({ Settings: { TileSize: 'Small' } });
+    await delay(10);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+  } finally { harness.dom.window.close(); }
+});
+
+test('failed cover images become accessible missing-cover placeholders', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    const image = container.querySelector('img');
+    const card = image.closest('.ms-album-card');
+    image.dispatchEvent(new harness.dom.window.Event('error'));
+    assert.equal(card.querySelector('img'), null);
+    assert.ok(card.querySelector('.ms-album-cover-missing'));
+    assert.equal(card.getAttribute('tabindex'), '0');
+    assert.ok(card.getAttribute('aria-label'));
+  } finally { harness.dom.window.close(); }
+});
+
+test('mounted library snapshots are isolated by the current Jellyfin user', async () => {
+  const server = createServer({ total: 100 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server, 'same-library');
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    intersect(harness);
+    await delay(10);
+    harness.dom.window.MusicSuiteAlbumsRenderer.unmount(container);
+    const before = server.state.calls.filter((url) => url.includes('StartIndex=0')).length;
+    harness.dom.window.ApiClient.getCurrentUserId = () => 'different-user';
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    assert.equal(server.state.calls.filter((url) => url.includes('StartIndex=0')).length, before + 1);
+    assert.equal(container.querySelectorAll('.ms-album-card').length, 50);
+  } finally { harness.dom.window.close(); }
 });

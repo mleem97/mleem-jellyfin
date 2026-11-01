@@ -2,45 +2,58 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.MusicHoarderzProvider.Configuration;
 using Jellyfin.Plugin.MusicHoarderzProvider.Models;
 using Jellyfin.Plugin.MusicHoarderzProvider.Services;
 using MediaBrowser.Controller.Entities.Audio;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Providers;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.MusicHoarderzProvider.Providers;
 
 /// <summary>
-/// Remote metadata provider for albums backed by MusicHoarderz/COV.
-/// Merge-only: only delivered fields are set, stored values are never cleared.
+/// Manual album metadata provider. Only source-delivered fields are returned;
+/// background scans and refreshes never replace existing metadata.
 /// </summary>
 public sealed partial class MusicHoarderzMetadataProvider : IRemoteMetadataProvider<MusicAlbum, AlbumInfo>, IHasOrder
 {
     private const string ProviderKey = "MusicHoarderz";
     private const int MaxSearchResults = 8;
 
-    private readonly MusicHoarderzHttpClient _httpClient;
+    private readonly IAlbumMetadataProvider _provider;
     private readonly CoverMatchScorer _scorer;
     private readonly ILogger<MusicHoarderzMetadataProvider> _logger;
+    private readonly IHttpContextAccessor? _contextAccessor;
+    private readonly CoverImageValidator? _validator;
+    private readonly Func<PluginConfiguration?> _configurationAccessor;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="MusicHoarderzMetadataProvider"/> class.
-    /// </summary>
-    /// <param name="httpClient">Cover HTTP client.</param>
-    /// <param name="scorer">Match scorer.</param>
+    /// <summary>Initializes a new instance of the <see cref="MusicHoarderzMetadataProvider"/> class.</summary>
+    /// <param name="provider">Provider-independent album source.</param>
+    /// <param name="scorer">Deterministic match scorer.</param>
     /// <param name="logger">Logger.</param>
+    /// <param name="contextAccessor">Jellyfin request context.</param>
+    /// <param name="validator">Safe image downloader.</param>
+    /// <param name="configurationAccessor">Optional offline test configuration.</param>
     public MusicHoarderzMetadataProvider(
-        MusicHoarderzHttpClient httpClient,
+        IAlbumMetadataProvider provider,
         CoverMatchScorer scorer,
-        ILogger<MusicHoarderzMetadataProvider> logger)
+        ILogger<MusicHoarderzMetadataProvider> logger,
+        IHttpContextAccessor? contextAccessor = null,
+        CoverImageValidator? validator = null,
+        Func<PluginConfiguration?>? configurationAccessor = null)
     {
-        _httpClient = httpClient;
+        _provider = provider;
         _scorer = scorer;
         _logger = logger;
+        _contextAccessor = contextAccessor;
+        _validator = validator;
+        _configurationAccessor = configurationAccessor ?? (() => Plugin.Instance?.Configuration);
     }
 
     /// <inheritdoc />
@@ -53,49 +66,72 @@ public sealed partial class MusicHoarderzMetadataProvider : IRemoteMetadataProvi
     public async Task<MetadataResult<MusicAlbum>> GetMetadata(AlbumInfo info, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(info);
-        var result = new MetadataResult<MusicAlbum> { HasMetadata = false };
-        var configuration = Plugin.Instance?.Configuration;
-        if (configuration is null || !configuration.Enabled || !configuration.MusicHoarderz.Enabled)
+        cancellationToken.ThrowIfCancellationRequested();
+        var empty = new MetadataResult<MusicAlbum> { HasMetadata = false };
+        var configuration = _configurationAccessor();
+        if (!ProviderRequestPolicy.IsManualRequest(_contextAccessor?.HttpContext, configuration)
+            || !info.ProviderIds.TryGetValue(ProviderKey, out var selectedId)
+            || string.IsNullOrWhiteSpace(selectedId))
         {
-            return result;
+            return empty;
         }
 
         try
         {
-            if (info.ProviderIds.TryGetValue(ProviderKey, out var selectedUrl)
-                && !string.IsNullOrWhiteSpace(selectedUrl))
+            var selected = await _provider.GetAlbumAsync(selectedId, cancellationToken).ConfigureAwait(false);
+            if (selected is null)
             {
-                return FromManualSelection(info, selectedUrl.Trim());
-            }
-
-            if (!configuration.AutoSearchEnabled)
-            {
-                return result;
-            }
-
-            var query = ToQuery(info, configuration.MusicHoarderz.Country ?? "DE");
-            var results = await _httpClient.SearchAsync(query, cancellationToken).ConfigureAwait(false);
-            var scored = _scorer.Score(query, results, configuration.MinimumWidth, configuration.MinimumHeight);
-            var best = scored.Count > 0 ? scored[0] : null;
-            if (best is null)
-            {
-                return result;
+                return empty;
             }
 
             var album = new MusicAlbum();
-            album.ProviderIds[ProviderKey] = best.Url;
-            result.Item = album;
-            result.HasMetadata = true;
-            return result;
+            var delivered = false;
+            if (!string.IsNullOrWhiteSpace(selected.Title))
+            {
+                album.Name = selected.Title;
+                delivered = true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(selected.Artist))
+            {
+                album.Artists = new[] { selected.Artist };
+                album.AlbumArtists = new[] { selected.Artist };
+                delivered = true;
+            }
+
+            if (selected.Year is >= 1 and <= 9999)
+            {
+                album.ProductionYear = selected.Year;
+                delivered = true;
+            }
+
+            foreach (var pair in selected.ProviderIds.Where(static pair => !string.IsNullOrWhiteSpace(pair.Value)))
+            {
+                album.ProviderIds[pair.Key] = pair.Value;
+                delivered = true;
+            }
+
+            if (!delivered)
+            {
+                return empty;
+            }
+
+            foreach (var existingId in info.ProviderIds)
+            {
+                album.ProviderIds.TryAdd(existingId.Key, existingId.Value);
+            }
+
+            album.ProviderIds[ProviderKey] = selected.Id;
+            return new MetadataResult<MusicAlbum> { HasMetadata = true, Item = album };
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            LogLookupFailed(_logger, ex, info.Name ?? string.Empty);
-            return result;
+            LogLookupFailed(_logger);
+            return empty;
         }
     }
 
@@ -103,104 +139,84 @@ public sealed partial class MusicHoarderzMetadataProvider : IRemoteMetadataProvi
     public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(AlbumInfo searchInfo, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(searchInfo);
-        var configuration = Plugin.Instance?.Configuration;
-        if (configuration is null || !configuration.Enabled || !configuration.MusicHoarderz.Enabled)
+        cancellationToken.ThrowIfCancellationRequested();
+        var configuration = _configurationAccessor();
+        if (!ProviderRequestPolicy.IsManualRequest(_contextAccessor?.HttpContext, configuration)
+            || string.IsNullOrWhiteSpace(searchInfo.Name))
         {
             return Array.Empty<RemoteSearchResult>();
         }
 
         try
         {
-            var query = ToQuery(searchInfo, configuration.MusicHoarderz.Country ?? "DE");
-            if (string.IsNullOrWhiteSpace(query.Title))
-            {
-                return Array.Empty<RemoteSearchResult>();
-            }
-
-            var results = await _httpClient.SearchAsync(query, cancellationToken).ConfigureAwait(false);
-            var scored = _scorer.Score(query, results, configuration.MinimumWidth, configuration.MinimumHeight);
-            var mapped = new List<RemoteSearchResult>();
+            var query = ToQuery(searchInfo, configuration!.MusicHoarderz.Country);
+            var candidates = await _provider.SearchAlbumsAsync(query, cancellationToken).ConfigureAwait(false);
+            var covers = candidates.Select(static candidate => new NormalizedCoverResult(candidate.Id, null, null, "musichoarderz", null, 0, string.Empty, candidate.Title, candidate.Artist, candidate.Year, candidate.ProviderIds));
+            var scored = _scorer.Score(query, covers, configuration.MinimumWidth, configuration.MinimumHeight);
+            var results = new List<RemoteSearchResult>();
             foreach (var candidate in scored.Take(MaxSearchResults))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                mapped.Add(new RemoteSearchResult
+                var ids = new Dictionary<string, string>(searchInfo.ProviderIds);
+                foreach (var externalId in candidate.ProviderIds ?? new Dictionary<string, string>())
                 {
-                    Name = string.IsNullOrWhiteSpace(candidate.Title) ? query.Title : candidate.Title,
-                    AlbumArtist = string.IsNullOrWhiteSpace(candidate.Artist) && string.IsNullOrWhiteSpace(query.Artist)
-                        ? null
-                        : new RemoteSearchResult { Name = string.IsNullOrWhiteSpace(candidate.Artist) ? query.Artist : candidate.Artist },
-                    ProductionYear = candidate.Year ?? query.Year,
-                    ProviderIds = new Dictionary<string, string> { [ProviderKey] = candidate.Url },
-                    ImageUrl = candidate.Url,
-                    Overview = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "MusicHoarderz score {0}/100: {1}",
-                        candidate.Score,
-                        candidate.ScoreReason),
+                    ids[externalId.Key] = externalId.Value;
+                }
+
+                ids[ProviderKey] = candidate.Url;
+                results.Add(new RemoteSearchResult
+                {
+                    Name = candidate.Title ?? query.Title,
+                    AlbumArtist = string.IsNullOrWhiteSpace(candidate.Artist) ? null : new RemoteSearchResult { Name = candidate.Artist },
+                    ProductionYear = candidate.Year,
+                    ProviderIds = ids,
+                    // Image selection is separate; never expose an unvalidated upstream URL.
+                    ImageUrl = null,
+                    Overview = string.Format(CultureInfo.InvariantCulture, "MusicHoarderz score {0}/100: {1}", candidate.Score, candidate.ScoreReason),
                 });
             }
 
-            return mapped;
+            return results;
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            LogSearchFailed(_logger, ex, searchInfo.Name ?? string.Empty);
+            LogSearchFailed(_logger);
             return Array.Empty<RemoteSearchResult>();
         }
     }
 
     /// <inheritdoc />
-    public Task<HttpResponseMessage> GetImageResponse(string url, CancellationToken cancellationToken)
+    public async Task<HttpResponseMessage> GetImageResponse(string url, CancellationToken cancellationToken)
     {
-        _ = url;
-        _ = cancellationToken;
-        throw new NotSupportedException("MusicHoarderz metadata provider does not serve images directly.");
-    }
-
-    private static MetadataResult<MusicAlbum> FromManualSelection(AlbumInfo info, string selectedUrl)
-    {
-        var result = new MetadataResult<MusicAlbum> { HasMetadata = false };
-        var album = new MusicAlbum();
-        var delivered = false;
-
-        if (!string.IsNullOrWhiteSpace(info.Name))
+        var configuration = _configurationAccessor();
+        if (_validator is null || !ProviderRequestPolicy.IsManualRequest(_contextAccessor?.HttpContext, configuration))
         {
-            album.Name = info.Name;
-            delivered = true;
+            return new HttpResponseMessage(HttpStatusCode.Forbidden);
         }
 
-        var artist = info.AlbumArtists.Count > 0 ? info.AlbumArtists[0] : null;
-        if (!string.IsNullOrWhiteSpace(artist))
+        var image = await _validator.ValidateAsync(url, configuration!.MinimumWidth, configuration.MinimumHeight, cancellationToken).ConfigureAwait(false);
+        if (image is null)
         {
-            album.Artists = new[] { artist };
-            delivered = true;
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
-        if (info.Year.HasValue)
-        {
-            album.ProductionYear = info.Year.Value;
-            delivered = true;
-        }
-
-        album.ProviderIds[ProviderKey] = selectedUrl;
-        result.Item = album;
-        result.HasMetadata = delivered;
-        return result;
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(image.Content.ToArray()) };
+        response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(image.ContentType);
+        return response;
     }
 
     private static CoverSearchQuery ToQuery(AlbumInfo info, string country)
     {
         var artist = info.AlbumArtists.Count > 0 ? info.AlbumArtists[0] : string.Empty;
-        return new CoverSearchQuery(info.Name ?? string.Empty, artist ?? string.Empty, info.Year, country);
+        return new CoverSearchQuery(info.Name ?? string.Empty, artist ?? string.Empty, info.Year, country, info.ProviderIds);
     }
 
-    [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = "MusicHoarderz metadata lookup failed for {Album}.")]
-    private static partial void LogLookupFailed(ILogger logger, Exception exception, string album);
+    [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = "MusicHoarderz metadata lookup failed.")]
+    private static partial void LogLookupFailed(ILogger logger);
 
-    [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "MusicHoarderz metadata search failed for {Album}.")]
-    private static partial void LogSearchFailed(ILogger logger, Exception exception, string album);
+    [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "MusicHoarderz metadata search failed.")]
+    private static partial void LogSearchFailed(ILogger logger);
 }

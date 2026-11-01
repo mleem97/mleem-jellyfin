@@ -3,7 +3,7 @@
   "name": "MetadataDashboard",
   "guid": "c70012b6-0fc0-479e-a814-b5a09fcdd799",
   "version": "1.0.0.0",
-  "targetAbi": "12.1.0.0",
+  "targetAbi": "12.2.0.0",
   "framework": "net10.0",
   "project": "plugins/MetadataDashboard/MetadataDashboard.csproj",
   "packagePrefix": "MetadataDashboard",
@@ -15,5 +15,8 @@
   "imageUrl": "https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/plugins/MetadataDashboard/Web/assets/metadata-dashboard-icon.svg",
   "artifacts": [
     "Jellyfin.Plugin.MetadataDashboard.dll"
+  ],
+  "runtimeDependencies": [
+    "iamparadox.plugin-pages"
   ]
 }

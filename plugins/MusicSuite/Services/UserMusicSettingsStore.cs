@@ -71,6 +71,7 @@ public sealed class UserMusicSettingsStore : IUserMusicSettingsStore
     private readonly Func<string> _dataFolderProvider;
 
     private readonly ILogger<UserMusicSettingsStore> _logger;
+    private readonly Func<PluginConfiguration> _configurationProvider;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="UserMusicSettingsStore"/> class for dependency injection.
@@ -88,10 +89,12 @@ public sealed class UserMusicSettingsStore : IUserMusicSettingsStore
     /// Initializes a new instance of the <see cref="UserMusicSettingsStore"/> class rooted in a supplied data folder.
     /// </summary>
     /// <param name="dataFolderPath">Plugin data folder.</param>
-    public UserMusicSettingsStore(string dataFolderPath)
+    /// <param name="configurationProvider">Optional configuration source for isolated hosts and tests.</param>
+    public UserMusicSettingsStore(string dataFolderPath, Func<PluginConfiguration>? configurationProvider = null)
         : this(
             () => dataFolderPath,
-            NullLogger<UserMusicSettingsStore>.Instance)
+            NullLogger<UserMusicSettingsStore>.Instance,
+            configurationProvider)
     {
         if (string.IsNullOrWhiteSpace(dataFolderPath))
         {
@@ -101,10 +104,12 @@ public sealed class UserMusicSettingsStore : IUserMusicSettingsStore
 
     private UserMusicSettingsStore(
         Func<string> dataFolderProvider,
-        ILogger<UserMusicSettingsStore> logger)
+        ILogger<UserMusicSettingsStore> logger,
+        Func<PluginConfiguration>? configurationProvider = null)
     {
         _dataFolderProvider = dataFolderProvider;
         _logger = logger;
+        _configurationProvider = configurationProvider ?? (() => Plugin.Instance?.Configuration ?? new PluginConfiguration());
     }
 
     /// <inheritdoc />
@@ -113,6 +118,11 @@ public sealed class UserMusicSettingsStore : IUserMusicSettingsStore
         ValidateUserId(userId);
         lock (GetUserLock(userId))
         {
+            if (!_configurationProvider().AllowUserCustomization)
+            {
+                return CreateDefault(userId);
+            }
+
             var path = GetSettingsPath(userId);
             if (!File.Exists(path))
             {
@@ -194,9 +204,9 @@ public sealed class UserMusicSettingsStore : IUserMusicSettingsStore
         }
     }
 
-    private static UserMusicViewSettings CreateDefault(Guid userId)
+    private UserMusicViewSettings CreateDefault(Guid userId)
     {
-        var configuration = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+        var configuration = _configurationProvider();
         return new UserMusicViewSettings
         {
             SchemaVersion = CurrentSchemaVersion,
@@ -205,7 +215,7 @@ public sealed class UserMusicSettingsStore : IUserMusicSettingsStore
             AlbumLayout = NormalizeChoice(configuration.DefaultAlbumLayout, GridLayouts, "Grid"),
             ArtistLayout = "Grid",
             SongLayout = "VirtualTable",
-            TileSize = "Medium",
+            TileSize = NormalizeChoice(configuration.DefaultTileSize, TileSizes, "Medium"),
             MarkMissingCovers = true,
             SortPreferences =
             {

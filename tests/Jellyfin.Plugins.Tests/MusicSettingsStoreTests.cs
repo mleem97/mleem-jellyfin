@@ -7,6 +7,45 @@ namespace Jellyfin.Plugins.Tests;
 public sealed class MusicSettingsStoreTests
 {
     [Fact]
+    public void SettingsRoundTripPreservesPreferencesAndIsolatesUsers()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new UserMusicSettingsStore(directory.Path);
+        var userId = Guid.NewGuid();
+        var settings = new UserMusicViewSettings { TileSize = "Large", AlbumLayout = "List" };
+        settings.SortPreferences["albums"] = "DateCreated";
+        settings.EnabledSections["artists"] = false;
+        store.Save(userId, settings);
+
+        var restarted = new UserMusicSettingsStore(directory.Path);
+        var loaded = restarted.Get(userId);
+        Assert.Equal("Large", loaded.TileSize);
+        Assert.Equal("List", loaded.AlbumLayout);
+        Assert.Equal("DateCreated", loaded.SortPreferences["albums"]);
+        Assert.False(loaded.EnabledSections["artists"]);
+        Assert.Equal("Medium", restarted.Get(Guid.NewGuid()).TileSize);
+    }
+
+    [Fact]
+    public void NewUsersResetsAndDisabledCustomizationUseAdministratorDefaults()
+    {
+        using var directory = new TemporaryDirectory();
+        var configuration = new PluginConfiguration { DefaultTileSize = "Small" };
+        var store = new UserMusicSettingsStore(directory.Path, () => configuration);
+        var userId = Guid.NewGuid();
+        Assert.Equal("Small", store.Get(userId).TileSize);
+        store.Save(userId, new UserMusicViewSettings { TileSize = "Large" });
+        Assert.Equal("Large", store.Get(userId).TileSize);
+
+        configuration.AllowUserCustomization = false;
+        Assert.Equal("Small", store.Get(userId).TileSize);
+        configuration.AllowUserCustomization = true;
+        Assert.Equal("Large", store.Get(userId).TileSize);
+        store.Delete(userId);
+        Assert.Equal("Small", store.Get(userId).TileSize);
+    }
+
+    [Fact]
     public void SaveOverridesBodyUserIdAndNormalizesUnknownChoices()
     {
         using var directory = new TemporaryDirectory();

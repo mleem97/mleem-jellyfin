@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>14.0</LangVersion>
-    <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Jellyfin.Plugin.MusicToolkit</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.MusicToolkit</AssemblyName>
@@ -11,19 +9,18 @@
     <FileVersion>1.0.0.1</FileVersion>
     <Version>1.0.0.1</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- NU1903: transitive Microsoft.Kiota.Abstractions via Jellyfin.* 12.1.0 (upstream); keep as warning, not error -->
-    <WarningsNotAsErrors>NU1903</WarningsNotAsErrors>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CodeAnalysisRuleSet>../../jellyfin.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="12.1.0" />
-    <PackageReference Include="Jellyfin.Model" Version="12.1.0" />
-    <PackageReference Include="TagLibSharp" Version="2.3.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Jellyfin.Controller" />
+    <PackageReference Include="Jellyfin.Model" />
+    <PackageReference Include="TagLibSharp" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
   <ItemGroup>

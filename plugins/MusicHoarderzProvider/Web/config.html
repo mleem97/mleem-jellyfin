@@ -88,7 +88,7 @@
                     <img src="Plugins/MusicHoarderzProvider/Web/assets/musichoarderz-icon.svg" style="width:48px;height:48px;border-radius:8px;" onerror="this.style.display='none'" />
                     <div>
                         <h1 style="margin:0;">MusicHoarderz Cover- &amp; Metadaten-Provider</h1>
-                        <div style="opacity:0.7;font-size:0.9rem;">Multi-Plattform Ultra-HD Coverarts aus Apple Music, Spotify, Deezer, Tidal, Qobuz &amp; Bandcamp.</div>
+                        <div style="opacity:0.7;font-size:0.9rem;">Manuelle Cover-Auswahl und Metadaten für deine Jellyfin-Musikbibliothek.</div>
                     </div>
                 </div>
 
@@ -111,13 +111,13 @@
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label>
                             <input type="checkbox" id="mhCovEnabled" />
-                            <span>MusicHoarderz / COV-Engine aktiviert</span>
+                            <span>MusicHoarderz / COV-Auswahl aktiviert</span>
                         </label>
                     </div>
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label>
-                            <input type="checkbox" id="mhAutoSearchEnabled" />
-                            <span>Automatische Suche aktivieren</span>
+                            <input type="checkbox" id="mhAutoSearchEnabled" disabled />
+                            <span>Automatische Anwendung ist im MVP deaktiviert</span>
                         </label>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;margin-top:1rem;">
@@ -137,6 +137,11 @@
                             <div class="fieldDescription">Mindesthöhe in Pixeln.</div>
                         </div>
                     </div>
+                    <div class="inputContainer" style="margin-top:1rem;">
+                        <label class="inputLabel" for="mhBaseUrl">Optionaler JSON-Provider (öffentliche HTTPS-Basis-URL)</label>
+                        <input type="url" id="mhBaseUrl" class="emby-input" placeholder="Leer lassen für den offiziellen COV-Picker" />
+                        <div class="fieldDescription">Nur für einen ausdrücklich eingerichteten, kompatiblen JSON-Dienst. Die interne COV-API wird nicht verwendet.</div>
+                    </div>
                     <div style="margin-top:1rem;">
                         <button id="btnSaveSettings" type="button" class="raised button-submit emby-button">Einstellungen speichern</button>
                     </div>
@@ -144,8 +149,9 @@
 
                 <!-- Live Search Test Card -->
                 <div class="mh-card">
-                    <h2 style="margin-top:0;">🔍 Live-Cover-Tester &amp; Vorschau</h2>
-                    <p style="font-size:0.9rem;opacity:0.8;">Teste die Multi-Plattform-Suche direkt gegen die MusicHoarderz COV-Engine und prüfe Auflösungen und Quellen.</p>
+                    <h2 style="margin-top:0;">Cover auswählen</h2>
+                    <p>Dieser Jellyfin-Provider verwendet MusicHoarderz/COV: <a href="https://covers.musichoarders.xyz/" target="_blank" rel="noopener noreferrer">https://covers.musichoarders.xyz/</a></p>
+                    <p>Öffne die offizielle Suche, wähle dort ein Cover und importiere das heruntergeladene Bild über Jellyfins Bilddialog. Ein separat eingerichteter JSON-Provider kann zusätzlich hier getestet werden.</p>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:1rem;margin-bottom:1rem;">
                         <div class="inputContainer">
                             <label class="inputLabel" for="searchArtist">Künstler (Artist)</label>
@@ -156,16 +162,17 @@
                             <input type="text" id="searchAlbum" class="emby-input" placeholder="z. B. Discovery" />
                         </div>
                     </div>
-                    <button id="btnSearchCovers" type="button" class="raised emby-button" style="background:#00BCD4;color:#fff;">Cover suchen</button>
+                    <button id="btnOpenCov" type="button" class="raised emby-button">Offiziellen COV-Picker öffnen</button>
+                    <button id="btnSearchCovers" type="button" class="raised emby-button" style="background:#00BCD4;color:#fff;">JSON-Provider testen</button>
                     <div id="searchTestResults" class="mh-grid">
-                        <div style="grid-column:1/-1;opacity:0.6;padding:1rem;text-align:center;">Gib Künstler oder Album ein und klicke auf „Cover suchen“.</div>
+                        <div style="grid-column:1/-1;opacity:0.6;padding:1rem;text-align:center;">Gib Künstler und Album ein und öffne die offizielle Cover-Auswahl.</div>
                     </div>
                 </div>
 
                 <!-- Spotify Credentials Card -->
                 <div class="mh-card">
                     <h2 style="margin-top:0;">Spotify Fallback-Anmeldedaten</h2>
-                    <p style="font-size:0.85rem;opacity:0.7;">Optional: Kann als Fallback-Quelle für Albumcover genutzt werden.</p>
+                    <p style="font-size:0.85rem;opacity:0.7;">Zukünftige Funktion: Zugangsdaten können sicher gespeichert und getestet werden. Dieser Provider nutzt Spotify noch nicht als Such-Fallback.</p>
                     <div class="inputContainer">
                         <label class="inputLabel" for="musicHoarderzSpotifyClientId">Client ID</label>
                         <input type="text" id="musicHoarderzSpotifyClientId" class="emby-input" autocomplete="off" />
@@ -186,7 +193,7 @@
                 <!-- YouTube Credentials Card -->
                 <div class="mh-card">
                     <h2 style="margin-top:0;">YouTube Fallback-Anmeldedaten</h2>
-                    <p style="font-size:0.85rem;opacity:0.7;">Optional: Kann als Fallback-Quelle genutzt werden.</p>
+                    <p style="font-size:0.85rem;opacity:0.7;">Zukünftige Funktion: Zugangsdaten können sicher gespeichert und getestet werden. Dieser Provider nutzt YouTube noch nicht als Such-Fallback.</p>
                     <div class="inputContainer">
                         <label class="inputLabel" for="musicHoarderzYouTubeKey">API-Schlüssel</label>
                         <input type="password" id="musicHoarderzYouTubeKey" class="emby-input" autocomplete="new-password" />
@@ -269,24 +276,35 @@
 
                         document.querySelector('#mhProviderEnabled').checked = !!data.enabled;
                         document.querySelector('#mhCovEnabled').checked = !!data.musicHoarderzEnabled;
-                        document.querySelector('#mhAutoSearchEnabled').checked = !!data.autoSearchEnabled;
+                        document.querySelector('#mhAutoSearchEnabled').checked = false;
+                        document.querySelector('#mhBaseUrl').value = data.jsonProviderConfigured ? data.baseUrl : '';
+                        document.querySelector('#btnSearchCovers').disabled = !data.jsonProviderConfigured;
                         document.querySelector('#mhCountry').value = data.country || 'DE';
                         document.querySelector('#mhMinWidth').value = data.minimumWidth || 1000;
                         document.querySelector('#mhMinHeight').value = data.minimumHeight || 1000;
 
                         document.querySelector('#musicHoarderzSpotifyEnabled').checked = !!data.spotifyEnabled;
-                        document.querySelector('#musicHoarderzYouTubeEnabled').checked = !!data.youtubeEnabled;
+                        document.querySelector('#musicHoarderzYouTubeEnabled').checked = !!(data.youTubeEnabled || data.youtubeEnabled);
                     }).catch(function (error) {
                         document.querySelector('#musicHoarderzProviderStatus').textContent = 'Fehler beim Laden: ' + error.message;
                     });
                 }
 
                 function bind() {
+                    document.querySelector('#btnOpenCov').addEventListener('click', function () {
+                        var url = new URL('https://covers.musichoarders.xyz/');
+                        url.searchParams.set('theme', 'dark');
+                        url.searchParams.set('country', document.querySelector('#mhCountry').value.trim() || 'DE');
+                        url.searchParams.set('artist', document.querySelector('#searchArtist').value.trim());
+                        url.searchParams.set('album', document.querySelector('#searchAlbum').value.trim());
+                        window.open(url.href, '_blank', 'noopener,noreferrer');
+                    });
                     document.querySelector('#btnSaveSettings').addEventListener('click', function () {
                         var settings = {
                             enabled: document.querySelector('#mhProviderEnabled').checked,
                             musicHoarderzEnabled: document.querySelector('#mhCovEnabled').checked,
-                            autoSearchEnabled: document.querySelector('#mhAutoSearchEnabled').checked,
+                            autoSearchEnabled: false,
+                            baseUrl: document.querySelector('#mhBaseUrl').value.trim(),
                             country: document.querySelector('#mhCountry').value.trim(),
                             minimumWidth: parseInt(document.querySelector('#mhMinWidth').value, 10) || 1000,
                             minimumHeight: parseInt(document.querySelector('#mhMinHeight').value, 10) || 1000
@@ -315,7 +333,7 @@
                         getJson(url).then(function (items) {
                             container.innerHTML = '';
                             if (!items || items.length === 0) {
-                                container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem;opacity:0.7;">Keine passenden Cover gefunden (gefiltert nach Mindestauflösung).</div>';
+                                container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem;opacity:0.7;">Keine Treffer vom JSON-Provider.</div>';
                                 return;
                             }
 
@@ -324,7 +342,7 @@
                                 card.className = 'mh-item-card';
 
                                 var img = document.createElement('img');
-                                img.src = item.url;
+
                                 img.loading = 'lazy';
                                 img.alt = (item.artist || '') + ' - ' + (item.title || '');
 
@@ -360,12 +378,23 @@
                                 badges.appendChild(resBadge);
 
                                 var link = document.createElement('a');
-                                link.href = item.url;
+                                link.href = "#";
                                 link.target = '_blank';
                                 link.rel = 'noreferrer noopener';
                                 link.style.textDecoration = 'none';
                                 link.style.color = 'inherit';
                                 link.appendChild(img);
+
+                                sendJson('POST', 'Plugins/MusicHoarderzProvider/Preview', { url: item.url })
+                                    .then(function (preview) {
+                                        img.src = preview.url || preview.Url;
+                                        link.href = img.src;
+                                    })
+                                    .catch(function () {
+                                        img.remove();
+                                        link.removeAttribute('href');
+                                        sub.textContent = 'Bildprüfung fehlgeschlagen.';
+                                    });
 
                                 card.appendChild(link);
                                 card.appendChild(title);
@@ -375,7 +404,7 @@
                                 container.appendChild(card);
                             });
                         }).catch(function (err) {
-                            container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem;color:#e24b4b;">Fehler bei der Abfrage: ' + err.message + '</div>';
+                            container.textContent = 'Fehler bei der Abfrage: ' + err.message;
                         });
                     });
 
@@ -383,6 +412,8 @@
                         sendJson('POST', 'Plugins/MusicHoarderzProvider/SaveCredentials', collectCredentials())
                             .then(function (data) {
                                 showResult('Gespeichert. Spotify konfiguriert: ' + data.spotifyConfigured + ', YouTube konfiguriert: ' + data.youTubeConfigured + '.');
+                                document.querySelector('#musicHoarderzSpotifyClientSecret').value = '';
+                                document.querySelector('#musicHoarderzYouTubeKey').value = '';
                                 load();
                             })
                             .catch(function (error) { showResult('Speichern fehlgeschlagen: ' + error.message); });

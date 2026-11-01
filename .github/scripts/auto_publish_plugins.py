@@ -147,7 +147,7 @@ def selected_plugins() -> list[str]:
 
 
 def latest_tag(slug: str) -> str | None:
-    tags = run(["git", "tag", "--list", f"{slug}-v*", "--sort=-creatordate"], capture=True).splitlines()
+    tags = run(["git", "tag", "--list", f"{slug}-v*", "--sort=-version:refname"], capture=True).splitlines()
     return tags[0] if tags else None
 
 
@@ -205,7 +205,7 @@ def update_csproj(project_path: pathlib.Path, version: str) -> None:
 
 
 def build_plugin(project: pathlib.Path) -> None:
-    run(["dotnet", "restore", str(project)])
+    run(["dotnet", "restore", str(project), "--locked-mode"])
     run(["dotnet", "build", str(project), "-c", "Release", "--no-restore"])
 
 
@@ -221,8 +221,9 @@ def package_plugin(metadata: dict, version: str) -> pathlib.Path:
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
         for artifact in metadata.get("artifacts", [metadata["assembly"]]):
             artifact_path = output_dir / artifact
-            if artifact_path.exists():
-                archive.write(artifact_path, artifact_path.name)
+            if not artifact_path.is_file():
+                raise SystemExit(f"Required release artifact is missing: {artifact_path}")
+            archive.write(artifact_path, artifact_path.name)
         pdb_path = output_dir / metadata["assembly"].replace(".dll", ".pdb")
         if pdb_path.exists():
             archive.write(pdb_path, pdb_path.name)
@@ -259,7 +260,10 @@ def update_manifest(metadata: dict, version: str, changelog: str, zip_path: path
         "timestamp": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
     }
     old_versions = entry.get("versions") or []
-    entry["versions"] = [new_version] + [item for item in old_versions if item.get("version") != version]
+    entry["versions"] = [new_version] + [
+        item for item in old_versions
+        if (item.get("version"), item.get("targetAbi")) != (version, metadata["targetAbi"])
+    ]
     save_json(MANIFEST_PATH, manifest)
 
 
@@ -271,12 +275,18 @@ def release_with_gh(metadata: dict, version: str, changelog: str, zip_path: path
     run(["git", "push", "origin", tag_name])
     notes_path = ROOT / "release-assets" / f"{metadata['slug']}-CHANGELOG.md"
     notes_path.write_text(changelog + "\n", encoding="utf-8")
+    checksum_path = zip_path.with_suffix(".zip.sha256")
+    checksum_path.write_text(
+        f"{hashlib.sha256(zip_path.read_bytes()).hexdigest()}  {zip_path.name}\n",
+        encoding="utf-8",
+    )
     run([
         "gh",
         "release",
         "create",
         tag_name,
         str(zip_path),
+        str(checksum_path),
         str(MANIFEST_PATH),
         "--title",
         f"{metadata['name']} {version}",
@@ -294,41 +304,10 @@ def commit_and_push(slugs: list[str]) -> None:
 
 
 def main() -> int:
-    slugs = selected_plugins()
-    if not slugs:
-        print("No changed plugin projects detected.")
-        return 0
+    # Keep the historical entry point, but never bypass package/catalog validation.
+    from publish_plugins import main as publish
 
-    known = discover_plugins()
-    for slug in slugs:
-        if slug not in known:
-            raise SystemExit(f"Unknown plugin slug: {slug}")
-
-    release_data: list[tuple[dict, str, str, pathlib.Path]] = []
-    for slug in slugs:
-        metadata_path = PLUGINS_DIR / slug / "plugin.json"
-        metadata = load_json(metadata_path)
-        changelog = changelog_for(slug, latest_tag(slug))
-        level = bump_level(changelog)
-        new_version = bump_version(metadata["version"], level)
-        metadata["version"] = new_version
-        save_json(metadata_path, metadata)
-        project = ROOT / metadata["project"]
-        update_csproj(project, new_version)
-        build_plugin(project)
-        zip_path = package_plugin(metadata, new_version)
-        update_manifest(metadata, new_version, changelog, zip_path)
-        release_data.append((metadata, new_version, changelog, zip_path))
-
-    if os.environ.get("GITHUB_ACTIONS") == "true":
-        run(["git", "config", "user.name", "github-actions[bot]"])
-        run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
-    commit_and_push(slugs)
-
-    for metadata, version, changelog, zip_path in release_data:
-        release_with_gh(metadata, version, changelog, zip_path)
-    run(["git", "push", "origin", "main", "--follow-tags"])
-    return 0
+    return publish()
 
 
 if __name__ == "__main__":

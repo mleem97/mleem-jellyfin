@@ -1,0 +1,6 @@
+[submodule "external/iamparadox/file-transformation"]
+	path = external/iamparadox/file-transformation
+	url = https://github.com/IAmParadox27/jellyfin-plugin-file-transformation.git
+[submodule "external/iamparadox/plugin-pages"]
+	path = external/iamparadox/plugin-pages
+	url = https://github.com/IAmParadox27/jellyfin-plugin-pages.git

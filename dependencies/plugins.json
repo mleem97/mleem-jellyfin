@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "catalogUrl": "https://www.iamparadox.dev/jellyfin/plugins/manifest.json",
+  "plugins": [
+    {
+      "id": "iamparadox.file-transformation",
+      "name": "File Transformation",
+      "repository": "https://github.com/IAmParadox27/jellyfin-plugin-file-transformation.git",
+      "path": "external/iamparadox/file-transformation",
+      "releaseTag": "3.0.3.0",
+      "commit": "2dd4279bc7aedd082de0639278f9142ead229a52",
+      "licenseFile": "LICENSE",
+      "jellyfinVersion": "12.2.0",
+      "releaseAsset": "https://github.com/IAmParadox27/jellyfin-plugin-file-transformation/releases/download/3.0.3.0/Release-12.2.0.zip",
+      "contract": "Jellyfin.Plugin.FileTransformation.PluginInterface.RegisterTransformation(Newtonsoft.Json.Linq.JObject)",
+      "integration": "optional runtime plugin, reflection registration",
+      "requiredPlugins": [],
+      "validation": "source contract inspected; real Jellyfin lifecycle qualification pending"
+    },
+    {
+      "id": "iamparadox.plugin-pages",
+      "name": "Plugin Pages",
+      "repository": "https://github.com/IAmParadox27/jellyfin-plugin-pages.git",
+      "path": "external/iamparadox/plugin-pages",
+      "releaseTag": "3.0.3.0",
+      "commit": "5dab0dbcc25dd1534dd5e4c3263ec5bb94910f0f",
+      "licenseFile": "LICENSE",
+      "jellyfinVersion": "12.2.0",
+      "releaseAsset": "https://github.com/IAmParadox27/jellyfin-plugin-pages/releases/download/3.0.3.0/Release-12.2.0.zip",
+      "contract": "Jellyfin.Plugin.PluginPages.PluginInterface.RegisterPage(Newtonsoft.Json.Linq.JObject)",
+      "integration": "optional runtime plugin, reflection registration",
+      "requiredPlugins": ["iamparadox.file-transformation"],
+      "validation": "source contract inspected; real Jellyfin lifecycle qualification pending"
+    }
+  ]
+}

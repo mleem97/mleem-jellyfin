@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.HddDisplay</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.HddDisplay</AssemblyName>
     <AssemblyVersion>1.0.0.22</AssemblyVersion>
@@ -9,22 +8,19 @@
     <Version>1.0.0.22</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- NU1903: transitive Microsoft.Kiota.Abstractions via Jellyfin.* 12.1.0 (upstream); keep as warning, not error -->
-    <WarningsNotAsErrors>NU1903</WarningsNotAsErrors>
-    <Nullable>enable</Nullable>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CodeAnalysisRuleSet>../../jellyfin.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Common" Version="12.1.0" />
-    <PackageReference Include="Jellyfin.Controller" Version="12.1.0" />
-    <PackageReference Include="Jellyfin.Model" Version="12.1.0" />
-    <PackageReference Include="Jellyfin.Sdk" Version="2025.10.21" />
-    <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.376" PrivateAssets="All" />
-    <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" PrivateAssets="All" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Jellyfin.Common" />
+    <PackageReference Include="Jellyfin.Controller" />
+    <PackageReference Include="Jellyfin.Model" />
+    <PackageReference Include="Jellyfin.Sdk" />
+    <PackageReference Include="SerilogAnalyzer" PrivateAssets="All" />
+    <PackageReference Include="StyleCop.Analyzers" PrivateAssets="All" />
+    <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" PrivateAssets="All" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
   <ItemGroup>

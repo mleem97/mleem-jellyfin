@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -12,15 +11,16 @@ namespace Jellyfin.Plugin.MetadataDashboard.Integrations;
 public sealed class ParadoxBridge
 {
     private readonly ILogger<ParadoxBridge> _logger;
-    private static bool _initialized;
+    private readonly object _sync = new();
+    private bool _pageRegistered;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ParadoxBridge"/> class.
     /// </summary>
+    /// <param name="logger">Logger for optional integration diagnostics.</param>
     public ParadoxBridge(ILogger<ParadoxBridge> logger)
     {
         _logger = logger;
-        Initialize();
     }
 
     /// <summary>
@@ -28,30 +28,34 @@ public sealed class ParadoxBridge
     /// </summary>
     public void Initialize()
     {
-        if (_initialized)
+        lock (_sync)
         {
-            return;
+            if (!_pageRegistered)
+            {
+                _pageRegistered = TryRegisterPage();
+            }
         }
-
-        _initialized = true;
-        TryRegisterPage();
     }
 
-    private void TryRegisterPage()
+    private bool TryRegisterPage()
     {
         var pageInterface = FindType("Jellyfin.Plugin.PluginPages.PluginInterface");
         if (pageInterface is null)
         {
             _logger.LogInformation("Paradox PluginPages not installed; skipping page registration");
-            return;
+            return false;
         }
 
-        var register = pageInterface.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .FirstOrDefault(m => string.Equals(m.Name, "RegisterPage", StringComparison.Ordinal));
+        var register = pageInterface.GetMethod(
+            "RegisterPage",
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            types: new[] { typeof(JObject) },
+            modifiers: null);
         if (register is null)
         {
             _logger.LogWarning("Paradox PluginPages.RegisterPage not found");
-            return;
+            return false;
         }
 
         try
@@ -60,19 +64,18 @@ public sealed class ParadoxBridge
             {
                 ["id"] = "metadata-dashboard",
                 ["displayText"] = "Metadaten-Manager",
-                ["path"] = "/Plugins/MetadataDashboard/Assets/metadata-dashboard.html",
-                ["route"] = "/pages/metadata-dashboard",
-                ["icon"] = "edit_note",
-                ["section"] = "tools",
-                ["requiresAdmin"] = true
+                ["url"] = "/Plugins/MetadataDashboard/Assets/metadata-dashboard.html",
+                ["icon"] = "edit_note"
             };
 
-            register.Invoke(null, new object[] { manifest.ToString() });
+            register.Invoke(null, new object?[] { manifest });
             _logger.LogInformation("Successfully registered Metadaten-Manager with Paradox PluginPages");
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to register Metadaten-Manager with Paradox PluginPages");
+            return false;
         }
     }
 
