@@ -97,6 +97,12 @@ public interface IAlbumMetadataProvider
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Normalized album candidates.</returns>
     Task<IReadOnlyList<NormalizedAlbumResult>> SearchAlbumsAsync(CoverSearchQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Resolves a selected candidate without running a different title search.</summary>
+    /// <param name="id">Opaque identifier returned by search.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The selected snapshot, or null if it has expired.</returns>
+    Task<NormalizedAlbumResult?> GetAlbumAsync(string id, CancellationToken cancellationToken);
 }
 
 /// <summary>Structured health without credentials or raw upstream exception text.</summary>
@@ -116,5 +122,20 @@ public sealed class FakeAlbumMetadataProvider : IAlbumMetadataProvider
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult<IReadOnlyList<NormalizedAlbumResult>>(new List<NormalizedAlbumResult>(Results));
+    }
+
+    /// <inheritdoc />
+    public Task<NormalizedAlbumResult?> GetAlbumAsync(string id, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        foreach (var album in Results)
+        {
+            if (string.Equals(album.Id, id, StringComparison.Ordinal))
+            {
+                return Task.FromResult<NormalizedAlbumResult?>(album);
+            }
+        }
+
+        return Task.FromResult<NormalizedAlbumResult?>(null);
     }
 }
