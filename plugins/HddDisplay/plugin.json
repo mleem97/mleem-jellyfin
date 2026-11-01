@@ -3,7 +3,7 @@
   "name": "HDD Display",
   "guid": "eb5d7894-8eef-4b36-aa6f-5d124e828ce1",
   "version": "1.0.0.22",
-  "targetAbi": "12.1.0.0",
+  "targetAbi": "12.2.0.0",
   "framework": "net10.0",
   "project": "plugins/HddDisplay/HddDisplay.csproj",
   "packagePrefix": "HDDDisplay",
@@ -15,5 +15,9 @@
   "description": "Displays Jellyfin library disk usage grouped by mount, adds media-type usage segments and reads NVIDIA jellyfin-ffmpeg telemetry for the Admin Dashboard.",
   "artifacts": [
     "Jellyfin.Plugin.HddDisplay.dll"
+  ],
+  "runtimeDependencies": [
+    "iamparadox.file-transformation",
+    "iamparadox.plugin-pages"
   ]
 }
