@@ -55,12 +55,15 @@ public sealed partial class CredentialStore
         var nonce = RandomNumberGenerator.GetBytes(NonceBytes);
         var ciphertext = new byte[plainBytes.Length];
         var tag = new byte[TagBytes];
-        using (var aes = new AesGcm(_key, TagBytes))
+        try
         {
+            using var aes = new AesGcm(_key, TagBytes);
             aes.Encrypt(nonce, plainBytes, ciphertext, tag);
         }
-
-        CryptographicOperations.ZeroMemory(plainBytes);
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plainBytes);
+        }
         var payload = new byte[1 + NonceBytes + ciphertext.Length + TagBytes];
         payload[0] = PayloadVersion;
         Buffer.BlockCopy(nonce, 0, payload, 1, NonceBytes);
@@ -87,9 +90,9 @@ public sealed partial class CredentialStore
         {
             raw = Convert.FromBase64String(payload.Trim());
         }
-        catch (FormatException ex)
+        catch (FormatException)
         {
-            LogCryptoFailure(_logger, ex);
+            LogCryptoFailureNoDetails(_logger);
             return null;
         }
 
@@ -115,10 +118,10 @@ public sealed partial class CredentialStore
                 aes.Decrypt(nonce, ciphertext, tag, plainBytes);
             }
         }
-        catch (CryptographicException ex)
+        catch (CryptographicException)
         {
             CryptographicOperations.ZeroMemory(plainBytes);
-            LogCryptoFailure(_logger, ex);
+            LogCryptoFailureNoDetails(_logger);
             return null;
         }
         finally
@@ -248,11 +251,7 @@ public sealed partial class CredentialStore
     {
         if (File.Exists(keyPath))
         {
-            var existing = File.ReadAllBytes(keyPath);
-            if (existing.Length == KeyBytes)
-            {
-                return existing;
-            }
+            return LoadKey(keyPath);
         }
 
         var directory = Path.GetDirectoryName(keyPath);
@@ -262,12 +261,57 @@ public sealed partial class CredentialStore
         }
 
         var fresh = RandomNumberGenerator.GetBytes(KeyBytes);
-        File.WriteAllBytes(keyPath, fresh);
+        var temporaryPath = keyPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            var options = new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                Share = FileShare.None,
+            };
+            if (!OperatingSystem.IsWindows())
+            {
+                options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            }
+
+            using (var stream = new FileStream(temporaryPath, options))
+            {
+                stream.Write(fresh);
+                stream.Flush(flushToDisk: true);
+            }
+
+            try
+            {
+                // Atomic publication without replacing a key another process created.
+                File.Move(temporaryPath, keyPath, overwrite: false);
+            }
+            catch (IOException) when (File.Exists(keyPath))
+            {
+                // Load the winning key after its complete file became visible.
+            }
+
+            return LoadKey(keyPath);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(fresh);
+            File.Delete(temporaryPath);
+        }
+    }
+
+    private static byte[] LoadKey(string keyPath)
+    {
         RestrictKeyFile(keyPath);
-        var copy = new byte[KeyBytes];
-        Buffer.BlockCopy(fresh, 0, copy, 0, KeyBytes);
-        CryptographicOperations.ZeroMemory(fresh);
-        return copy;
+        var key = File.ReadAllBytes(keyPath);
+        if (key.Length == KeyBytes)
+        {
+            return key;
+        }
+
+        CryptographicOperations.ZeroMemory(key);
+        // Replacing a corrupted key would silently destroy all existing credentials.
+        throw new CryptographicException("Credential key is invalid. Restore the plugin key from a backup.");
     }
 
     private static void RestrictKeyFile(string keyPath)
@@ -277,9 +321,6 @@ public sealed partial class CredentialStore
             File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         }
     }
-
-    [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = "Stored credential payload invalid.")]
-    private static partial void LogCryptoFailure(ILogger logger, Exception exception);
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Stored credential payload invalid.")]
     private static partial void LogCryptoFailureNoDetails(ILogger logger);

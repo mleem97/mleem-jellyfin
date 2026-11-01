@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.MusicHoarderzProvider.Services;
+using MediaBrowser.Common.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,7 @@ namespace Jellyfin.Plugin.MusicHoarderzProvider.Controllers;
 /// </summary>
 [ApiController]
 [Route("Plugins/MusicHoarderzProvider")]
+[Authorize(Policy = Policies.RequiresElevation)]
 public partial class ProviderController : ControllerBase
 {
     private const int CredentialTimeoutSeconds = 20;
@@ -335,22 +337,27 @@ public partial class ProviderController : ControllerBase
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("musichoarderz-credentials");
+            using var client = _httpClientFactory.CreateClient("musichoarderz-credentials");
             client.Timeout = TimeSpan.FromSeconds(CredentialTimeoutSeconds);
             var basic = Convert.ToBase64String(Encoding.UTF8.GetBytes(clientId + ":" + clientSecret));
             using var request = new HttpRequestMessage(HttpMethod.Post, "https://accounts.spotify.com/api/token");
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
             request.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "client_credentials" });
-            using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             return response.StatusCode == HttpStatusCode.OK;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            LogCredentialTestFailed(_logger, "spotify");
+            return false;
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (HttpRequestException ex)
+        catch (HttpRequestException)
         {
-            LogCredentialTestFailed(_logger, "spotify", ex);
+            LogCredentialTestFailed(_logger, "spotify");
             return false;
         }
     }
@@ -359,19 +366,25 @@ public partial class ProviderController : ControllerBase
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("musichoarderz-credentials");
+            using var client = _httpClientFactory.CreateClient("musichoarderz-credentials");
             client.Timeout = TimeSpan.FromSeconds(CredentialTimeoutSeconds);
-            var url = "https://www.googleapis.com/youtube/v3/videos?part=id&id=dQw4w9WgXcQ&key=" + Uri.EscapeDataString(apiKey);
-            using var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://www.googleapis.com/youtube/v3/videos?part=id&id=dQw4w9WgXcQ");
+            request.Headers.Add("X-Goog-Api-Key", apiKey);
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             return response.StatusCode == HttpStatusCode.OK;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            LogCredentialTestFailed(_logger, "youtube");
+            return false;
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (HttpRequestException ex)
+        catch (HttpRequestException)
         {
-            LogCredentialTestFailed(_logger, "youtube", ex);
+            LogCredentialTestFailed(_logger, "youtube");
             return false;
         }
     }
@@ -386,7 +399,7 @@ public partial class ProviderController : ControllerBase
     private static partial void LogCredentialsDeleted(ILogger logger, string selector);
 
     [LoggerMessage(EventId = 4, Level = LogLevel.Warning, Message = "Credential test request failed for {Provider}.")]
-    private static partial void LogCredentialTestFailed(ILogger logger, string provider, Exception exception);
+    private static partial void LogCredentialTestFailed(ILogger logger, string provider);
 }
 
 /// <summary>
