@@ -13,7 +13,8 @@ namespace Jellyfin.Plugin.MusicHoarderzProvider.Models;
 /// <param name="Artist">Album artist.</param>
 /// <param name="Year">Release year, when known.</param>
 /// <param name="Country">Preferred country code (ISO-3166-1 alpha-2).</param>
-public sealed record CoverSearchQuery(string Title, string Artist, int? Year, string Country);
+/// <param name="ProviderIds">Known external identifiers, when available.</param>
+public sealed record CoverSearchQuery(string Title, string Artist, int? Year, string Country, IReadOnlyDictionary<string, string>? ProviderIds = null);
 
 /// <summary>
 /// Normalized cover result returned by a cover provider.
@@ -28,7 +29,9 @@ public sealed record CoverSearchQuery(string Title, string Artist, int? Year, st
 /// <param name="Title">Album title delivered with the result, when known.</param>
 /// <param name="Artist">Album artist delivered with the result, when known.</param>
 /// <param name="Year">Release year delivered with the result, when known.</param>
-public sealed record NormalizedCoverResult(string Url, int? Width, int? Height, string Source, string? MimeType, int Score, string ScoreReason, string? Title = null, string? Artist = null, int? Year = null);
+/// <param name="ProviderIds">External identifiers actually supplied by the source.</param>
+/// <param name="SizeBytes">Declared image size, never trusted for download limits.</param>
+public sealed record NormalizedCoverResult(string Url, int? Width, int? Height, string Source, string? MimeType, int Score, string ScoreReason, string? Title = null, string? Artist = null, int? Year = null, IReadOnlyDictionary<string, string>? ProviderIds = null, long? SizeBytes = null);
 
 /// <summary>
 /// Structured provider error.
@@ -74,5 +77,44 @@ public sealed class FakeCoverProvider : ICoverProvider
         LastQuery = query;
         IReadOnlyList<NormalizedCoverResult> snapshot = new System.Collections.Generic.List<NormalizedCoverResult>(Results);
         return Task.FromResult(snapshot);
+    }
+}
+
+/// <summary>Provider-independent album metadata returned for manual selection.</summary>
+/// <param name="Id">Stable source identifier.</param>
+/// <param name="Title">Title actually supplied by the source.</param>
+/// <param name="Artist">Album artist actually supplied by the source.</param>
+/// <param name="Year">Release year actually supplied by the source.</param>
+/// <param name="ProviderIds">Known external identifiers.</param>
+/// <param name="ImageUrl">Optional cover URL.</param>
+public sealed record NormalizedAlbumResult(string Id, string? Title, string? Artist, int? Year, IReadOnlyDictionary<string, string> ProviderIds, string? ImageUrl);
+
+/// <summary>Metadata contract separate from the cover transport and Jellyfin models.</summary>
+public interface IAlbumMetadataProvider
+{
+    /// <summary>Searches normalized albums without modifying media.</summary>
+    /// <param name="query">Search input.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Normalized album candidates.</returns>
+    Task<IReadOnlyList<NormalizedAlbumResult>> SearchAlbumsAsync(CoverSearchQuery query, CancellationToken cancellationToken);
+}
+
+/// <summary>Structured health without credentials or raw upstream exception text.</summary>
+/// <param name="Available">Whether the last completed lookup succeeded.</param>
+/// <param name="Error">The last stable error, if any.</param>
+public sealed record ProviderHealth(bool Available, ProviderError? Error);
+
+/// <summary>In-memory album provider for offline integration tests.</summary>
+public sealed class FakeAlbumMetadataProvider : IAlbumMetadataProvider
+{
+    /// <summary>Gets the test results.</summary>
+    public Collection<NormalizedAlbumResult> Results { get; } = new();
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<NormalizedAlbumResult>> SearchAlbumsAsync(CoverSearchQuery query, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult<IReadOnlyList<NormalizedAlbumResult>>(new List<NormalizedAlbumResult>(Results));
     }
 }
