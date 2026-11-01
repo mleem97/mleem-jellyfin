@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -10,43 +9,60 @@ namespace Jellyfin.Plugin.HddDisplay.Integrations;
 /// Loosely-coupled bridge into the IAmParadox27 plugin ecosystem via reflection (fail-open).
 /// Registers the HDD Display detail page in PluginPages and injects the dashboard widget via FileTransformation.
 /// </summary>
-public static class PluginPagesBridge
+public sealed class PluginPagesBridge
 {
-    private static ILogger? _logger;
-    private static bool _initialized;
+    private readonly ILogger<PluginPagesBridge> _logger;
+    private readonly object _sync = new();
+    private bool _pageRegistered;
+    private bool _transformationRegistered;
 
     /// <summary>
-    /// Initializes the bridge.
+    /// Initializes a new instance of the <see cref="PluginPagesBridge"/> class.
     /// </summary>
-    /// <param name="logger">Logger.</param>
-    public static void Initialize(ILogger logger)
+    /// <param name="logger">Logger for optional integration diagnostics.</param>
+    public PluginPagesBridge(ILogger<PluginPagesBridge> logger)
     {
         _logger = logger;
-        if (_initialized)
-        {
-            return;
-        }
-
-        _initialized = true;
-        TryRegisterPage();
-        TryRegisterTransformations();
     }
 
-    private static void TryRegisterPage()
+    /// <summary>
+    /// Registers optional integrations after plugin loading; unsuccessful registrations can be retried.
+    /// </summary>
+    public void Initialize()
+    {
+        lock (_sync)
+        {
+            if (!_pageRegistered)
+            {
+                _pageRegistered = TryRegisterPage();
+            }
+
+            if (!_transformationRegistered)
+            {
+                _transformationRegistered = TryRegisterTransformations();
+            }
+        }
+    }
+
+    private bool TryRegisterPage()
     {
         var pageInterface = FindType("Jellyfin.Plugin.PluginPages.PluginInterface");
         if (pageInterface is null)
         {
-            _logger?.LogInformation("Paradox PluginPages not installed; skipping sidebar page registration");
-            return;
+            _logger.LogInformation("Paradox PluginPages not installed; skipping sidebar page registration");
+            return false;
         }
 
-        var register = pageInterface.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .FirstOrDefault(m => string.Equals(m.Name, "RegisterPage", StringComparison.Ordinal));
+        var register = pageInterface.GetMethod(
+            "RegisterPage",
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            types: new[] { typeof(JObject) },
+            modifiers: null);
         if (register is null)
         {
-            _logger?.LogWarning("Paradox PluginPages.RegisterPage not found");
-            return;
+            _logger.LogWarning("Paradox PluginPages.RegisterPage not found");
+            return false;
         }
 
         try
@@ -60,29 +76,35 @@ public static class PluginPagesBridge
                 ["section"] = "server"
             };
             register.Invoke(null, new object?[] { payload });
-            _logger?.LogInformation("Registered HDD Display detail page via Paradox PluginPages");
+            _logger.LogInformation("Registered HDD Display detail page via Paradox PluginPages");
+            return true;
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Paradox RegisterPage invocation failed (fail-open)");
+            _logger.LogWarning(ex, "Paradox RegisterPage invocation failed (fail-open)");
+            return false;
         }
     }
 
-    private static void TryRegisterTransformations()
+    private bool TryRegisterTransformations()
     {
         var transformInterface = FindType("Jellyfin.Plugin.FileTransformation.PluginInterface");
         if (transformInterface is null)
         {
-            _logger?.LogInformation("Paradox FileTransformation not installed; skipping widget script injection");
-            return;
+            _logger.LogInformation("Paradox FileTransformation not installed; skipping widget script injection");
+            return false;
         }
 
-        var register = transformInterface.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .FirstOrDefault(m => string.Equals(m.Name, "RegisterTransformation", StringComparison.Ordinal));
+        var register = transformInterface.GetMethod(
+            "RegisterTransformation",
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            types: new[] { typeof(JObject) },
+            modifiers: null);
         if (register is null)
         {
-            _logger?.LogWarning("Paradox FileTransformation.RegisterTransformation not found");
-            return;
+            _logger.LogWarning("Paradox FileTransformation.RegisterTransformation not found");
+            return false;
         }
 
         try
@@ -97,11 +119,13 @@ public static class PluginPagesBridge
                 ["callbackMethod"] = "TransformIndex",
             };
             register.Invoke(null, new object?[] { payload });
-            _logger?.LogInformation("Registered index.html transformation (HDD Display dashboard widget loader) via Paradox FileTransformation");
+            _logger.LogInformation("Registered index.html transformation (HDD Display dashboard widget loader) via Paradox FileTransformation");
+            return true;
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Paradox RegisterTransformation invocation failed (fail-open)");
+            _logger.LogWarning(ex, "Paradox RegisterTransformation invocation failed (fail-open)");
+            return false;
         }
     }
 

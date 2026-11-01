@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Jellyfin.Plugin.MusicToolkit.Configuration;
-using Jellyfin.Plugin.MusicToolkit.Integrations;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
@@ -26,7 +25,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
-        ParadoxBridge.Initialize(logger);
+        _ = logger;
     }
 
     /// <inheritdoc />
