@@ -26,6 +26,10 @@ def prepare(root: pathlib.Path, slug: str, display_name: str) -> dict[pathlib.Pa
     plugin_dir = root / "plugins" / slug
     test_dir = root / "tests" / f"{slug}.Tests"
     for parent, name in [(root / "plugins", slug), (root / "tests", f"{slug}.Tests")]:
+        if not parent.resolve().is_relative_to(root.resolve()) or parent.is_symlink():
+            raise ValueError(f"Refusing an external or symlinked source directory: {parent}")
+        if parent.exists() and not parent.is_dir():
+            raise ValueError(f"Source parent is not a directory: {parent}")
         if parent.exists() and any(child.name.casefold() == name.casefold() for child in parent.iterdir()):
             raise ValueError(f"Refusing to overwrite existing path: {parent / name}")
     settings = ET.parse(root / "Directory.Build.props")

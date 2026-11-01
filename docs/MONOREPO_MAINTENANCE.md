@@ -50,7 +50,7 @@ Compatibility is an assertion about a tested binary, not a list of desired versi
 ## Start working
 
 ```bash
-git clone --recurse-submodules https://github.com/mleem97/mleem-jellyfin.git
+git clone --branch dev --recurse-submodules https://github.com/mleem97/mleem-jellyfin.git
 cd mleem-jellyfin
 git switch dev
 dotnet restore Jellyfin.Plugins.sln --locked-mode

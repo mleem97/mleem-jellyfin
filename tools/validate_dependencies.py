@@ -37,9 +37,16 @@ def validate(root: pathlib.Path, initialized: bool = False) -> int:
     paths: set[str] = set()
     for entry in dependencies:
         path = pathlib.PurePosixPath(entry["path"])
-        if not path.parts or path.is_absolute() or ".." in path.parts or path.parts[0] != "external":
+        if (
+            len(path.parts) < 2
+            or path.is_absolute()
+            or ".." in path.parts
+            or path.parts[0] != "external"
+            or path.as_posix() != entry["path"]
+            or any(not re.fullmatch(r"[A-Za-z0-9_.-]+", part) for part in path.parts)
+        ):
             raise ValueError(f"Unsafe dependency path: {path}")
-        if entry["path"] in paths:
+        if entry["path"].casefold() in {item.casefold() for item in paths}:
             raise ValueError(f"Duplicate dependency path: {path}")
         paths.add(entry["path"])
         if configured.get(entry["path"]) != entry["repository"]:
@@ -48,7 +55,7 @@ def validate(root: pathlib.Path, initialized: bool = False) -> int:
             raise ValueError(f"Invalid pinned commit: {path}")
         if not re.fullmatch(r"\d+\.\d+\.\d+", entry["jellyfinVersion"]):
             raise ValueError(f"Invalid Jellyfin version: {path}")
-        staged = git(root, "ls-files", "--stage", "--", str(path)).split()
+        staged = git(root, "--literal-pathspecs", "ls-files", "--stage", "--", str(path)).split()
         if len(staged) < 4 or staged[:3] != ["160000", entry["commit"], "0"]:
             raise ValueError(f"Gitlink does not match dependency metadata: {path}")
         for required in entry.get("requiredPlugins", []):
@@ -58,6 +65,8 @@ def validate(root: pathlib.Path, initialized: bool = False) -> int:
                 raise ValueError(f"Incompatible runtime dependency versions: {entry['id']} and {required}")
         if initialized:
             checkout = root / path
+            if not checkout.resolve().is_relative_to(root.resolve()):
+                raise ValueError(f"Submodule resolves outside the repository: {path}")
             if git(checkout, "rev-parse", "HEAD") != entry["commit"]:
                 raise ValueError(f"Submodule checkout is not pinned: {path}")
             if git(checkout, "status", "--porcelain"):
