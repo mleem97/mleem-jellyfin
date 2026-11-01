@@ -2,14 +2,36 @@ name: Build MusicToolkit
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'plugins/MusicToolkit/**'
+      - 'tests/MusicToolkit.Tests/**'
+      - '.github/scripts/**'
+      - 'Directory.*.props'
+      - 'Directory.*.targets'
+      - 'global.json'
+      - 'tools/**'
+      - 'dependencies/**'
+      - 'external/**'
+      - '.gitmodules'
       - '.github/workflows/build-plugin.yml'
   pull_request:
     paths:
       - 'plugins/MusicToolkit/**'
+      - 'tests/MusicToolkit.Tests/**'
+      - '.github/scripts/**'
+      - 'Directory.*.props'
+      - 'Directory.*.targets'
+      - 'global.json'
+      - 'tools/**'
+      - 'dependencies/**'
+      - 'external/**'
+      - '.gitmodules'
+      - '.github/workflows/build-plugin.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -19,22 +41,18 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
       - name: Restore
-        run: dotnet restore plugins/MusicToolkit/MusicToolkit.csproj
+        run: dotnet restore tests/MusicToolkit.Tests/MusicToolkit.Tests.csproj --locked-mode
       - name: Build Release
-        run: dotnet build plugins/MusicToolkit/MusicToolkit.csproj -c Release --no-restore
+        run: dotnet build tests/MusicToolkit.Tests/MusicToolkit.Tests.csproj -c Release --no-restore
       - name: Test
-        run: dotnet test tests/MusicToolkit.Tests/MusicToolkit.Tests.csproj -c Release --no-build
-      - name: Package ZIP
-        run: |
-          STAGE="package/MusicToolkit"
-          rm -rf "$STAGE" && mkdir -p "$STAGE"
-          cp plugins/MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.dll "$STAGE/"
-          cp plugins/MusicToolkit/bin/Release/net10.0/Jellyfin.Plugin.MusicToolkit.pdb "$STAGE/" || true
-          (cd package && zip -r "MusicToolkit_${{ github.sha }}.zip" MusicToolkit)
-      - name: MD5 + manifest update
-        run: |
-          ZIP=$(ls package/MusicToolkit_*.zip | head -n1)
-          md5sum "$ZIP" | awk '{print toupper($1)}'
-          python3 .github/scripts/package_smoke_test.py || true
+        run: dotnet test tests/MusicToolkit.Tests/MusicToolkit.Tests.csproj -c Release --no-build --no-restore
+      - name: Validate package
+        run: python .github/scripts/package_smoke_test.py --plugin MusicToolkit --output artifacts
+      - name: Upload validated development package
+        uses: actions/upload-artifact@v4
+        with:
+          name: MusicToolkit-test-${{ github.sha }}
+          path: artifacts/*.zip
+          if-no-files-found: error

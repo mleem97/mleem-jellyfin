@@ -56,6 +56,10 @@ def ensure_version_available(metadata: dict, version: str) -> None:
         raise SystemExit(
             f"Manifest already contains {metadata['slug']} version {version}."
         )
+    requested = tuple(int(part) for part in version.split("."))
+    existing_versions = [metadata["version"]] + [item["version"] for item in versions]
+    if any(requested <= tuple(int(part) for part in existing.split(".")) for existing in existing_versions):
+        raise SystemExit("Release version must be newer than the current plugin and catalog versions.")
 
 
 def resolve_version(metadata: dict, changelog: str, exact_version: str | None) -> str:
@@ -65,7 +69,9 @@ def resolve_version(metadata: dict, changelog: str, exact_version: str | None) -
         return exact_version
 
     level = publisher.bump_level(changelog)
-    return publisher.bump_version(metadata["version"], level)
+    version = publisher.bump_version(metadata["version"], level)
+    ensure_version_available(metadata, version)
+    return version
 
 
 def main() -> int:
@@ -106,6 +112,7 @@ def main() -> int:
             metadata["guid"],
             new_version,
             zip_path,
+            metadata["targetAbi"],
         )
         release_data.append((metadata, new_version, changelog, zip_path))
 

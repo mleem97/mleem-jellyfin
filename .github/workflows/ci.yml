@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - dev
 
 permissions:
   contents: read
@@ -22,28 +23,19 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: '22.x'
       - name: Validate Python release scripts
-        run: python -m py_compile .github/scripts/auto_publish_plugins.py .github/scripts/publish_plugins.py .github/scripts/release_validation.py .github/scripts/package_smoke_test.py
-      - name: Validate JSON metadata
-        run: |
-          python - <<'PY'
-          import json
-          import pathlib
-
-          paths = [pathlib.Path('manifest.json'), pathlib.Path('build.yaml')]
-          paths.extend(pathlib.Path('plugins').glob('*/plugin.json'))
-          for path in paths:
-              if path.suffix == '.json':
-                  json.loads(path.read_text(encoding='utf-8'))
-                  print(f'validated {path}')
-          PY
+        run: python -m compileall -q .github/scripts
+      - name: Test release tooling
+        run: python -m unittest discover -s tests/release-tooling -v
+      - name: Validate plugin metadata and catalog
+        run: python .github/scripts/validate_repository.py
       - name: Restore repository solution
-        run: dotnet restore Jellyfin.Plugins.sln
+        run: dotnet restore Jellyfin.Plugins.sln --locked-mode
       - name: Build repository solution
         run: dotnet build Jellyfin.Plugins.sln -c Release --no-restore
       - name: Run plugin tests
@@ -51,7 +43,12 @@ jobs:
       - name: Run HDD Display dashboard smoke test
         working-directory: tests/dashboard-widget
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
+          npm test
+      - name: Run music view regression tests
+        working-directory: tests/music-suite
+        run: |
+          npm ci --no-audit --no-fund
           npm test
       - name: Smoke-test release packages
         run: python .github/scripts/package_smoke_test.py

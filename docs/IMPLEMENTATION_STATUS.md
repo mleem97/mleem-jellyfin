@@ -1,89 +1,35 @@
-# Implementation Status
+# Implementation status
 
-## Current repository shape
+## Repository inventory
 
-The repository is a three-plugin Jellyfin plugin library:
+The solution contains eight independent plugins: `HddDisplay`, `MusicSuite`, `MusicHoarderzProvider`, `SpotifyProvider`, `GracenoteProvider`, `MusicToolkit`, `MediaTools` and `MetadataDashboard`. Older planning documents call MusicSuite **Better MusicDisplay**; that is the same continuing plugin GUID.
 
-1. `HddDisplay`
-2. `BetterMusicDisplay`
-3. `MusicHoarderzProvider`
+Each plugin owns its metadata, source and version. Shared build/release tooling discovers `plugins/*/plugin.json`, validates project registration and package metadata, and builds every plugin. `dev` is the integration branch; publishing remains a separate manual operation from `main`.
 
-## HDD Display
+## Implemented areas
 
-### HDD Display done
+| Area | Source and verification |
+|---|---|
+| HDD storage/mount/system/GPU services and admin authorization | `plugins/HddDisplay`, .NET tests under `tests/Jellyfin.Plugins.Tests`, UI smoke tests under `tests/dashboard-widget` |
+| Album queries, endless scrolling, search/filter/sort, per-user settings and fallback | `plugins/MusicSuite`, matching .NET tests and `tests/music-suite` |
+| Provider contracts, encrypted credentials, COV lookup, scoring, image validation and manual Jellyfin integration | `plugins/MusicHoarderzProvider`, `MusicHoarderz*Tests.cs` |
+| Release packages, catalog isolation, checksum verification and plugin discovery | `.github/scripts`, `tests/release-tooling` |
+| Separate plugin releases and reproducible dependency versions | per-plugin metadata, `Directory.Packages.props`, package lockfiles and the manual release workflow |
 
-- H1 mount discovery backend.
-- Linux mount resolution through `/proc/self/mountinfo`.
-- Windows and restricted-environment fallback through `DriveInfo`.
-- Per-library-path mount diagnostics.
-- H2 media usage aggregation backend.
-- Real file-size aggregation by resolved mount and media type.
-- Configurable storage scan cache.
-- Forced storage scan refresh through `refresh=true`.
-- Explicit cache clear endpoint.
-- H3 NVIDIA telemetry provider.
-- `nvidia-smi` GPU usage snapshot.
-- GPU memory usage and process list.
-- Jellyfin ffmpeg process detection.
-- H4 dashboard data endpoint.
-- Dashboard widget rendering for storage, media segments and GPU status.
-- Manual dashboard refresh button.
+This inventory identifies code and tests. It does not assert that every UI flow or hardware configuration has been exercised on a deployed server.
 
-### HDD Display open
+## Remaining release qualification
 
-- Validate build results from GitHub Actions.
-- Test on Docker, LXC and native Linux.
-- Test on NVIDIA and non-NVIDIA hosts.
-- Improve large-library scan performance if needed.
-- Add final Admin Dashboard placement tuning against a real Jellyfin dashboard.
-- Add screenshots and release notes.
+The historical implementation tracker is issue [#52](https://github.com/mleem97/mleem-jellyfin/issues/52). Source fixes and successful automated checks can complete implementation issues; release issues require their deployment evidence as well.
 
-## Better MusicDisplay
+| Issue | Historical target | Current published evidence | Remaining acceptance |
+|---|---|---|---|
+| [#31](https://github.com/mleem97/mleem-jellyfin/issues/31) | HDD Display 0.1.0.0 | Later 1.0.0.22 ZIP exists, checksum verified, actual assembly targets .NET 10 | Native/Docker/LXC and NVIDIA/non-NVIDIA qualification; real dashboard screenshot; install/update/removal confirmation |
+| [#41](https://github.com/mleem97/mleem-jellyfin/issues/41) | Better MusicDisplay 0.1.0.0 | MusicSuite 0.1.0.0 and 1.0.0.0 ZIPs exist and were downloaded/verified | Real desktop/mobile screenshots and install/removal/native-view restoration evidence |
+| [#51](https://github.com/mleem97/mleem-jellyfin/issues/51) | MusicHoarderz 0.2.0.0 | Later 1.0.0.1 ZIP exists, checksum verified | Manual image/metadata dialog on a real server and upgrade from the preview baseline |
 
-### Better MusicDisplay done
+Existing 1.x tags are retained. The repository does not republish lower historical target versions to simulate completion. [Release Readiness](RELEASE_READINESS.md) records the artifact evidence and the boundaries of local verification.
 
-- Plugin metadata.
-- Buildable baseline project.
-- Plugin page.
-- Basic overview endpoint.
-- Initial global and user settings models.
-- B1 user settings persistence service.
-- Per-user settings endpoints for get, save and reset.
-- Header-based self-user guard for settings access.
-- User customization blocking when global customization is disabled.
+## CI infrastructure observation
 
-### Better MusicDisplay open
-
-- Strong Jellyfin admin-role integration for cross-user management.
-- Music query API layer.
-- Album endless-scroll MVP.
-- Artists and album artists.
-- Playlists and genres.
-- Virtual songs table.
-- Suggestions start page.
-- Full UI fallback and release stabilization.
-
-## MusicHoarderz Cover & Metadata Provider
-
-### MusicHoarderz Provider done
-
-- Plugin metadata.
-- Buildable baseline project.
-- Plugin page.
-- Status endpoint that avoids returning secrets.
-- Initial configuration models for MusicHoarderz/COV, Spotify and YouTube.
-
-### MusicHoarderz Provider open
-
-- Admin-only save/test/delete endpoints for credentials.
-- Secret masking and redaction across UI, logs and diagnostics.
-- Provider abstraction.
-- MusicHoarderz/COV implementation.
-- Matching score.
-- Review queue.
-- Jellyfin-only cover apply.
-- Spotify fallback.
-- YouTube fallback.
-- Scheduled tasks.
-- Optional folder image writing.
-- Optional audio tagging.
+On 2026-11-01, both historical `main` and recent Dependabot workflow jobs reported failure without executed steps. Their log endpoint returned `BlobNotFound`. That behavior does not establish a source-code failure and cannot be diagnosed further from those missing logs. The owner must verify runner availability, Actions access and account limits if newly queued jobs still cannot start. Local build/test results should be reported separately from GitHub Actions status.
