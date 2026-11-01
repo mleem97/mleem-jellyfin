@@ -49,12 +49,12 @@ public class UserMusicViewSettings
     public bool MarkMissingCovers { get; set; } = true;
 
     /// <summary>
-    /// Gets sort preferences by view key.
+    /// Gets or sets sort preferences by view key.
     /// </summary>
-    public Dictionary<string, string> SortPreferences { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> SortPreferences { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Gets enabled sections by section key.
+    /// Gets or sets enabled sections by section key.
     /// </summary>
-    public Dictionary<string, bool> EnabledSections { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, bool> EnabledSections { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

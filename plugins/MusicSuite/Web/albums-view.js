@@ -697,30 +697,25 @@
     }
 
     function sendJson(url, method, body) {
-        try {
-            const apiClient = window.ApiClient;
-            const payload = body === undefined ? undefined : JSON.stringify(body);
-            if (apiClient && typeof apiClient.ajax === 'function') {
-                return apiClient.ajax({
-                    type: method,
-                    url: typeof apiClient.getUrl === 'function' ? apiClient.getUrl(url) : url,
-                    data: payload,
-                    contentType: 'application/json'
-                }).catch(function () { return null; });
-            }
-        } catch (error) {
-            return Promise.resolve(null);
+        const apiClient = window.ApiClient;
+        const payload = body === undefined ? undefined : JSON.stringify(body);
+        const resolved = apiClient && typeof apiClient.getUrl === 'function' ? apiClient.getUrl(url) : url;
+        if (apiClient && typeof apiClient.ajax === 'function') {
+            return Promise.resolve(apiClient.ajax({
+                type: method, url: resolved, data: payload,
+                contentType: 'application/json', dataType: 'json'
+            }));
         }
-        try {
-            return fetch(url, {
-                method: method,
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: payload
-            }).then(function () { return null; }).catch(function () { return null; });
-        } catch (error) {
-            return Promise.resolve(null);
+        const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+        if (apiClient && typeof apiClient.accessToken === 'function' && apiClient.accessToken()) {
+            headers['X-Emby-Token'] = apiClient.accessToken();
         }
+        return window.fetch(resolved, {
+            method: method, credentials: 'same-origin', headers: headers, body: payload
+        }).then(function (response) {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.status === 204 ? null : response.json();
+        });
     }
 
     function createToolbar(doc, state, callbacks) {
@@ -753,7 +748,8 @@
             '<button type="button" data-tile="Medium" aria-pressed="true" title="Medium tiles">M</button>' +
             '<button type="button" data-tile="Large" aria-pressed="false" title="Large tiles">L</button>' +
             '</span>' +
-            '<button type="button" class="ms-albums-reset">Reset layout</button>';
+            '<button type="button" class="ms-albums-reset">Reset layout</button>' +
+            '<span class="ms-layout-feedback" role="status" aria-live="polite"></span>';
 
         const search = toolbar.querySelector('.ms-albums-search');
         const sort = toolbar.querySelector('.ms-albums-sort');
@@ -849,8 +845,12 @@
             aborter: null,
             debounceTimer: null,
             filterPending: false,
-            tileSize: 'Medium',
-            canCustomize: true,
+            tileSize: lib.resolveTileSize({ TileSize: context && (context.defaultTileSize || context.DefaultTileSize) }, 'Medium'),
+            canCustomize: false,
+            userSettings: {},
+            savedSettings: {},
+            settingsRevision: 0,
+            settingsQueue: Promise.resolve(),
             userId: userId,
             destroyed: false
         };
@@ -1214,7 +1214,37 @@
 
         function persistTileSize(tileSize) {
             if (!state.userId || state.canCustomize !== true) return;
-            sendJson(lib.settingsUrl(state.userId), 'PUT', { TileSize: tileSize });
+            const settings = Object.assign({}, state.userSettings);
+            delete settings.tileSize;
+            settings.TileSize = tileSize;
+            state.userSettings = settings;
+            queueSettingsWrite('PUT', settings);
+        }
+
+        function layoutFeedback(message) {
+            const node = toolbar && toolbar.querySelector('.ms-layout-feedback');
+            if (node && !state.destroyed) node.textContent = message;
+        }
+
+        function queueSettingsWrite(method, settings) {
+            const revision = ++state.settingsRevision;
+            layoutFeedback('Saving layout\u2026');
+            // Serialize saves so a slower earlier write cannot overwrite the latest choice.
+            state.settingsQueue = state.settingsQueue.then(function () {
+                return sendJson(lib.settingsUrl(state.userId), method, settings);
+            }).then(function (response) {
+                if (response && (response.Settings || response.settings)) return response;
+                return method === 'DELETE' ? apiGet(lib.settingsUrl(state.userId)) : { Settings: settings };
+            }).then(function (response) {
+                state.savedSettings = Object.assign({}, response.Settings || response.settings);
+                if (state.destroyed || revision !== state.settingsRevision) return;
+                applySettingsResponse(response);
+                layoutFeedback('Layout saved.');
+            }).catch(function () {
+                if (state.destroyed || revision !== state.settingsRevision) return;
+                applySettingsResponse({ Settings: state.savedSettings });
+                layoutFeedback('Layout could not be saved. Your previous settings were restored.');
+            });
         }
 
         function applySettingsResponse(response) {
@@ -1228,7 +1258,9 @@
             }
             const settings = response.Settings || response.settings;
             if (settings) {
+                state.userSettings = Object.assign({}, settings);
                 state.tileSize = applyTileSize(grid, toolbar, lib.resolveTileSize(settings, state.tileSize));
+                renderWindow(true);
             }
         }
 
@@ -1237,9 +1269,10 @@
             if (!state.userId) return;
             apiGet(lib.settingsUrl(state.userId)).then(function (response) {
                 if (state.destroyed) return;
+                state.savedSettings = Object.assign({}, response.Settings || response.settings || {});
                 applySettingsResponse(response);
             }).catch(function () {
-                // Fail-open: Admin-Defaults bleiben aktiv.
+                layoutFeedback('Layout settings are unavailable. Administrator defaults remain active.');
             });
         }
 
@@ -1252,37 +1285,7 @@
 
         function onResetLayout() {
             if (state.canCustomize !== true || !state.userId) return;
-            const url = lib.settingsUrl(state.userId);
-            const apiClient = window.ApiClient;
-            const done = function (response) {
-                if (state.destroyed) return;
-                if (response && (response.Settings || response.settings)) {
-                    applySettingsResponse(response);
-                } else {
-                    state.tileSize = applyTileSize(grid, toolbar, 'Medium');
-                }
-            };
-            try {
-                if (apiClient && typeof apiClient.ajax === 'function') {
-                    apiClient.ajax({
-                        type: 'DELETE',
-                        url: typeof apiClient.getUrl === 'function' ? apiClient.getUrl(url) : url
-                    }).then(done).catch(function () {
-                        if (!state.destroyed) state.tileSize = applyTileSize(grid, toolbar, 'Medium');
-                    });
-                    return;
-                }
-            } catch (error) {
-                // Fail-open: lokaler Reset.
-            }
-            try {
-                fetch(url, { method: 'DELETE', credentials: 'same-origin' })
-                    .then(function () { return null; })
-                    .then(done)
-                    .catch(function () { done(null); });
-            } catch (error) {
-                done(null);
-            }
+            queueSettingsWrite('DELETE');
         }
 
         const callbacks = {
@@ -1383,6 +1386,7 @@
             container.appendChild(status);
 
             state.tileSize = applyTileSize(grid, toolbar, state.tileSize);
+            lockCustomization(toolbar, true);
             grid.addEventListener('click', onGridClick);
             grid.addEventListener('keydown', onGridKeydown);
             status.addEventListener('click', onStatusClick);

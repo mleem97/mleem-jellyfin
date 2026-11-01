@@ -671,3 +671,81 @@ test('combined filters and clearing search restart at page zero and reset scroll
     assert.ok(harness.scrolled.some(([, y]) => y === 0));
   } finally { harness.dom.window.close(); }
 });
+
+test('layout saves preserve other preferences and rejected writes restore the saved value', async () => {
+  const server = createServer({ total: 10, settingsTileSize: 'Small' });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    helpers.apiGet = async (url) => url.includes('/Settings')
+      ? { CanCustomize: true, Settings: { TileSize: 'Small', AlbumLayout: 'List', SortPreferences: { albums: 'DateCreated' }, EnabledSections: { artists: false } } }
+      : server.handle(url);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    harness.dom.window.ApiClient.ajax = (options) => {
+      server.state.ajaxCalls.push(options);
+      return Promise.reject(new Error('HTTP 403'));
+    };
+    container.querySelector('[data-tile="Large"]').click();
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Large');
+    await delay(10);
+    const body = JSON.parse(server.state.ajaxCalls[0].data);
+    assert.equal(body.AlbumLayout, 'List');
+    assert.equal(body.SortPreferences.albums, 'DateCreated');
+    assert.equal(body.EnabledSections.artists, false);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+    assert.match(container.querySelector('.ms-layout-feedback').textContent, /could not be saved/);
+  } finally { harness.dom.window.close(); }
+});
+
+test('layout remains locked until server permission is known and reset uses actual admin defaults', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server);
+  let resolveSettings;
+  try {
+    const { context, helpers } = mountArgs(server);
+    context.defaultTileSize = 'Small';
+    helpers.apiGet = (url) => url.includes('/Settings')
+      ? new Promise((resolve) => { resolveSettings = resolve; }) : server.handle(url);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    assert.equal(container.querySelector('[data-tile="Large"]').disabled, true);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+    resolveSettings({ CanCustomize: true, Settings: { TileSize: 'Large' } });
+    await delay(10);
+    harness.dom.window.ApiClient.ajax = async (options) => {
+      assert.equal(options.type, 'DELETE');
+      return { Settings: { TileSize: 'Small' } };
+    };
+    container.querySelector('.ms-albums-reset').click();
+    await delay(10);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+  } finally { harness.dom.window.close(); }
+});
+
+test('rapid layout changes are serialized in selection order', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server);
+  const writes = [];
+  try {
+    const { context, helpers } = mountArgs(server);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    harness.dom.window.ApiClient.ajax = (options) => new Promise((resolve) => writes.push({ options, resolve }));
+    container.querySelector('[data-tile="Large"]').click();
+    container.querySelector('[data-tile="Small"]').click();
+    await delay(10);
+    assert.equal(writes.length, 1);
+    assert.equal(JSON.parse(writes[0].options.data).TileSize, 'Large');
+    writes[0].resolve({ Settings: { TileSize: 'Large' } });
+    await delay(10);
+    assert.equal(writes.length, 2);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+    writes[1].resolve({ Settings: { TileSize: 'Small' } });
+    await delay(10);
+    assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
+  } finally { harness.dom.window.close(); }
+});

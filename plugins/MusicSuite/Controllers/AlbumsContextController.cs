@@ -56,6 +56,7 @@ public sealed class AlbumsContextController : ControllerBase
             Enabled = configuration?.Enabled ?? true,
             EnableFallback = configuration?.EnableFallbackToDefaultJellyfin ?? true,
             BatchSize = Math.Clamp(configuration?.BatchSize ?? 100, 1, 200),
+            DefaultTileSize = configuration?.DefaultTileSize ?? "Medium",
             SearchDebounceMs = Math.Clamp(configuration?.SearchDebounceMs ?? 300, 100, 2000)
         });
     }
@@ -95,6 +96,11 @@ public sealed class AlbumsViewContext
     /// Gets or sets the bounded default batch size.
     /// </summary>
     public int BatchSize { get; set; }
+
+    /// <summary>
+    /// Gets or sets the administrator's default album tile size.
+    /// </summary>
+    public string DefaultTileSize { get; set; } = "Medium";
 
     /// <summary>
     /// Gets or sets the search debounce interval.
