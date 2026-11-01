@@ -749,3 +749,40 @@ test('rapid layout changes are serialized in selection order', async () => {
     assert.equal(container.querySelector('.ms-albums-grid').getAttribute('data-tile'), 'Small');
   } finally { harness.dom.window.close(); }
 });
+
+test('failed cover images become accessible missing-cover placeholders', async () => {
+  const server = createServer({ total: 10 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server);
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    const image = container.querySelector('img');
+    const card = image.closest('.ms-album-card');
+    image.dispatchEvent(new harness.dom.window.Event('error'));
+    assert.equal(card.querySelector('img'), null);
+    assert.ok(card.querySelector('.ms-album-cover-missing'));
+    assert.equal(card.getAttribute('tabindex'), '0');
+    assert.ok(card.getAttribute('aria-label'));
+  } finally { harness.dom.window.close(); }
+});
+
+test('mounted library snapshots are isolated by the current Jellyfin user', async () => {
+  const server = createServer({ total: 100 });
+  const harness = await createHarness(server);
+  try {
+    const { context, helpers } = mountArgs(server, 'same-library');
+    const container = harness.dom.window.document.createElement('section');
+    harness.dom.window.document.body.appendChild(container);
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    intersect(harness);
+    await delay(10);
+    harness.dom.window.MusicSuiteAlbumsRenderer.unmount(container);
+    const before = server.state.calls.filter((url) => url.includes('StartIndex=0')).length;
+    harness.dom.window.ApiClient.getCurrentUserId = () => 'different-user';
+    await harness.dom.window.MusicSuiteAlbumsRenderer.mount(container, context, helpers);
+    assert.equal(server.state.calls.filter((url) => url.includes('StartIndex=0')).length, before + 1);
+    assert.equal(container.querySelectorAll('.ms-album-card').length, 50);
+  } finally { harness.dom.window.close(); }
+});

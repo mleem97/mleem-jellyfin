@@ -1173,6 +1173,18 @@
             }
         }
 
+        function onCoverError(event) {
+            const image = event.target;
+            if (!image || image.tagName !== 'IMG' || !grid.contains(image)) return;
+            const card = image.closest('.ms-album-card');
+            const fallback = doc.createElement('span');
+            fallback.className = 'ms-album-cover-missing';
+            fallback.setAttribute('aria-hidden', 'true');
+            fallback.textContent = card.querySelector('.ms-album-title').textContent.charAt(0) || '?';
+            image.replaceWith(fallback);
+            card.setAttribute('data-missing-cover', 'true');
+        }
+
         function onGridKeydown(event) {
             try {
                 const card = event.target && event.target.closest
@@ -1309,7 +1321,7 @@
         };
 
         function persistSnapshot() {
-            if (!state.items.length) return;
+            if (!state.items.length || state.filterPending) return;
             viewSnapshots.delete(snapshotKey);
             viewSnapshots.set(snapshotKey, {
                 items: state.items.slice(), seen: Object.assign({}, state.seen),
@@ -1344,6 +1356,7 @@
                 if (grid) {
                     grid.removeEventListener('click', onGridClick);
                     grid.removeEventListener('keydown', onGridKeydown);
+                    grid.removeEventListener('error', onCoverError, true);
                 }
                 if (status) status.removeEventListener('click', onStatusClick);
             } catch (error) { /* noop */ }
@@ -1389,6 +1402,7 @@
             lockCustomization(toolbar, true);
             grid.addEventListener('click', onGridClick);
             grid.addEventListener('keydown', onGridKeydown);
+            grid.addEventListener('error', onCoverError, true);
             status.addEventListener('click', onStatusClick);
             window.addEventListener('scroll', onWindowScroll, { passive: true, capture: true });
             window.addEventListener('resize', onWindowScroll);
