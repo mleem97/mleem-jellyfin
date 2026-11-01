@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -29,6 +30,8 @@ public partial class ProviderController : ControllerBase
     private readonly ILogger<ProviderController> _logger;
     private readonly MusicHoarderzHttpClient? _musicHoarderzClient;
     private readonly CoverMatchScorer? _scorer;
+    private readonly CoverImageValidator? _validator;
+    private readonly ValidatedCoverCache? _imageCache;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProviderController"/> class.
@@ -38,18 +41,24 @@ public partial class ProviderController : ControllerBase
     /// <param name="logger">Logger.</param>
     /// <param name="musicHoarderzClient">MusicHoarderz HTTP client.</param>
     /// <param name="scorer">Cover match scorer.</param>
+    /// <param name="validator">Safe image validator.</param>
+    /// <param name="imageCache">Validated image capability cache.</param>
     public ProviderController(
         CredentialStore credentialStore,
         IHttpClientFactory httpClientFactory,
         ILogger<ProviderController> logger,
         MusicHoarderzHttpClient? musicHoarderzClient = null,
-        CoverMatchScorer? scorer = null)
+        CoverMatchScorer? scorer = null,
+        CoverImageValidator? validator = null,
+        ValidatedCoverCache? imageCache = null)
     {
         _credentialStore = credentialStore;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _musicHoarderzClient = musicHoarderzClient;
         _scorer = scorer;
+        _validator = validator;
+        _imageCache = imageCache;
     }
 
     /// <summary>
@@ -66,7 +75,10 @@ public partial class ProviderController : ControllerBase
             GeneratedAtUtc = DateTimeOffset.UtcNow,
             Enabled = configuration?.Enabled ?? false,
             MusicHoarderzEnabled = configuration?.MusicHoarderz.Enabled ?? false,
-            AutoSearchEnabled = configuration?.AutoSearchEnabled ?? false,
+            AutoSearchEnabled = false,
+            BaseUrl = SafeBaseUrl(configuration?.MusicHoarderz.BaseUrl),
+            JsonProviderConfigured = Uri.TryCreate(SafeBaseUrl(configuration?.MusicHoarderz.BaseUrl), UriKind.Absolute, out var configuredUri)
+                && !MusicHoarderzHttpClient.IsOfficialCovHost(configuredUri),
             Country = configuration?.MusicHoarderz.Country ?? "DE",
             MinimumWidth = configuration?.MinimumWidth ?? 1000,
             MinimumHeight = configuration?.MinimumHeight ?? 1000,
@@ -123,7 +135,7 @@ public partial class ProviderController : ControllerBase
         var scored = scorer.Score(query, results, minW, minH);
 
         var dtos = new List<CoverSearchItemDto>();
-        foreach (var s in scored)
+        foreach (var s in scored.Take(5))
         {
             dtos.Add(new CoverSearchItemDto
             {
@@ -139,6 +151,35 @@ public partial class ProviderController : ControllerBase
         }
 
         return Ok(dtos);
+    }
+
+    /// <summary>Validates a manually requested preview without exposing an untrusted download to the browser.</summary>
+    /// <param name="request">The candidate image URL.</param>
+    /// <param name="cancellationToken">Request cancellation.</param>
+    /// <returns>A short-lived local image URL, or a sanitized validation failure.</returns>
+    [HttpPost("Preview")]
+    public async Task<IActionResult> Preview([FromBody] CoverPreviewRequest request, CancellationToken cancellationToken)
+    {
+        var configuration = Plugin.Instance?.Configuration;
+        if (_validator is null || _imageCache is null || configuration is null)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (!configuration.Enabled || !configuration.MusicHoarderz.Enabled || !configuration.AllowManualSearch)
+        {
+            return BadRequest("Manual provider search is disabled.");
+        }
+
+        var image = await _validator.ValidateAsync(request.Url, configuration.MinimumWidth, configuration.MinimumHeight, cancellationToken).ConfigureAwait(false);
+        if (image is null)
+        {
+            return BadRequest("The image could not be validated.");
+        }
+
+        var ticket = _imageCache.Add(image);
+        var url = string.Concat(Request.Scheme, "://", Request.Host.Value, Request.PathBase.Value, "/Plugins/MusicHoarderzProvider/Images/", ticket.ToString("N"));
+        return Ok(new { Url = url });
     }
 
     /// <summary>
@@ -158,6 +199,31 @@ public partial class ProviderController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "Plugin configuration is not available.");
         }
 
+        if (request.AutoSearchEnabled == true)
+        {
+            return BadRequest("Automatic apply is unavailable. Use manual Jellyfin searches or the official COV picker.");
+        }
+
+        if (request.BaseUrl is not null)
+        {
+            var proposed = string.IsNullOrWhiteSpace(request.BaseUrl) ? MusicHoarderzHttpClient.DefaultBaseUrl : request.BaseUrl.Trim();
+            if (string.IsNullOrEmpty(SafeBaseUrl(proposed)))
+            {
+                return BadRequest("The provider URL must be a public HTTPS endpoint without credentials, query or fragment.");
+            }
+        }
+
+        if (request.Country is not null && (request.Country.Trim().Length != 2
+            || !System.Linq.Enumerable.All(request.Country.Trim(), static letter => char.IsAsciiLetter(letter))))
+        {
+            return BadRequest("Country must be a two-letter ISO country code.");
+        }
+
+        if (request.MinimumWidth is < 1 or > 16384 || request.MinimumHeight is < 1 or > 16384)
+        {
+            return BadRequest("Cover dimensions must be between 1 and 16384 pixels.");
+        }
+
         if (request.Enabled.HasValue)
         {
             configuration.Enabled = request.Enabled.Value;
@@ -168,9 +234,11 @@ public partial class ProviderController : ControllerBase
             configuration.MusicHoarderz.Enabled = request.MusicHoarderzEnabled.Value;
         }
 
-        if (request.AutoSearchEnabled.HasValue)
+        configuration.AutoSearchEnabled = false;
+        if (request.BaseUrl is not null)
         {
-            configuration.AutoSearchEnabled = request.AutoSearchEnabled.Value;
+            configuration.MusicHoarderz.BaseUrl = string.IsNullOrWhiteSpace(request.BaseUrl)
+                ? MusicHoarderzHttpClient.DefaultBaseUrl : request.BaseUrl.Trim();
         }
 
         if (!string.IsNullOrWhiteSpace(request.Country))
@@ -178,12 +246,12 @@ public partial class ProviderController : ControllerBase
             configuration.MusicHoarderz.Country = request.Country.Trim().ToUpperInvariant();
         }
 
-        if (request.MinimumWidth.HasValue && request.MinimumWidth.Value >= 100)
+        if (request.MinimumWidth.HasValue && request.MinimumWidth.Value >= 1)
         {
             configuration.MinimumWidth = request.MinimumWidth.Value;
         }
 
-        if (request.MinimumHeight.HasValue && request.MinimumHeight.Value >= 100)
+        if (request.MinimumHeight.HasValue && request.MinimumHeight.Value >= 1)
         {
             configuration.MinimumHeight = request.MinimumHeight.Value;
         }
@@ -321,6 +389,12 @@ public partial class ProviderController : ControllerBase
             DeletedSpotify = clearSpotify,
             DeletedYouTube = clearYouTube,
         });
+    }
+
+    private static string SafeBaseUrl(string? value)
+    {
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri) && NetworkGuard.IsPublicHttps(uri) && string.IsNullOrEmpty(uri.Query)
+            ? uri.AbsoluteUri.TrimEnd('/') : string.Empty;
     }
 
     private static string? FirstNonEmpty(string? primary, string? fallback)
@@ -506,6 +580,12 @@ public class DeleteCredentialsResponse
 /// </summary>
 public class ProviderStatus
 {
+    /// <summary>Gets or sets the validated public JSON-provider base URL.</summary>
+    public string BaseUrl { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets a value indicating whether a separate JSON provider is configured.</summary>
+    public bool JsonProviderConfigured { get; set; }
+
     /// <summary>
     /// Gets or sets generation timestamp.
     /// </summary>
@@ -628,6 +708,9 @@ public class CoverSearchItemDto
 /// </summary>
 public class SettingsUpdateRequest
 {
+    /// <summary>Gets or sets an optional documented JSON-provider base URL; blank restores the official picker.</summary>
+    public string? BaseUrl { get; set; }
+
     /// <summary>
     /// Gets or sets a value indicating whether the plugin is enabled.
     /// </summary>
@@ -657,4 +740,11 @@ public class SettingsUpdateRequest
     /// Gets or sets the minimum cover height in pixels.
     /// </summary>
     public int? MinimumHeight { get; set; }
+}
+
+/// <summary>A user-selected image to validate before previewing.</summary>
+public class CoverPreviewRequest
+{
+    /// <summary>Gets or sets the external HTTPS image URL.</summary>
+    public string Url { get; set; } = string.Empty;
 }
