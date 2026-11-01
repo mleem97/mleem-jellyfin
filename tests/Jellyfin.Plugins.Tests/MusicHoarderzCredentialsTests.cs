@@ -1,6 +1,8 @@
 using Jellyfin.Plugin.MusicHoarderzProvider.Configuration;
 using Jellyfin.Plugin.MusicHoarderzProvider.Controllers;
 using Jellyfin.Plugin.MusicHoarderzProvider.Services;
+using MediaBrowser.Common.Api;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
 
@@ -141,6 +143,45 @@ public class MusicHoarderzCredentialsTests : IDisposable
             Assert.True((mode & UnixFileMode.UserWrite) != 0);
             Assert.True((mode & (UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.OtherRead | UnixFileMode.OtherWrite)) == 0);
         }
+    }
+
+    [Fact]
+    public void Credentials_RemainReadableAfterRestart()
+    {
+        var encrypted = CreateStore().Encrypt("restart-safe-secret");
+
+        Assert.Equal("restart-safe-secret", CreateStore().Decrypt(encrypted));
+    }
+
+    [Fact]
+    public void InvalidKey_IsNeverSilentlyReplaced()
+    {
+        var path = Path.Combine(_temp.Path, "credentials.key");
+        File.WriteAllBytes(path, new byte[] { 1, 2, 3 });
+
+        Assert.Throws<System.Security.Cryptography.CryptographicException>(() => CreateStore());
+        Assert.Equal(new byte[] { 1, 2, 3 }, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public async Task ConcurrentStores_ShareTheSamePublishedKey()
+    {
+        var stores = await Task.WhenAll(Enumerable.Range(0, 12).Select(_ => Task.Run(CreateStore)));
+        var encrypted = stores[0].Encrypt("concurrent-secret");
+
+        Assert.All(stores, store => Assert.Equal("concurrent-secret", store.Decrypt(encrypted)));
+        Assert.Empty(System.IO.Directory.GetFiles(_temp.Path, "*.tmp"));
+    }
+
+    [Fact]
+    public void AllProviderEndpoints_RequireAdministratorPolicy()
+    {
+        var authorization = typeof(ProviderController).GetCustomAttributes(typeof(AuthorizeAttribute), inherit: true)
+            .Cast<AuthorizeAttribute>();
+
+        Assert.Contains(authorization, attribute => attribute.Policy == Policies.RequiresElevation);
+        Assert.DoesNotContain(typeof(ProviderController).GetMethods(), method =>
+            method.GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: true).Length != 0);
     }
 
     [Fact]

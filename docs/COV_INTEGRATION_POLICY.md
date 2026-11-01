@@ -92,3 +92,17 @@ Implementation consequences:
 - The full website address is visible: https://covers.musichoarders.xyz/
 - A COV result cannot be applied unless the user picked it on the official COV website.
 - Admin settings expose COV as a semi-automatic picker, not as an automatic provider.
+
+## Implemented development adapter
+
+The official host is explicitly blocked by the server-side JSON search adapter and
+reports `ManualPickerRequired`. The configuration page opens the official website
+with the documented artist/album/country parameters and visible attribution. It
+also offers a separate, optional compatible JSON provider setting; this is not an
+internal COV API and must never be described as one. Empty configuration restores
+the official user-driven picker.
+
+Background refreshes do not use either source automatically. JSON-provider search
+results are downloaded through connection-time DNS/IP validation, and native
+Jellyfin image apply receives a short-lived local URL for the already validated
+bytes. The picker itself does not silently apply a selected image to Jellyfin.

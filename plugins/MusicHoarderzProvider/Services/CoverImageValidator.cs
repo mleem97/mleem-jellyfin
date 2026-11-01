@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -46,6 +47,7 @@ public sealed partial class CoverImageValidator
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<CoverImageValidator> _logger;
+    private readonly ICoverImageDecoder _decoder;
     private readonly Func<string, CancellationToken, Task<IPAddress[]>> _hostAddressResolver;
 
     /// <summary>
@@ -53,14 +55,17 @@ public sealed partial class CoverImageValidator
     /// </summary>
     /// <param name="httpClientFactory">HTTP client factory.</param>
     /// <param name="logger">Logger.</param>
+    /// <param name="decoder">Mandatory real pixel decoder (mocked only in offline tests).</param>
     /// <param name="hostAddressResolver">Optional DNS resolver override (used by tests).</param>
     public CoverImageValidator(
         IHttpClientFactory httpClientFactory,
         ILogger<CoverImageValidator> logger,
+        ICoverImageDecoder decoder,
         Func<string, CancellationToken, Task<IPAddress[]>>? hostAddressResolver = null)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _decoder = decoder;
         _hostAddressResolver = hostAddressResolver ?? System.Net.Dns.GetHostAddressesAsync;
     }
 
@@ -89,28 +94,30 @@ public sealed partial class CoverImageValidator
             return null;
         }
 
-        if (!await IsHostPublicAsync(uri.Host, cancellationToken).ConfigureAwait(false))
-        {
-            LogHostBlocked(_logger);
-            return null;
-        }
-
-        var client = _httpClientFactory.CreateClient(HttpClientName);
-        client.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
+        using var client = _httpClientFactory.CreateClient(HttpClientName);
+        client.Timeout = Timeout.InfiniteTimeSpan;
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(TimeoutSeconds));
+        var requestToken = timeout.Token;
 
         try
         {
             var current = uri;
             for (var hop = 0; hop <= MaxRedirectHops; hop++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                requestToken.ThrowIfCancellationRequested();
+                if (!await IsHostPublicAsync(current.IdnHost, requestToken).ConfigureAwait(false))
+                {
+                    LogHostBlocked(_logger);
+                    return null;
+                }
+
                 using var request = new HttpRequestMessage(HttpMethod.Get, current);
-                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, requestToken).ConfigureAwait(false);
                 if (IsRedirect(response.StatusCode) && response.Headers.Location is not null)
                 {
                     var next = new Uri(current, response.Headers.Location);
-                    if (!NetworkGuard.IsPublicHttps(next)
-                        || !await IsHostPublicAsync(next.Host, cancellationToken).ConfigureAwait(false))
+                    if (!NetworkGuard.IsPublicHttps(next))
                     {
                         LogRedirectBlocked(_logger);
                         return null;
@@ -120,25 +127,25 @@ public sealed partial class CoverImageValidator
                     continue;
                 }
 
-                return await ReadValidatedAsync(response, current.ToString(), minimumWidth, minimumHeight, cancellationToken).ConfigureAwait(false);
+                return await ReadValidatedAsync(response, current.ToString(), minimumWidth, minimumHeight, requestToken).ConfigureAwait(false);
             }
 
             LogRedirectBlocked(_logger);
             return null;
         }
-        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            LogDownloadTimeout(_logger, ex);
+            LogDownloadTimeout(_logger);
             return null;
         }
-        catch (HttpRequestException ex)
+        catch (HttpRequestException)
         {
-            LogDownloadFailed(_logger, ex);
+            LogDownloadFailed(_logger);
             return null;
         }
-        catch (IOException ex)
+        catch (IOException)
         {
-            LogDownloadFailed(_logger, ex);
+            LogDownloadFailed(_logger);
             return null;
         }
     }
@@ -174,30 +181,42 @@ public sealed partial class CoverImageValidator
         byte[] bytes;
         try
         {
-            bytes = await ReadCappedAsync(response.Content, MaxImageBytes, cancellationToken).ConfigureAwait(false);
+            bytes = await BoundedHttpContent.ReadAsync(response.Content, MaxImageBytes, cancellationToken).ConfigureAwait(false);
         }
-        catch (InvalidDataException ex)
+        catch (InvalidDataException)
         {
             LogTooLarge(_logger, MaxImageBytes + 1L);
-            LogDownloadFailed(_logger, ex);
+            LogDownloadFailed(_logger);
             return null;
         }
 
-        if (bytes.Length == 0 || !HasKnownImageMagic(bytes))
+        if (!string.Equals(contentType, IdentifyMimeType(bytes), StringComparison.Ordinal))
         {
             LogSniffRejected(_logger);
             return null;
         }
 
-        if (!TryGetDimensions(bytes, out var width, out var height))
+        if (!IsCompleteContainer(bytes, contentType) || !TryGetDimensions(bytes, out var width, out var height))
         {
             LogDimensionsUnknown(_logger);
             return null;
         }
 
-        if (width < minimumWidth || height < minimumHeight)
+        if (width > 16384 || height > 16384 || ((long)width * height) > 64000000)
+        {
+            LogTooLarge(_logger, bytes.Length);
+            return null;
+        }
+
+        if (width < Math.Max(1, minimumWidth) || height < Math.Max(1, minimumHeight))
         {
             LogTooSmall(_logger, width, height);
+            return null;
+        }
+
+        if (!await _decoder.CanDecodeAsync(bytes, contentType, cancellationToken).ConfigureAwait(false))
+        {
+            LogSniffRejected(_logger);
             return null;
         }
 
@@ -211,9 +230,13 @@ public sealed partial class CoverImageValidator
         {
             addresses = await _hostAddressResolver(host, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
         {
-            LogDnsFailed(_logger, ex);
+            throw;
+        }
+        catch (System.Net.Sockets.SocketException)
+        {
+            LogDnsFailed(_logger);
             return false;
         }
 
@@ -258,73 +281,213 @@ public sealed partial class CoverImageValidator
         return AllowedMimeTypes.Contains(mime) ? mime.ToLowerInvariant() : null;
     }
 
-    private static async Task<byte[]> ReadCappedAsync(HttpContent content, int maxBytes, CancellationToken cancellationToken)
+    private static string? IdentifyMimeType(byte[] bytes)
     {
-        ArgumentNullException.ThrowIfNull(content);
-        using var stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using var buffer = new MemoryStream();
-        var chunk = new byte[81920];
-        var total = 0;
-        int read;
-        while ((read = await stream.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) > 0)
+        if (bytes.Length >= 4 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF
+            && bytes[^2] == 0xFF && bytes[^1] == 0xD9)
         {
-            total += read;
-            if (total > maxBytes)
-            {
-                throw new InvalidDataException("Response exceeded the size limit.");
-            }
-
-            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+            return "image/jpeg";
         }
 
-        return buffer.ToArray();
+        if (bytes.Length >= 33
+            && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })
+            && bytes.AsSpan(8, 8).SequenceEqual(new byte[] { 0, 0, 0, 13, (byte)'I', (byte)'H', (byte)'D', (byte)'R' }))
+        {
+            return "image/png";
+        }
+
+        if (bytes.Length >= 14 && bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F'
+            && bytes[3] == '8' && (bytes[4] == '7' || bytes[4] == '9') && bytes[5] == 'a'
+            && bytes[^1] == 0x3B)
+        {
+            return "image/gif";
+        }
+
+        if (bytes.Length >= 25 && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+            && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P'
+            && System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(4, 4)) == bytes.Length - 8)
+        {
+            return "image/webp";
+        }
+
+        return null;
     }
 
-    private static bool HasKnownImageMagic(byte[] bytes)
+    private static bool IsCompleteContainer(byte[] bytes, string mime)
     {
-        var index = 0;
-        while (index < bytes.Length && (bytes[index] == 0x20 || bytes[index] == 0x09 || bytes[index] == 0x0A || bytes[index] == 0x0D))
+        if (mime == "image/png")
         {
-            index++;
-        }
+            var hasData = false;
+            var offset = 8;
+            while (offset + 12 <= bytes.Length)
+            {
+                var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(offset, 4));
+                if (length > bytes.Length - offset - 12)
+                {
+                    return false;
+                }
 
-        var remaining = bytes.Length - index;
-        if (remaining <= 0)
-        {
+                var count = (int)length;
+                var crc = uint.MaxValue;
+                for (var index = offset + 4; index < offset + count + 8; index++)
+                {
+                    crc ^= bytes[index];
+                    for (var bit = 0; bit < 8; bit++)
+                    {
+                        crc = (crc >> 1) ^ ((crc & 1) == 0 ? 0 : 0xEDB88320U);
+                    }
+                }
+
+                if (~crc != System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(offset + count + 8, 4)))
+                {
+                    return false;
+                }
+
+                var type = System.Text.Encoding.ASCII.GetString(bytes, offset + 4, 4);
+                if (type == "acTL")
+                {
+                    return false; // Animated PNG needs per-frame validation outside this MVP.
+                }
+
+                hasData |= type == "IDAT" && count > 0;
+                offset += count + 12;
+                if (type == "IEND")
+                {
+                    return count == 0 && hasData && offset == bytes.Length;
+                }
+            }
+
             return false;
         }
 
-        // Reject HTML/JSON/text payloads served as images.
-        var first = bytes[index];
-        if (first == (byte)'<' || first == (byte)'{' || first == (byte)'[')
+        if (mime == "image/webp")
         {
-            return false;
+            var offset = 12;
+            var hasFrame = false;
+            while (offset + 8 <= bytes.Length)
+            {
+                var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(offset + 4, 4));
+                if (length > bytes.Length - offset - 8)
+                {
+                    return false;
+                }
+
+                var type = System.Text.Encoding.ASCII.GetString(bytes, offset, 4);
+                if (type == "ANIM" || type == "ANMF")
+                {
+                    return false;
+                }
+
+                hasFrame |= (type == "VP8 " || type == "VP8L") && length > 0;
+                offset += 8 + (int)length + ((int)length & 1);
+            }
+
+            return hasFrame && offset == bytes.Length;
         }
 
-        // JPEG: FF D8 FF.
-        if (remaining >= 3 && bytes[index] == 0xFF && bytes[index + 1] == 0xD8 && bytes[index + 2] == 0xFF)
+        if (mime == "image/gif")
         {
-            return true;
+            return IsCompleteGif(bytes);
         }
 
-        // PNG: 89 50 4E 47 0D 0A 1A 0A.
-        if (remaining >= 8 && bytes[index] == 0x89 && bytes[index + 1] == 0x50 && bytes[index + 2] == 0x4E && bytes[index + 3] == 0x47)
+        // A JPEG must include a start-of-scan segment in addition to SOF and EOI.
+        for (var index = 2; index + 3 < bytes.Length;)
         {
-            return true;
+            if (bytes[index] != 0xFF)
+            {
+                return false;
+            }
+
+            var marker = bytes[index + 1];
+            if (marker == 0xFF)
+            {
+                index++;
+                continue;
+            }
+
+            var length = (bytes[index + 2] << 8) | bytes[index + 3];
+            if (length < 2 || index + length + 2 > bytes.Length)
+            {
+                return false;
+            }
+
+            if (marker == 0xDA)
+            {
+                return length >= 6 && index + length + 2 < bytes.Length - 2;
+            }
+
+            index += length + 2;
         }
 
-        // GIF: GIF87a / GIF89a.
-        if (remaining >= 6 && bytes[index] == 0x47 && bytes[index + 1] == 0x49 && bytes[index + 2] == 0x46)
-        {
-            return true;
-        }
+        return false;
+    }
 
-        // WebP: RIFF....WEBP.
-        if (remaining >= 12
-            && bytes[index] == 0x52 && bytes[index + 1] == 0x49 && bytes[index + 2] == 0x46 && bytes[index + 3] == 0x46
-            && bytes[index + 8] == 0x57 && bytes[index + 9] == 0x45 && bytes[index + 10] == 0x42 && bytes[index + 11] == 0x50)
+    private static bool IsCompleteGif(byte[] bytes)
+    {
+        var offset = 13 + ((bytes[10] & 0x80) != 0 ? 3 * (1 << ((bytes[10] & 7) + 1)) : 0);
+        var hasFrame = false;
+        while (offset < bytes.Length)
         {
-            return true;
+            var marker = bytes[offset++];
+            if (marker == 0x3B)
+            {
+                return hasFrame && offset == bytes.Length;
+            }
+
+            if (marker == 0x21)
+            {
+                offset++; // Extension label.
+            }
+            else if (marker == 0x2C)
+            {
+                if (offset + 9 >= bytes.Length)
+                {
+                    return false;
+                }
+
+                var width = bytes[offset + 4] | (bytes[offset + 5] << 8);
+                var height = bytes[offset + 6] | (bytes[offset + 7] << 8);
+                var left = bytes[offset] | (bytes[offset + 1] << 8);
+                var top = bytes[offset + 2] | (bytes[offset + 3] << 8);
+                var screenWidth = bytes[6] | (bytes[7] << 8);
+                var screenHeight = bytes[8] | (bytes[9] << 8);
+                if (hasFrame || width == 0 || height == 0 || left + width > screenWidth || top + height > screenHeight)
+                {
+                    return false;
+                }
+
+                var packed = bytes[offset + 8];
+                offset += 9 + ((packed & 0x80) != 0 ? 3 * (1 << ((packed & 7) + 1)) : 0);
+                if (offset >= bytes.Length || bytes[offset] < 2 || bytes[offset] > 8)
+                {
+                    return false;
+                }
+
+                offset++; // LZW minimum code size.
+                hasFrame = true;
+            }
+            else
+            {
+                return false;
+            }
+
+            var ended = false;
+            while (offset < bytes.Length)
+            {
+                var length = bytes[offset++];
+                if (length == 0)
+                {
+                    ended = true;
+                    break;
+                }
+
+                offset += length;
+            }
+
+            if (!ended)
+            {
+                return false;
+            }
         }
 
         return false;
@@ -397,14 +560,14 @@ public sealed partial class CoverImageValidator
             }
 
             var length = (bytes[index + 2] << 8) | bytes[index + 3];
-            if (length < 2 || index + length + 1 >= bytes.Length + 1)
+            if (length < 2 || index + 2 + length > bytes.Length)
             {
                 return false;
             }
 
             if (IsJpegSof(marker))
             {
-                if (length < 7)
+                if (length < 8 || index + 8 >= bytes.Length)
                 {
                     return false;
                 }
@@ -432,7 +595,7 @@ public sealed partial class CoverImageValidator
     {
         width = 0;
         height = 0;
-        if (bytes.Length < 30)
+        if (bytes.Length < 25)
         {
             return false;
         }
@@ -511,11 +674,11 @@ public sealed partial class CoverImageValidator
     private static partial void LogTooSmall(ILogger logger, int width, int height);
 
     [LoggerMessage(EventId = 10, Level = LogLevel.Warning, Message = "Cover image download failed.")]
-    private static partial void LogDownloadFailed(ILogger logger, Exception exception);
+    private static partial void LogDownloadFailed(ILogger logger);
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Warning, Message = "Cover image download timed out.")]
-    private static partial void LogDownloadTimeout(ILogger logger, Exception exception);
+    private static partial void LogDownloadTimeout(ILogger logger);
 
     [LoggerMessage(EventId = 12, Level = LogLevel.Warning, Message = "Cover image host resolution failed.")]
-    private static partial void LogDnsFailed(ILogger logger, Exception exception);
+    private static partial void LogDnsFailed(ILogger logger);
 }
