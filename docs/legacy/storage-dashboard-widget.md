@@ -1,5 +1,10 @@
 # Storage Dashboard Widget Installation & Setup
 
+> Historical notes from the retired template plugin. Paths, plugin names and manual
+> injection examples below are obsolete and preserved only as development history.
+> Use [the current installation guide](../INSTALLATION.md) and
+> [the pinned upstream plugins](../../external/README.md) for active deployments.
+
 Damit das Storage-Dashboard-Widget **oben auf der Admin-Startseite** angezeigt wird, brauchst du:
 
 ## 1. Dieses Plugin selbst installieren

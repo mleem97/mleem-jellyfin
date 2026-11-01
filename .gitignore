@@ -8,3 +8,7 @@ release-assets/
 __pycache__/
 .local
 .archive/
+TestResults/
+*.trx
+*.binlog
+package/

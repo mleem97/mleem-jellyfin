@@ -172,10 +172,11 @@ introduced when build duration or ownership actually requires them:
    tooling, with branch rules requiring the actual CI jobs. Do not enable requirements
    for jobs that cannot run because of account/runner infrastructure problems.
 
-The old checked-in `package/` DLL/PDB and `HDDDisplay_test.zip` are historical artifacts,
-not build inputs. Keep production packages in releases. Remove/archive those legacy
-files in a focused follow-up after confirming no external instructions still link to
-them; do not silently reuse them during validation.
+The old checked-in `package/` DLL/PDB and `HDDDisplay_test.zip` were removed from the
+development tree after confirming that current source, workflows and catalog do not
+reference them. They remain in Git history. Historical template setup notes are
+marked under `docs/legacy/`. Production packages belong in releases and development
+outputs in ignored artifact directories.
 
 ## Sources and decisions
 
