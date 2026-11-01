@@ -64,6 +64,7 @@ public sealed partial class CredentialStore
         {
             CryptographicOperations.ZeroMemory(plainBytes);
         }
+
         var payload = new byte[1 + NonceBytes + ciphertext.Length + TagBytes];
         payload[0] = PayloadVersion;
         Buffer.BlockCopy(nonce, 0, payload, 1, NonceBytes);

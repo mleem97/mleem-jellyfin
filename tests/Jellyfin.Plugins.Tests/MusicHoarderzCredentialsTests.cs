@@ -180,8 +180,8 @@ public class MusicHoarderzCredentialsTests : IDisposable
             .Cast<AuthorizeAttribute>();
 
         Assert.Contains(authorization, attribute => attribute.Policy == Policies.RequiresElevation);
-        Assert.Empty(typeof(ProviderController).GetMethods().Where(method =>
-            method.GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: true).Length != 0));
+        Assert.DoesNotContain(typeof(ProviderController).GetMethods(), method =>
+            method.GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: true).Length != 0);
     }
 
     [Fact]
