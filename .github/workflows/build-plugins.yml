@@ -2,79 +2,53 @@ name: Build Plugins
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, dev]
   pull_request:
-    branches:
-      - main
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  hdd-display:
+  discover:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plugins.outputs.matrix }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: '10.0.x'
-      - name: Restore
-        run: dotnet restore plugins/HddDisplay/HddDisplay.csproj
-      - name: Build
-        run: dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release --no-restore
+      - uses: actions/checkout@v4
+      - name: Discover and validate plugin metadata
+        id: plugins
+        run: |
+          matrix=$(python .github/scripts/validate_repository.py --matrix)
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
-  music-suite:
+  build:
+    needs: discover
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    name: Build ${{ matrix.plugin }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
       - name: Restore
-        run: dotnet restore plugins/MusicSuite/MusicSuite.csproj
+        run: dotnet restore "plugins/${{ matrix.plugin }}/${{ matrix.plugin }}.csproj" --locked-mode
       - name: Build
-        run: dotnet build plugins/MusicSuite/MusicSuite.csproj -c Release --no-restore
-
-  musichoarderz-provider:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
+        run: dotnet build "plugins/${{ matrix.plugin }}/${{ matrix.plugin }}.csproj" -c Release --no-restore
+      - name: Validate package
+        run: python .github/scripts/package_smoke_test.py --plugin "${{ matrix.plugin }}" --output artifacts
+      - name: Upload validated development package
+        uses: actions/upload-artifact@v4
         with:
-          dotnet-version: '10.0.x'
-      - name: Restore
-        run: dotnet restore plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj
-      - name: Build
-        run: dotnet build plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj -c Release --no-restore
-
-  spotify-provider:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: '10.0.x'
-      - name: Restore
-        run: dotnet restore plugins/SpotifyProvider/SpotifyProvider.csproj
-      - name: Build
-        run: dotnet build plugins/SpotifyProvider/SpotifyProvider.csproj -c Release --no-restore
-
-  gracenote-provider:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: '10.0.x'
-      - name: Restore
-        run: dotnet restore plugins/GracenoteProvider/GracenoteProvider.csproj
-      - name: Build
-        run: dotnet build plugins/GracenoteProvider/GracenoteProvider.csproj -c Release --no-restore
+          name: ${{ matrix.plugin }}-${{ github.sha }}
+          path: artifacts/*.zip
+          if-no-files-found: error
