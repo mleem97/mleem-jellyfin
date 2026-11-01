@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.MusicToolkit.Integrations;
 using Jellyfin.Plugin.MusicToolkit.Services;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
@@ -16,9 +17,11 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         IServerApplicationHost applicationHost)
     {
         _ = applicationHost;
+        serviceCollection.AddSingleton<ParadoxBridge>();
         serviceCollection.AddSingleton<AudioHashService>();
         serviceCollection.AddSingleton<SafeRenameService>();
         serviceCollection.AddHttpClient();
         serviceCollection.AddSingleton<GracenoteClient>();
+        serviceCollection.AddHostedService<MusicToolkitStartupService>();
     }
 }
