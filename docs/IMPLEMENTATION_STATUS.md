@@ -12,7 +12,7 @@ Each plugin owns its metadata, source and version. Shared build/release tooling 
 |---|---|
 | HDD storage/mount/system/GPU services and admin authorization | `plugins/HddDisplay`, .NET tests under `tests/Jellyfin.Plugins.Tests`, UI smoke tests under `tests/dashboard-widget` |
 | Album queries, endless scrolling, search/filter/sort, per-user settings and fallback | `plugins/MusicSuite`, matching .NET tests and `tests/music-suite` |
-| Provider contracts, encrypted credentials, COV lookup, scoring, image validation and manual Jellyfin integration | `plugins/MusicHoarderzProvider`, `MusicHoarderz*Tests.cs` |
+| Provider contracts, encrypted credentials, configured JSON-provider lookup, official COV picker, scoring, image validation and manual integration | `plugins/MusicHoarderzProvider`, `MusicHoarderz*Tests.cs`; see native metadata caveat below |
 | Release packages, catalog isolation, checksum verification and plugin discovery | `.github/scripts`, `tests/release-tooling` |
 | Separate plugin releases and reproducible dependency versions | per-plugin metadata, `Directory.Packages.props`, package lockfiles and the manual release workflow |
 
@@ -30,6 +30,15 @@ The historical implementation tracker is issue [#52](https://github.com/mleem97/
 
 Existing 1.x tags are retained. The repository does not republish lower historical target versions to simulate completion. [Release Readiness](RELEASE_READINESS.md) records the artifact evidence and the boundaries of local verification.
 
+Two provider requirements also remain qualified: #45 cannot use the official COV
+internal API under the repository's integration policy, and #47 cannot infer
+non-destructive native identify behavior from sparse provider results. Jellyfin 12.2
+explicitly requests full metadata replacement during that action. These limitations
+remain tracked instead of being hidden by passing offline tests.
+
 ## CI infrastructure observation
 
-On 2026-11-01, both historical `main` and recent Dependabot workflow jobs reported failure without executed steps. Their log endpoint returned `BlobNotFound`. That behavior does not establish a source-code failure and cannot be diagnosed further from those missing logs. The owner must verify runner availability, Actions access and account limits if newly queued jobs still cannot start. Local build/test results should be reported separately from GitHub Actions status.
+On 2026-11-01, the public main check annotations were read and explicitly identify an
+account billing lock as the reason jobs did not start. The absent logs were a consequence
+of the pre-step failure. The owner must resolve GitHub's billing lock if it remains on
+new runs; local build/test results are reported separately from hosted Actions status.

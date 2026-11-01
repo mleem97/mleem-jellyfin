@@ -42,9 +42,18 @@ The shared tooling now verifies:
 | [#31: HDD release](https://github.com/mleem97/mleem-jellyfin/issues/31) | Complete the native Linux, Docker bind mount, LXC and NVIDIA/non-NVIDIA rows in the HDD test matrix. Capture a real admin-dashboard screenshot. Verify install, restart, upgrade and removal. |
 | [#41: music display release](https://github.com/mleem97/mleem-jellyfin/issues/41) | Capture real desktop and mobile views. Confirm install/removal and complete restoration of the native music view. Exercise authenticated album browsing and user layout persistence on the target server. |
 | [#51: provider release](https://github.com/mleem97/mleem-jellyfin/issues/51) | Confirm manual album image and metadata searches in Jellyfin's normal dialogs, selection/application behavior and an upgrade from preview 0.1.0.2 without lost encrypted settings. |
+| [#45: COV HTTP integration](https://github.com/mleem97/mleem-jellyfin/issues/45) | The repository's COV policy permits the official interactive picker, not its internal HTTP API. The configurable JSON adapter is tested offline; a documented/authorized provider endpoint is required for automated JSON searches. |
+| [#47: non-destructive native metadata apply](https://github.com/mleem97/mleem-jellyfin/issues/47) | Jellyfin 12.2 native identify replaces provider IDs and requests full metadata replacement/removal. Sparse provider DTO tests do not prove preservation of existing fields. Input IDs are preserved where available, but end-to-end preservation remains unqualified. |
 
 No real Jellyfin deployment, GPU passthrough host or browser session connected to the user's media server was available for this audit. These rows remain pending; generated images or mocked DOM snapshots are not substituted for real server screenshots. The original HDD 0.1.0.0 and provider 0.2.0.0 targets have been overtaken by published 1.x versions, so their acceptance should be exercised against the next monotonically increasing release.
 
 ## GitHub Actions limitation
 
-The inspected `main` job from [run 35499929615](https://github.com/mleem97/mleem-jellyfin/actions/runs/35499929615) and the recent Dependabot job from [run 37142258204](https://github.com/mleem97/mleem-jellyfin/actions/runs/37142258204) failed with no executed steps and unavailable logs (`BlobNotFound`). Current action references `actions/setup-dotnet@v6` and `actions/setup-node@v7` both resolve to valid upstream tags. Runner/account availability needs to be checked if the same pre-step failure persists; no source-level cause can be inferred from an absent log.
+The inspected `main` job from [run 35499929615](https://github.com/mleem97/mleem-jellyfin/actions/runs/35499929615) and the Dependabot job from [run 37142258204](https://github.com/mleem97/mleem-jellyfin/actions/runs/37142258204) failed with no executed steps and unavailable logs (`BlobNotFound`). The public annotations on main check `106049763954` explicitly report: **The job was not started because your account is locked due to a billing issue.**
+
+Current action references `actions/setup-dotnet@v6` and `actions/setup-node@v7` resolve
+to valid upstream tags. Repository source changes cannot settle the account's billing
+lock. The account owner must resolve it in GitHub account billing/settings before
+hosted jobs can run if new attempts show the same annotation. No billing or account
+configuration was changed during this repository work. Report local validation and
+GitHub-hosted CI separately.
