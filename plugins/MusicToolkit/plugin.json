@@ -3,7 +3,7 @@
   "name": "Music Toolkit & Spotify UX",
   "guid": "9f3e582a-281b-4b21-8c43-b295cbfa51de",
   "version": "1.0.0.1",
-  "targetAbi": "12.1.0.0",
+  "targetAbi": "12.2.0.0",
   "framework": "net10.0",
   "project": "plugins/MusicToolkit/MusicToolkit.csproj",
   "packagePrefix": "MusicToolkit",
@@ -14,6 +14,11 @@
   "overview": "Toolkit fuer Musikbibliotheken mit Spotify UX via Paradox.",
   "description": "Cleans cryptic audio filenames, deduplicates audio streams by content hash, integrates MusicHoarderz/Gracenote and serves a Spotify-style music dashboard via the Paradox plugin ecosystem.",
   "artifacts": [
-    "Jellyfin.Plugin.MusicToolkit.dll"
+    "Jellyfin.Plugin.MusicToolkit.dll",
+    "TagLibSharp.dll"
+  ],
+  "runtimeDependencies": [
+    "iamparadox.file-transformation",
+    "iamparadox.plugin-pages"
   ]
 }

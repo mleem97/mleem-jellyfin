@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import argparse
 import pathlib
 import tempfile
 import zipfile
@@ -36,14 +37,24 @@ def smoke_test_plugin(metadata_path: pathlib.Path, output_root: pathlib.Path) ->
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--plugin", help="Validate one plugin slug instead of all plugins")
+    parser.add_argument("--output", type=pathlib.Path, help="Keep validated packages in this directory")
+    args = parser.parse_args()
     metadata_paths = sorted((ROOT / "plugins").glob("*/plugin.json"))
+    if args.plugin:
+        metadata_paths = [path for path in metadata_paths if path.parent.name == args.plugin]
     if not metadata_paths:
-        raise SystemExit("No plugin metadata files were found.")
+        raise SystemExit("No matching plugin metadata files were found.")
 
-    with tempfile.TemporaryDirectory(prefix="jellyfin-package-smoke-") as directory:
-        output_root = pathlib.Path(directory)
+    if args.output:
+        args.output.mkdir(parents=True, exist_ok=True)
         for metadata_path in metadata_paths:
-            smoke_test_plugin(metadata_path, output_root)
+            smoke_test_plugin(metadata_path, args.output)
+    else:
+        with tempfile.TemporaryDirectory(prefix="jellyfin-package-smoke-") as directory:
+            for metadata_path in metadata_paths:
+                smoke_test_plugin(metadata_path, pathlib.Path(directory))
     return 0
 
 

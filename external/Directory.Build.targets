@@ -1,0 +1,3 @@
+<Project>
+  <!-- Upstream projects own their targets; do not inherit ours. -->
+</Project>

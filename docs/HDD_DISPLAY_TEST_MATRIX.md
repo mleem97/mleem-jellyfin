@@ -14,7 +14,7 @@
 
 ## Manual release qualification
 
-The following matrix must be completed before closing the HDD Display release issue.
+The following matrix must be completed before closing the HDD Display release issue. No row is considered passed by unit tests or by the existence of a downloadable release. Record the server version, environment, plugin commit/version, result and screenshot alongside each completed row.
 
 | Environment | Storage | System paths | GPU | Dashboard | Result |
 |---|---|---|---|---|---|
@@ -25,9 +25,9 @@ The following matrix must be completed before closing the HDD Display release is
 
 ## Compatibility targets
 
-- Jellyfin Server/Web 10.10.x
-- Jellyfin Server/Web 10.11.x
-- .NET 9 plugin runtime
+- Development source: Jellyfin Server/Web 12.2 and .NET 10.
+- Existing published 1.0.0.22 package: Jellyfin 12.1 and .NET 10.
+- No 10.x server compatibility is claimed for these .NET 10 packages.
 - NVIDIA and non-NVIDIA hosts
 
 ## Failure cases

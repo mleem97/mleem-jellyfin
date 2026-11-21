@@ -22,7 +22,6 @@ public sealed class ParadoxBridge
     public ParadoxBridge(ILogger<ParadoxBridge> logger)
     {
         _logger = logger;
-        Initialize();
     }
 
     /// <summary>

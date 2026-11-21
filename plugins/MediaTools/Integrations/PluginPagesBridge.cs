@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -13,7 +12,8 @@ namespace Jellyfin.Plugin.MediaTools.Integrations;
 public sealed class PluginPagesBridge
 {
     private readonly ILogger<PluginPagesBridge> _logger;
-    private static bool _initialized;
+    private readonly object _sync = new();
+    private bool _pageRegistered;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PluginPagesBridge"/> class.
@@ -22,7 +22,6 @@ public sealed class PluginPagesBridge
     public PluginPagesBridge(ILogger<PluginPagesBridge> logger)
     {
         _logger = logger;
-        Initialize();
     }
 
     /// <summary>
@@ -30,30 +29,34 @@ public sealed class PluginPagesBridge
     /// </summary>
     public void Initialize()
     {
-        if (_initialized)
+        lock (_sync)
         {
-            return;
+            if (!_pageRegistered)
+            {
+                _pageRegistered = TryRegisterPage();
+            }
         }
-
-        _initialized = true;
-        TryRegisterPage();
     }
 
-    private void TryRegisterPage()
+    private bool TryRegisterPage()
     {
         var pageInterface = FindType("Jellyfin.Plugin.PluginPages.PluginInterface");
         if (pageInterface is null)
         {
             _logger.LogInformation("Paradox PluginPages not installed; skipping sidebar page registration");
-            return;
+            return false;
         }
 
-        var register = pageInterface.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .FirstOrDefault(m => string.Equals(m.Name, "RegisterPage", StringComparison.Ordinal));
+        var register = pageInterface.GetMethod(
+            "RegisterPage",
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            types: new[] { typeof(JObject) },
+            modifiers: null);
         if (register is null)
         {
             _logger.LogWarning("Paradox PluginPages.RegisterPage not found");
-            return;
+            return false;
         }
 
         try
@@ -68,10 +71,12 @@ public sealed class PluginPagesBridge
             };
             register.Invoke(null, new object?[] { payload });
             _logger.LogInformation("Registered MediaTools dashboard page via Paradox PluginPages");
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Paradox RegisterPage invocation failed (fail-open)");
+            return false;
         }
     }
 

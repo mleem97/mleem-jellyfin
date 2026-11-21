@@ -19,13 +19,6 @@
     --ms-font: -apple-system, BlinkMacSystemFont, "Circular Spotify Tx T", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Suppression of native obsolete Jellyfin music views when active */
-div[data-role="page"].musicPage {
-    display: none !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
 /* Main 3-Column Spotify Application Container */
 .spotify-app-container {
     display: flex;

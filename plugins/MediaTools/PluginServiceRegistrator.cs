@@ -26,5 +26,6 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<StreamHashDeduplicatorService>();
         serviceCollection.AddSingleton<BackgroundJobQueueService>();
         serviceCollection.AddSingleton<PluginPagesBridge>();
+        serviceCollection.AddHostedService<MediaToolsStartupService>();
     }
 }

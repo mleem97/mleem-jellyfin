@@ -33,6 +33,11 @@ public class PluginConfiguration : BasePluginConfiguration
     public string DefaultAlbumLayout { get; set; } = "Grid";
 
     /// <summary>
+    /// Gets or sets the default album tile size for new users and layout resets.
+    /// </summary>
+    public string DefaultTileSize { get; set; } = "Medium";
+
+    /// <summary>
     /// Gets or sets the default batch size for music queries.
     /// </summary>
     public int BatchSize { get; set; } = 100;

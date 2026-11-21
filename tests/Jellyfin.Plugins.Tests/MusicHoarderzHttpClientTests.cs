@@ -243,7 +243,74 @@ public class MusicHoarderzHttpClientTests
             factory,
             MusicHoarderzNoopLogger<MusicHoarderzHttpClient>.Instance,
             baseUrl ?? BaseUrl,
-            "DE");
+            "DE",
+            (_, _) => Task.FromResult(new[] { IPAddress.Parse("93.184.216.34") }));
+    }
+
+    [Fact]
+    public async Task OfficialCovHost_NeverCallsAnInternalApi()
+    {
+        var handler = new MusicHoarderzQueueHandler((_, _) => throw new InvalidOperationException("Unexpected request"));
+        var client = CreateClient(handler, MusicHoarderzHttpClient.DefaultBaseUrl);
+
+        Assert.Empty(await client.SearchAsync(new CoverSearchQuery("Album", "Artist", null, "DE"), CancellationToken.None));
+        Assert.Empty(handler.Requests);
+        Assert.Equal("ManualPickerRequired", client.Health.Error?.Code);
+    }
+
+    [Fact]
+    public async Task PrivateDns_IsBlockedBeforeAnyHttpRequest()
+    {
+        var handler = new MusicHoarderzQueueHandler((_, _) => throw new InvalidOperationException("Unexpected request"));
+        var client = new MusicHoarderzHttpClient(new MusicHoarderzTestHttpClientFactory(handler),
+            MusicHoarderzNoopLogger<MusicHoarderzHttpClient>.Instance, BaseUrl, "DE",
+            (_, _) => Task.FromResult(new[] { IPAddress.Parse("10.0.0.7") }));
+
+        Assert.Empty(await client.SearchAsync(new CoverSearchQuery("Album", "Artist", null, "DE"), CancellationToken.None));
+        Assert.Empty(handler.Requests);
+        Assert.Equal("HostBlocked", client.Health.Error?.Code);
+    }
+
+    [Fact]
+    public async Task RedirectToPrivateDns_IsBlockedBeforeSecondRequest()
+    {
+        var handler = new MusicHoarderzQueueHandler((_, _) =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.Found);
+            response.Headers.Location = new Uri("https://private.example.com/secret");
+            return response;
+        });
+        var client = new MusicHoarderzHttpClient(new MusicHoarderzTestHttpClientFactory(handler),
+            MusicHoarderzNoopLogger<MusicHoarderzHttpClient>.Instance, BaseUrl, "DE",
+            (host, _) => Task.FromResult(new[] { IPAddress.Parse(host == "private.example.com" ? "192.168.1.1" : "93.184.216.34") }));
+
+        Assert.Empty(await client.SearchAsync(new CoverSearchQuery("Album", "Artist", null, "DE"), CancellationToken.None));
+        Assert.Single(handler.Requests);
+        Assert.Equal("HostBlocked", client.Health.Error?.Code);
+    }
+
+    [Fact]
+    public async Task CachedResponse_StillHonorsCancellation()
+    {
+        var client = CreateClient(new MusicHoarderzQueueHandler((_, _) => JsonResponse("[]")));
+        var query = new CoverSearchQuery("Album", "Artist", null, "DE");
+        await client.SearchAsync(query, CancellationToken.None);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => client.SearchAsync(query, cancellation.Token));
+    }
+
+    [Fact]
+    public async Task QueryCharacters_AreEncodedAsValues()
+    {
+        var handler = new MusicHoarderzQueueHandler((_, _) => JsonResponse("[]"));
+        var client = CreateClient(handler);
+        await client.SearchAsync(new CoverSearchQuery("Björk & Friends?/#", "A+B=Z", null, "DE"), CancellationToken.None);
+
+        Assert.Contains("artist=A%2BB%3DZ", handler.Requests[0].RequestUri!.Query);
+        Assert.Contains("%26", handler.Requests[0].RequestUri!.Query);
+        Assert.Empty(handler.Requests[0].RequestUri!.Fragment);
     }
 
     private static HttpResponseMessage JsonResponse(string json, string mediaType = "application/json")
@@ -251,5 +318,44 @@ public class MusicHoarderzHttpClientTests
         var response = new HttpResponseMessage(HttpStatusCode.OK);
         response.Content = new StringContent(json, Encoding.UTF8, mediaType);
         return response;
+    }
+
+    [Fact]
+    public async Task SelectedAlbum_UsesSnapshotInsteadOfSearchingChangedCanonicalTitle()
+    {
+        var handler = new MusicHoarderzQueueHandler((_, _) => JsonResponse("[{\"url\":\"https://covers.example.com/a.jpg\",\"title\":\"Canonical Album\",\"artist\":\"Canonical Artist\"}]"));
+        var client = CreateClient(handler);
+        var found = Assert.Single(await client.SearchAlbumsAsync(new CoverSearchQuery("misspelled", "unknown", null, "DE"), CancellationToken.None));
+
+        var selected = await client.GetAlbumAsync(found.Id, CancellationToken.None);
+
+        Assert.NotNull(selected);
+        Assert.Equal("Canonical Album", selected.Title);
+        Assert.Equal("Canonical Artist", selected.Artist);
+        Assert.Single(handler.Requests);
+        Assert.Null(await client.GetAlbumAsync("missing", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task WrongJsonShape_IsReportedAsInvalidPayload()
+    {
+        var client = CreateClient(new MusicHoarderzQueueHandler((_, _) => JsonResponse("{\"error\":\"upstream failure\"}")));
+
+        Assert.Empty(await client.SearchAsync(new CoverSearchQuery("Album", "Artist", null, "DE"), CancellationToken.None));
+        Assert.Equal("InvalidPayload", client.Health.Error?.Code);
+    }
+
+    [Fact]
+    public async Task SameArtworkWithDifferentMetadata_DoesNotReplacePreviousSelection()
+    {
+        var calls = 0;
+        var handler = new MusicHoarderzQueueHandler((_, _) => JsonResponse("[{\"url\":\"https://covers.example.com/shared.jpg\",\"title\":\"Album " + (++calls) + "\"}]"));
+        var client = CreateClient(handler);
+        var first = Assert.Single(await client.SearchAlbumsAsync(new CoverSearchQuery("First", "Artist", null, "DE"), CancellationToken.None));
+        var second = Assert.Single(await client.SearchAlbumsAsync(new CoverSearchQuery("Second", "Artist", null, "DE"), CancellationToken.None));
+
+        Assert.NotEqual(first.Id, second.Id);
+        Assert.Equal("Album 1", (await client.GetAlbumAsync(first.Id, CancellationToken.None))!.Title);
+        Assert.Equal("Album 2", (await client.GetAlbumAsync(second.Id, CancellationToken.None))!.Title);
     }
 }

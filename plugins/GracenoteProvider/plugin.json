@@ -3,7 +3,7 @@
   "name": "Gracenote Metadata Provider",
   "guid": "a05dae4a-2e92-4303-8f16-a7ade62624b4",
   "version": "1.0.0.1",
-  "targetAbi": "12.1.0.0",
+  "targetAbi": "12.2.0.0",
   "framework": "net10.0",
   "project": "plugins/GracenoteProvider/GracenoteProvider.csproj",
   "packagePrefix": "GracenoteProvider",
@@ -15,5 +15,6 @@
   "description": "Provides album and artist metadata (titles, years, genres, reviews, bios) and cover art via Gracenote MusicID Web API v2/v3 with automatic registration and dual-protocol support.",
   "artifacts": [
     "Jellyfin.Plugin.GracenoteProvider.dll"
-  ]
+  ],
+  "runtimeDependencies": []
 }

@@ -1,6 +1,10 @@
 using System;
+using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Jellyfin.Plugin.MusicHoarderzProvider.Services;
 
@@ -28,7 +32,9 @@ public static class NetworkGuard
             return false;
         }
 
-        return !IsBlockedHostLiteral(uri.Host);
+        return string.IsNullOrEmpty(uri.UserInfo)
+            && string.IsNullOrEmpty(uri.Fragment)
+            && !IsBlockedHostLiteral(uri.IdnHost);
     }
 
     /// <summary>
@@ -43,7 +49,7 @@ public static class NetworkGuard
             return true;
         }
 
-        var normalized = host.Trim().TrimEnd('.');
+        var normalized = host.Trim().Trim('[', ']').TrimEnd('.');
         if (string.Equals(normalized, "localhost", StringComparison.OrdinalIgnoreCase))
         {
             return true;
@@ -52,17 +58,19 @@ public static class NetworkGuard
         if (normalized.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
             || normalized.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
             || normalized.EndsWith(".internal", StringComparison.OrdinalIgnoreCase)
+            || normalized.EndsWith(".home.arpa", StringComparison.OrdinalIgnoreCase)
             || normalized.EndsWith(".invalid", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
-        if (IPAddress.TryParse(normalized, out var address) && IsPrivateOrLoopback(address))
+        if (IPAddress.TryParse(normalized, out var address))
         {
-            return true;
+            return IsPrivateOrLoopback(address);
         }
 
-        return false;
+        // Single-label names are local DNS names, not public internet endpoints.
+        return !normalized.Contains('.', StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -133,6 +141,13 @@ public static class NetworkGuard
         }
 
         // Documentation ranges that never route publicly.
+        if ((bytes[0] == 192 && bytes[1] == 0 && bytes[2] == 0)
+            || (bytes[0] == 192 && bytes[1] == 88 && bytes[2] == 99)
+            || (bytes[0] == 198 && (bytes[1] == 18 || bytes[1] == 19)))
+        {
+            return true;
+        }
+
         if (bytes[0] == 192 && bytes[1] == 0 && bytes[2] == 2)
         {
             return true;
@@ -164,33 +179,70 @@ public static class NetworkGuard
             return true;
         }
 
-        var allZero = true;
-        for (var i = 0; i < bytes.Length; i++)
+        // Only global unicast 2000::/3; excludes loopback, local, multicast,
+        // IPv4-compatible and NAT64 addresses that could reach internal IPv4 hosts.
+        return (bytes[0] & 0xE0) != 0x20
+            || (bytes[0] == 0x20 && bytes[1] == 0x01 && bytes[2] < 2)
+            || (bytes[0] == 0x20 && bytes[1] == 0x01 && bytes[2] == 0x0D && bytes[3] == 0xB8)
+            || (bytes[0] == 0x20 && bytes[1] == 0x02)
+            || (bytes[0] == 0x3F && (bytes[1] & 0xF0) == 0xF0);
+    }
+
+    /// <summary>
+    /// Creates the transport used for untrusted provider URLs. DNS is validated at
+    /// connection time and the socket uses that exact IP, preventing DNS rebinding.
+    /// Redirects are handled and revalidated by the caller; proxy DNS is disabled.
+    /// </summary>
+    /// <returns>A fail-closed HTTP transport.</returns>
+    public static SocketsHttpHandler CreateHandler()
+    {
+        return new SocketsHttpHandler
         {
-            if (bytes[i] != 0)
+            AllowAutoRedirect = false,
+            UseProxy = false,
+            UseCookies = false,
+            ConnectTimeout = TimeSpan.FromSeconds(20),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            MaxResponseHeadersLength = 32,
+            ConnectCallback = ConnectPublicAsync,
+        };
+    }
+
+    private static async ValueTask<Stream> ConnectPublicAsync(SocketsHttpConnectionContext context, CancellationToken cancellationToken)
+    {
+        var host = context.DnsEndPoint.Host;
+        if (IsBlockedHostLiteral(host))
+        {
+            throw new HttpRequestException("Remote endpoint was blocked by network policy.");
+        }
+
+        var addresses = await Dns.GetHostAddressesAsync(host, cancellationToken).ConfigureAwait(false);
+        if (addresses.Length == 0 || Array.Exists(addresses, IsPrivateOrLoopback))
+        {
+            throw new HttpRequestException("Remote endpoint was blocked by network policy.");
+        }
+
+        foreach (var address in addresses)
+        {
+            var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+            try
             {
-                allZero = false;
-                break;
+                // Never reconnect by hostname after validation: TLS still uses the
+                // request's original hostname for SNI and certificate verification.
+                await socket.ConnectAsync(new IPEndPoint(address, context.DnsEndPoint.Port), cancellationToken).ConfigureAwait(false);
+                return new NetworkStream(socket, ownsSocket: true);
+            }
+            catch (SocketException)
+            {
+                socket.Dispose();
+            }
+            catch
+            {
+                socket.Dispose();
+                throw;
             }
         }
 
-        if (allZero)
-        {
-            return true;
-        }
-
-        // fc00::/7 (unique local).
-        if ((bytes[0] & 0xFE) == 0xFC)
-        {
-            return true;
-        }
-
-        // fe80::/10 (link local).
-        if (bytes[0] == 0xFE && (bytes[1] & 0xC0) == 0x80)
-        {
-            return true;
-        }
-
-        return false;
+        throw new HttpRequestException("Could not connect to the remote endpoint.");
     }
 }

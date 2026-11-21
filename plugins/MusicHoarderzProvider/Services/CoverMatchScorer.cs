@@ -83,7 +83,7 @@ public sealed class CoverMatchScorer
         score += titleScore;
         _ = reason.Append("title+").Append(titleScore.ToString(CultureInfo.InvariantCulture)).Append(';');
 
-        var artistScore = MatchScore(Normalize(query.Artist), Normalize(ArtistOf(candidate)), 25, 15, 8);
+        var artistScore = MatchScore(Normalize(query.Artist, stripEditionWords: false), Normalize(ArtistOf(candidate), stripEditionWords: false), 25, 15, 8);
         score += artistScore;
         _ = reason.Append("artist+").Append(artistScore.ToString(CultureInfo.InvariantCulture)).Append(';');
 
@@ -98,6 +98,10 @@ public sealed class CoverMatchScorer
         var aspectScore = AspectScore(candidate);
         score += aspectScore;
         _ = reason.Append("aspect+").Append(aspectScore.ToString(CultureInfo.InvariantCulture)).Append(';');
+
+        var idScore = IdScore(query.ProviderIds, candidate.ProviderIds);
+        score += idScore;
+        _ = reason.Append("ids+").Append(idScore.ToString(CultureInfo.InvariantCulture)).Append(';');
 
         var sourceScore = SourceScore(candidate.Source);
         score += sourceScore;
@@ -166,7 +170,7 @@ public sealed class CoverMatchScorer
             return 10;
         }
 
-        if (Math.Abs(queryYear.Value - candidate.Year.Value) == 1)
+        if (Math.Abs((long)queryYear.Value - candidate.Year.Value) == 1)
         {
             return 4;
         }
@@ -212,14 +216,37 @@ public sealed class CoverMatchScorer
 
         var max = Math.Max(width, height);
         var diff = Math.Abs(width - height);
-        if (diff * 100 <= max * 5)
+        if ((long)diff * 100 <= (long)max * 5)
         {
             return 5;
         }
 
-        if (diff * 100 <= max * 15)
+        if ((long)diff * 100 <= (long)max * 15)
         {
             return 2;
+        }
+
+        return 0;
+    }
+
+    private static int IdScore(IReadOnlyDictionary<string, string>? queryIds, IReadOnlyDictionary<string, string>? candidateIds)
+    {
+        if (queryIds is null || candidateIds is null)
+        {
+            return 0;
+        }
+
+        foreach (var query in queryIds)
+        {
+            foreach (var candidate in candidateIds)
+            {
+                if (!string.IsNullOrWhiteSpace(query.Value)
+                    && string.Equals(query.Key, candidate.Key, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(query.Value, candidate.Value, StringComparison.OrdinalIgnoreCase))
+                {
+                    return 5;
+                }
+            }
         }
 
         return 0;
@@ -232,18 +259,18 @@ public sealed class CoverMatchScorer
             return 0;
         }
 
-        if (source.Contains("musichoarderz", StringComparison.OrdinalIgnoreCase)
+        if (string.Equals(source, "musichoarderz", StringComparison.OrdinalIgnoreCase)
             || string.Equals(source, "cov", StringComparison.OrdinalIgnoreCase))
         {
             return 5;
         }
 
-        if (source.Contains("spotify", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(source, "spotify", StringComparison.OrdinalIgnoreCase))
         {
             return 3;
         }
 
-        if (source.Contains("youtube", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(source, "youtube", StringComparison.OrdinalIgnoreCase))
         {
             return 1;
         }
@@ -266,8 +293,9 @@ public sealed class CoverMatchScorer
     /// edition keywords dropped, punctuation folded to spaces.
     /// </summary>
     /// <param name="value">Raw value.</param>
+    /// <param name="stripEditionWords">Whether edition terms may be stripped from an album title.</param>
     /// <returns>Normalized value.</returns>
-    internal static string Normalize(string? value)
+    internal static string Normalize(string? value, bool stripEditionWords = true)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -288,6 +316,10 @@ public sealed class CoverMatchScorer
             {
                 _ = builder.Append(ch);
             }
+            else if (ch == '&')
+            {
+                _ = builder.Append(" and ");
+            }
             else
             {
                 _ = builder.Append(' ');
@@ -301,7 +333,7 @@ public sealed class CoverMatchScorer
             var isEdition = false;
             foreach (var keyword in EditionKeywords)
             {
-                if (string.Equals(token, keyword, StringComparison.Ordinal))
+                if (stripEditionWords && tokens.Length > 1 && string.Equals(token, keyword, StringComparison.Ordinal))
                 {
                     isEdition = true;
                     break;

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Jellyfin.Plugin.HddDisplay.Configuration;
-using Jellyfin.Plugin.HddDisplay.Integrations;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
@@ -37,7 +36,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
-        PluginPagesBridge.Initialize(logger);
+        _ = logger;
     }
 
     /// <inheritdoc />

@@ -171,7 +171,7 @@ public class MusicHoarderzValidatorTests
             ImageResponse(BuildPng(1200, 1200), "image/png"));
         var validator = new CoverImageValidator(
             new MusicHoarderzTestHttpClientFactory(handler),
-            MusicHoarderzNoopLogger<CoverImageValidator>.Instance,
+            MusicHoarderzNoopLogger<CoverImageValidator>.Instance, new MusicHoarderzTestImageDecoder(),
             (_, _) => Task.FromResult(new[] { System.Net.IPAddress.Parse("10.0.0.9") }));
 
         var result = await validator.ValidateAsync(PublicHostUrl, 1, 1, CancellationToken.None);
@@ -197,8 +197,57 @@ public class MusicHoarderzValidatorTests
     {
         return new CoverImageValidator(
             new MusicHoarderzTestHttpClientFactory(handler),
-            MusicHoarderzNoopLogger<CoverImageValidator>.Instance,
+            MusicHoarderzNoopLogger<CoverImageValidator>.Instance, new MusicHoarderzTestImageDecoder(),
             (_, _) => Task.FromResult(new[] { System.Net.IPAddress.Parse("93.184.216.34") }));
+    }
+
+    [Fact]
+    public async Task MismatchedImageMime_IsRejected()
+    {
+        var validator = CreateValidator(new MusicHoarderzQueueHandler((_, _) => ImageResponse(BuildPng(1200, 1200), "image/jpeg")));
+
+        Assert.Null(await validator.ValidateAsync(PublicHostUrl, 1, 1, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CorruptPngSignature_IsRejected()
+    {
+        var bytes = BuildPng(1200, 1200);
+        bytes[7] = 0;
+        var validator = CreateValidator(new MusicHoarderzQueueHandler((_, _) => ImageResponse(bytes, "image/png")));
+
+        Assert.Null(await validator.ValidateAsync(PublicHostUrl, 1, 1, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ExcessiveDecodedDimensions_AreRejected()
+    {
+        var validator = CreateValidator(new MusicHoarderzQueueHandler((_, _) => ImageResponse(BuildPng(50000, 50000), "image/png")));
+
+        Assert.Null(await validator.ValidateAsync(PublicHostUrl, 1, 1, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DnsCancellation_Propagates()
+    {
+        var handler = new MusicHoarderzQueueHandler((_, _) => throw new InvalidOperationException("Unexpected HTTP"));
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        var validator = new CoverImageValidator(new MusicHoarderzTestHttpClientFactory(handler),
+            MusicHoarderzNoopLogger<CoverImageValidator>.Instance, new MusicHoarderzTestImageDecoder(),
+            (_, token) => Task.FromCanceled<IPAddress[]>(token));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => validator.ValidateAsync(PublicHostUrl, 1, 1, cancelled.Token));
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task TruncatedJpeg_ReturnsNullWithoutThrowing()
+    {
+        var bytes = new byte[] { 0xFF, 0xD8, 0xFF, 0xC0, 0, 7, 8, 0xFF, 0xD9 };
+        var validator = CreateValidator(new MusicHoarderzQueueHandler((_, _) => ImageResponse(bytes, "image/jpeg")));
+
+        Assert.Null(await validator.ValidateAsync(PublicHostUrl, 1, 1, CancellationToken.None));
     }
 
     private static HttpResponseMessage ImageResponse(byte[] bytes, string mediaType)
@@ -212,64 +261,26 @@ public class MusicHoarderzValidatorTests
 
     private static byte[] BuildPng(int width, int height)
     {
-        var raw = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==");
-        WriteBigEndian32(raw, 16, width);
-        WriteBigEndian32(raw, 20, height);
+        if (width == 1 && height == 1)
+        {
+            return MusicHoarderzImageFixtures.SmallPng();
+        }
+
+        var raw = MusicHoarderzImageFixtures.Png();
+        if (width != 1200 || height != 1200)
+        {
+            WriteBigEndian32(raw, 16, width);
+            WriteBigEndian32(raw, 20, height);
+        }
+
         return raw;
     }
 
-    private static byte[] BuildJpeg(int width, int height)
-    {
-        var bytes = new byte[]
-        {
-            0xFF, 0xD8,
-            0xFF, 0xC0, 0x00, 0x0B, 0x08,
-            0x00, 0x00, 0x00, 0x00,
-            0x01, 0x01, 0x11, 0x00,
-            0xFF, 0xD9,
-        };
-        bytes[7] = (byte)((height >> 8) & 0xFF);
-        bytes[8] = (byte)(height & 0xFF);
-        bytes[9] = (byte)((width >> 8) & 0xFF);
-        bytes[10] = (byte)(width & 0xFF);
-        return bytes;
-    }
+    private static byte[] BuildJpeg(int width, int height) => MusicHoarderzImageFixtures.Jpeg();
 
-    private static byte[] BuildGif(int width, int height)
-    {
-        var bytes = new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x00, 0x00, 0x00, 0x00, 0x3B };
-        bytes[6] = (byte)(width & 0xFF);
-        bytes[7] = (byte)((width >> 8) & 0xFF);
-        bytes[8] = (byte)(height & 0xFF);
-        bytes[9] = (byte)((height >> 8) & 0xFF);
-        return bytes;
-    }
+    private static byte[] BuildGif(int width, int height) => MusicHoarderzImageFixtures.Gif();
 
-    private static byte[] BuildWebP(int width, int height)
-    {
-        var bytes = new byte[30];
-        bytes[0] = (byte)'R';
-        bytes[1] = (byte)'I';
-        bytes[2] = (byte)'F';
-        bytes[3] = (byte)'F';
-        bytes[8] = (byte)'W';
-        bytes[9] = (byte)'E';
-        bytes[10] = (byte)'B';
-        bytes[11] = (byte)'P';
-        bytes[12] = (byte)'V';
-        bytes[13] = (byte)'P';
-        bytes[14] = (byte)'8';
-        bytes[15] = (byte)'X';
-        var minusOne = width - 1;
-        bytes[24] = (byte)(minusOne & 0xFF);
-        bytes[25] = (byte)((minusOne >> 8) & 0xFF);
-        bytes[26] = (byte)((minusOne >> 16) & 0xFF);
-        minusOne = height - 1;
-        bytes[27] = (byte)(minusOne & 0xFF);
-        bytes[28] = (byte)((minusOne >> 8) & 0xFF);
-        bytes[29] = (byte)((minusOne >> 16) & 0xFF);
-        return bytes;
-    }
+    private static byte[] BuildWebP(int width, int height) => MusicHoarderzImageFixtures.WebP();
 
     private static void WriteBigEndian32(byte[] buffer, int offset, int value)
     {

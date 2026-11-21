@@ -15,26 +15,45 @@ This repository hosts multiple Jellyfin plugins. Keep changes isolated to the pl
 Every implementation change must be linked to exactly one GitHub issue.
 
 1. Create or select the implementation issue before changing code.
-2. Create a dedicated branch from the current `main` branch.
+2. Create a dedicated branch from the current `dev` branch.
 3. Name the branch `issue-<number>-<short-description>`.
 4. Reference the issue number in commit messages, for example `fix: validate package checksum (#22)`.
-5. Open a pull request against `main`.
+5. Open a pull request against `dev` for integration. Promote reviewed releases through a separate `dev` to `main` pull request.
 6. Include `Closes #<number>` in the pull-request body.
 7. Merge the pull request only after the change has been reviewed and validated.
-8. Do not close implementation issues manually; the merge must close them automatically.
+8. Do not close implementation issues merely to clean up the issue list. GitHub closing keywords take effect when fixes reach the default `main` branch; while a fix is only in `dev`, keep its issue linked to the tested integration PR. Release issues remain open until their actual acceptance checks pass.
 9. Delete the issue branch after the merge.
 
 One branch must not combine unrelated implementation issues. Release issues may depend on several previously merged implementation issues, but their release branch still closes only the release issue assigned to that branch.
 
+Maintainer-requested consolidation may use an integration PR containing the focused
+issue commits and existing branch histories. Record the original branch heads,
+validation evidence and any remaining release qualification instead of treating an
+aggregate merge as proof that every release criterion passed.
+
 ## Adding a Plugin
+
+Prefer the maintained generator and shared metadata validator:
+
+```bash
+python tools/new_plugin.py MyPlugin --name "My Plugin" --dry-run
+python tools/new_plugin.py MyPlugin --name "My Plugin"
+dotnet restore Jellyfin.Plugins.sln
+python .github/scripts/validate_repository.py
+```
+
+Commit the new projects' dependency lockfiles. See
+[`docs/MONOREPO_MAINTENANCE.md`](docs/MONOREPO_MAINTENANCE.md) and
+[`external/README.md`](external/README.md) for package updates and optional upstream
+plugin submodules. New package versions belong in `Directory.Packages.props`.
 
 1. Create `plugins/<PluginSlug>/`.
 2. Add `<PluginSlug>.csproj`.
 3. Add `plugin.json` with a unique GUID.
 4. Add the project to `Jellyfin.Plugins.sln`.
-5. Add or update the plugin entry in `manifest.json`.
+5. Add the plugin entry to `manifest.json` only through a verified release with an existing package asset.
 6. Add a plugin README.
-7. Add baseline tests under `tests/Jellyfin.Plugins.Tests/`.
+7. Add behavior and authorization tests under `tests/<PluginSlug>.Tests/`.
 8. Build and test locally with:
 
 ```bash

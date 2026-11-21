@@ -1,142 +1,96 @@
 # mleem Jellyfin Plugins
 
-> Personal Jellyfin plugin library for Marvin's Jellyfin projects.
+Development is integrated in [`dev`](https://github.com/mleem97/mleem-jellyfin/tree/dev).
+See [Monorepo maintenance](docs/MONOREPO_MAINTENANCE.md) for new-plugin scaffolding,
+central package updates, independent releases and the pinned
+[IAmParadox source submodules](external/README.md).
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)](./LICENSE)
-[![Jellyfin](https://img.shields.io/badge/Jellyfin-12.1%2B-blue?style=for-the-badge)](https://jellyfin.org)
-[![.NET](https://img.shields.io/badge/.NET-10.0-purple?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com)
+A monorepo for Marvin's Jellyfin plugins. Every folder in `plugins/` is an independent plugin with its own GUID, version, assembly, metadata and release package.
 
-## Repository URL for Jellyfin
+## Install published plugins
 
-Use this manifest URL in Jellyfin:
+Add this repository URL under **Jellyfin Dashboard → Plugins → Repositories**:
 
 ```text
 https://raw.githubusercontent.com/mleem97/mleem-jellyfin/main/manifest.json
 ```
 
-## Purpose
+The catalog describes published release assets. Development changes on `dev` do not update those binaries. The existing local plugin releases target Jellyfin 12.1 and .NET 10; the development source targets Jellyfin 12.2 and .NET 10. A .NET 10 plugin package cannot be made compatible with older Jellyfin runtimes by duplicating its catalog entry with another `targetAbi`.
 
-This repository is the plugin library for Marvin's Jellyfin projects. It is not a template repository. Every plugin under `plugins/` is treated as a real plugin project with its own source code, metadata, README and release metadata.
+Installation, optional companion plugins and update/removal steps are in [the installation guide](docs/INSTALLATION.md). Release evidence and outstanding live-server qualification are tracked in [release readiness](docs/RELEASE_READINESS.md).
 
 ## Plugins
 
-| Order | Plugin | Folder | Purpose |
-|------:|--------|--------|---------|
-| 1 | HDD Display | [`plugins/HddDisplay`](./plugins/HddDisplay) | Admin Dashboard storage overview and NVIDIA transcoding telemetry |
-| 2 | MusicSuite | [`plugins/MusicSuite`](./plugins/MusicSuite) | Enhanced music UI with endless scroll, live search and per-user layouts |
-| 3 | MusicHoarderz Cover & Metadata Provider | [`plugins/MusicHoarderzProvider`](./plugins/MusicHoarderzProvider) | Music cover and metadata provider using MusicHoarderz/COV, Spotify and YouTube |
-| 4 | Spotify Cover & Metadata Provider | [`plugins/SpotifyProvider`](./plugins/SpotifyProvider) | Primary artwork for albums and artists via the Spotify Web API |
-| 5 | Gracenote Metadata Provider | [`plugins/GracenoteProvider`](./plugins/GracenoteProvider) | Album metadata via the Gracenote MusicID Web API |
-| 6 | Music Toolkit & Spotify UX | [`plugins/MusicToolkit`](./plugins/MusicToolkit) | Audio-Duplikate, Dateihygiene, MusicHoarderz/Gracenote-Anbindung, Spotify-Dashboard via Paradox |
+| Plugin | Source | Purpose |
+|---|---|---|
+| HDD Display | [HddDisplay](plugins/HddDisplay) | Administrator dashboard storage, mount usage and optional NVIDIA telemetry |
+| MusicSuite | [MusicSuite](plugins/MusicSuite) | Music dashboard, album browsing, live search and per-user layouts |
+| MusicHoarderz Provider | [MusicHoarderzProvider](plugins/MusicHoarderzProvider) | Manual cover and album metadata lookup through MusicHoarderz/COV |
+| Spotify Provider | [SpotifyProvider](plugins/SpotifyProvider) | Spotify music metadata and artwork |
+| Gracenote Provider | [GracenoteProvider](plugins/GracenoteProvider) | Gracenote album/artist metadata and artwork |
+| MediaTools | [MediaTools](plugins/MediaTools) | Media renaming, remuxing, merging and duplicate analysis |
+| MetadataDashboard | [MetadataDashboard](plugins/MetadataDashboard) | Music metadata audit and lookup dashboard |
+| MusicToolkit | [MusicToolkit](plugins/MusicToolkit) | Legacy music maintenance tools and Spotify-style UI; retained as an independent project |
 
-## Layout
+The published MusicToolkit 1.0.0.1 archive lacks its TagLibSharp dependency and remains outside the installation catalog. Development packages include only the runtime dependencies explicitly declared in each `plugin.json`.
 
-```text
-mleem-jellyfin/
-├── plugins/
-│   ├── HddDisplay/
-│   ├── MusicSuite/
-│   ├── MusicHoarderzProvider/
-│   ├── MusicToolkit/
-│   ├── SpotifyProvider/
-│   └── GracenoteProvider/
-├── configs/
-├── docker/
-├── tests/
-│   ├── Jellyfin.Plugins.Tests/
-│   └── MusicToolkit.Tests/
-├── tests/
-│   ├── Jellyfin.Plugins.Tests/
-│   └── Jellyfin.Plugin.MusicToolkit.Tests/
-├── docs/
-│   ├── ARCHITECTURE.md
-│   └── INSTALLATION.md
-├── .github/
-│   ├── scripts/
-│   └── workflows/
-├── Jellyfin.Plugins.sln
-├── manifest.json
-├── build.yaml
-├── PLUGIN_REPOSITORY.md
-├── CONTRIBUTING.md
-└── README.md
-```
+## Repository layout
 
-## Build
+- `plugins/<PluginSlug>/`: plugin source, `plugin.json`, embedded web assets and project file.
+- `tests/Jellyfin.Plugins.Tests/`: shared plugin behavior and authorization tests.
+- `tests/MusicToolkit.Tests/`: MusicToolkit-specific tests.
+- `tests/dashboard-widget/`, `tests/music-suite/`: JavaScript UI regression suites.
+- `tests/release-tooling/`: package, checksum and metadata validation tests.
+- `.github/scripts/`: common plugin discovery, validation, packaging and publishing.
+- `external/`: separately versioned upstream companion-plugin sources; see [monorepo maintenance](docs/MONOREPO_MAINTENANCE.md).
+- `configs/`, `docker/`, `docs/`: optional integration configuration, deployment examples and documentation.
 
-Restore and build all plugins and tests together:
+`Jellyfin.Plugins.sln` is the entry point for all eight plugins and both .NET test projects. `plugin.json` drives CI discovery and packaging, so a newly registered plugin is built without adding another build job. `build.yaml` is a generated compatibility index; run `python .github/scripts/validate_repository.py --sync-build` after adding or changing plugin build metadata.
+
+## Build and verify
+
+Use the .NET SDK selected by `global.json`, Node.js 22 and Python 3. Package versions are centralized in `Directory.Packages.props`; committed lockfiles make restores reproducible.
 
 ```bash
-dotnet restore Jellyfin.Plugins.sln
+dotnet restore Jellyfin.Plugins.sln --locked-mode
 dotnet build Jellyfin.Plugins.sln -c Release --no-restore
-```
-
-Individual plugin projects can still be built directly:
-
-```bash
-dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release
-dotnet build plugins/MusicSuite/MusicSuite.csproj -c Release
-dotnet build plugins/MusicHoarderzProvider/MusicHoarderzProvider.csproj -c Release
-dotnet build plugins/SpotifyProvider/SpotifyProvider.csproj -c Release
-dotnet build plugins/GracenoteProvider/GracenoteProvider.csproj -c Release
-dotnet build plugins/MusicToolkit/MusicToolkit.csproj -c Release
-```
-
-## Tests
-
-Run the complete repository test suite:
-
-```bash
-dotnet test Jellyfin.Plugins.sln -c Release
-```
-
-CI also creates temporary ZIP packages from every Release output and validates their declared artifacts with:
-
-```bash
+dotnet test Jellyfin.Plugins.sln -c Release --no-restore --no-build
+python -m unittest discover -s tests/release-tooling -v
+python .github/scripts/validate_repository.py
+npm ci --prefix tests/dashboard-widget
+npm test --prefix tests/dashboard-widget
+npm ci --prefix tests/music-suite
+npm test --prefix tests/music-suite
 python .github/scripts/package_smoke_test.py
 ```
 
-## Automatic Releases
+Build or package one plugin independently:
 
-Plugin releases are automated from `main`.
-
-The `Auto Publish Plugins` workflow is started manually with a selected plugin and either an exact four-part version or a configured bump type. It builds and validates the plugin, creates a ZIP package, updates `manifest.json`, verifies the MD5 checksum (required by Jellyfin) and publishes the GitHub release.
-
-## Versioning
-
-The release script uses four-part Jellyfin-compatible versions:
-
-```text
-major.minor.patch.revision
+```bash
+dotnet build plugins/HddDisplay/HddDisplay.csproj -c Release
+python .github/scripts/package_smoke_test.py --plugin HddDisplay --output artifacts
 ```
 
-Automatic bump rules:
+The generated ZIP has the plugin DLL and declared dependencies at its root. CI runs on pull requests and pushes to `dev`/`main`, checks all plugin metadata against the projects, builds every plugin independently and uploads validated development packages.
 
-| Commit style | Bump |
-|--------------|------|
-| `BREAKING CHANGE` or `type!:` | major |
-| `feat:` | minor |
-| `fix:`, `perf:`, `refactor:` | patch |
-| everything else | revision |
+## Integration and releases
 
-Each plugin has its own tag namespace:
+`dev` collects implementation work. Production releases use the manual **Auto Publish Plugins** workflow on `main`. Select one plugin and either a version bump or a newer exact four-part version (`major.minor.patch.revision`).
 
-```text
-HddDisplay-v0.1.0.0
-MusicSuite-v0.1.0.0
-MusicHoarderzProvider-v0.2.0.0
-SpotifyProvider-v1.0.0.0
-GracenoteProvider-v1.0.0.0
-MusicToolkit-v1.0.0.0
-```
+The release job runs tests, builds the selected plugin, validates the ZIP and catalog, publishes the release and downloads its asset to verify SHA-256. The catalog's `checksum` remains MD5 because Jellyfin requires that format; a separate `.zip.sha256` file records SHA-256 for the downloadable package. A source merge or a passing package smoke test does not by itself prove installation, upgrade or UI behavior on a real server.
 
-## Planning
+Each plugin has its own tag namespace, for example `HddDisplay-v1.0.0.23` or `MusicSuite-v1.0.1.0`. Existing tags are immutable. Historical MVP version requests do not justify downgrading already released 1.x plugins.
 
-- [`docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md`](./docs/ADMIN_DASHBOARD_STORAGE_GPU_PLAN.md)
-- [`docs/PLUGIN_ROADMAP.md`](./docs/PLUGIN_ROADMAP.md)
-- [`docs/PLUGIN_BATCH_PLAN.md`](./docs/PLUGIN_BATCH_PLAN.md)
-- [`docs/COV_INTEGRATION_POLICY.md`](./docs/COV_INTEGRATION_POLICY.md)
+## Further documentation
+
+- [Implementation status](docs/IMPLEMENTATION_STATUS.md)
+- [Monorepo maintenance and upstream dependencies](docs/MONOREPO_MAINTENANCE.md)
+- [Release readiness and verified artifacts](docs/RELEASE_READINESS.md)
+- [HDD Display qualification matrix](docs/HDD_DISPLAY_TEST_MATRIX.md)
+- [MusicHoarderz integration policy](docs/COV_INTEGRATION_POLICY.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## License
 
-This project is licensed under the **Apache License 2.0**. See [`LICENSE`](./LICENSE).
+This project's source is licensed under [Apache License 2.0](LICENSE). Upstream companion projects retain their own licenses.

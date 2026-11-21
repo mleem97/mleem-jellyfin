@@ -21,5 +21,6 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<MetadataAuditService>();
         serviceCollection.AddSingleton<IRemoteImageProvider, CoverArtArchiveImageProvider>();
         serviceCollection.AddSingleton<ParadoxBridge>();
+        serviceCollection.AddHostedService<MetadataDashboardStartupService>();
     }
 }

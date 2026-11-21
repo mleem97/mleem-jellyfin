@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.MetadataDashboard.Services;
+using MediaBrowser.Common.Api;
 using MediaBrowser.Controller.Entities.Audio;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Entities;
@@ -16,7 +17,7 @@ namespace Jellyfin.Plugin.MetadataDashboard.Controllers;
 /// API controller exposing metadata audit, search, and update endpoints.
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Policy = Policies.RequiresElevation)]
 [Route("Plugins/MetadataDashboard")]
 public sealed class MetadataDashboardController : ControllerBase
 {

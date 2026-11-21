@@ -17,12 +17,12 @@ public sealed class TransformPayload
 
 /// <summary>
 /// Static transformation callback invoked by Paradox FileTransformation.
-/// Injects the Spotify theme stylesheet and music redirect interceptor.
+/// Injects the album view and optional Spotify navigation without hiding native pages.
 /// </summary>
 public static class WebTransformer
 {
     /// <summary>
-    /// Injects the Spotify theme and redirect loader into index.html.
+    /// Injects the album and navigation loaders into index.html.
     /// </summary>
     /// <param name="payload">Transformation payload.</param>
     /// <returns>Transformed HTML contents.</returns>
@@ -34,15 +34,18 @@ public static class WebTransformer
             return contents;
         }
 
-        const string ThemeTag = "<link rel=\"stylesheet\" href=\"/Plugins/MusicSuite/Assets/spotify-theme.css\">";
-        const string RedirectTag = "<script src=\"/Plugins/MusicSuite/Assets/music-redirect.js\"></script>";
-
-        if (contents.Contains("Plugins/MusicSuite/Assets/music-redirect.js", StringComparison.Ordinal))
+        if (contents.Contains("data-musicsuite-loader", StringComparison.Ordinal))
         {
             return contents;
         }
 
-        var injection = $"{ThemeTag}\n{RedirectTag}\n";
+        // Derive the server prefix before ApiClient is ready (for example /jellyfin/web/).
+        // CSS is loaded only when the optional dashboard opens; the album view styles itself.
+        const string injection = "<script data-musicsuite-loader>!function(){"
+            + "var p=window.location.pathname,i=p.toLowerCase().indexOf('/web'),b=i>=0?p.slice(0,i):'';"
+            + "['albums-view.js','music-redirect.js'].forEach(function(f){var s=document.createElement('script');"
+            + "s.async=false;s.src=window.ApiClient&&window.ApiClient.getUrl?window.ApiClient.getUrl('Plugins/MusicSuite/Assets/'+f):b+'/Plugins/MusicSuite/Assets/'+f;"
+            + "document.head.appendChild(s);});}();</script>\n";
 
         if (contents.Contains("</head>", StringComparison.OrdinalIgnoreCase))
         {

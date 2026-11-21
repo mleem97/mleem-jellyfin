@@ -160,4 +160,47 @@ public class MusicHoarderzScorerTests
     {
         return new NormalizedCoverResult(url, width, height, source, "image/jpeg", 0, "unscored", title, artist, year);
     }
+
+    [Fact]
+    public void MatchingExternalId_AddsReasonedBonus()
+    {
+        var query = new CoverSearchQuery("Album", "Artist", 2000, "DE", new Dictionary<string, string> { ["MusicBrainzAlbum"] = "known-id" });
+        var candidate = Result("https://covers.example.com/a.jpg", "Album", "Artist", 2000, 1200, 1200, "cov")
+            with { ProviderIds = new Dictionary<string, string> { ["musicbrainzalbum"] = "known-id" } };
+
+        var scored = _scorer.Score(query, new[] { candidate }, 1000, 1000)[0];
+
+        Assert.Equal(100, scored.Score);
+        Assert.Contains("ids+5", scored.ScoreReason);
+    }
+
+    [Fact]
+    public void ArtistNamedDeluxe_IsNotRemovedAsAnEdition()
+    {
+        var query = new CoverSearchQuery("Album", "Deluxe", null, "DE");
+        var candidate = Result("https://covers.example.com/a.jpg", "Album", "Deluxe", null, 1200, 1200, "cov");
+
+        Assert.Contains("artist+25", _scorer.Score(query, new[] { candidate }, 1000, 1000)[0].ScoreReason);
+    }
+
+    [Fact]
+    public void ArtistAmpersandAndWordVariant_Match()
+    {
+        var query = new CoverSearchQuery("Album", "Earth, Wind & Fire", null, "DE");
+        var candidate = Result("https://covers.example.com/a.jpg", "Album", "Earth Wind and Fire", null, 1200, 1200, "cov");
+
+        Assert.Contains("artist+25", _scorer.Score(query, new[] { candidate }, 1000, 1000)[0].ScoreReason);
+    }
+
+    [Fact]
+    public void ExtremeUntrustedDimensions_DoNotOverflow()
+    {
+        var query = new CoverSearchQuery("Album", "Artist", int.MaxValue, "DE");
+        var candidate = Result("https://covers.example.com/a.jpg", "Album", "Artist", int.MinValue, int.MaxValue, 1, "fake-spotify");
+        var scored = _scorer.Score(query, new[] { candidate }, 1000, 1000)[0];
+
+        Assert.Contains("aspect+0", scored.ScoreReason);
+        Assert.Contains("year+0", scored.ScoreReason);
+        Assert.Contains("source+0", scored.ScoreReason);
+    }
 }

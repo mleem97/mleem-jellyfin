@@ -3,7 +3,7 @@
   "name": "MediaTools",
   "guid": "8e4d2f17-5a33-4c91-b921-dfa724180c55",
   "version": "1.0.0.0",
-  "targetAbi": "12.1.0.0",
+  "targetAbi": "12.2.0.0",
   "framework": "net10.0",
   "project": "plugins/MediaTools/MediaTools.csproj",
   "packagePrefix": "MediaTools",
@@ -16,5 +16,8 @@
   "artifacts": [
     "Jellyfin.Plugin.MediaTools.dll",
     "TagLibSharp.dll"
+  ],
+  "runtimeDependencies": [
+    "iamparadox.plugin-pages"
   ]
 }

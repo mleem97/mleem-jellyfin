@@ -3,7 +3,7 @@
   "name": "Spotify Cover & Metadata Provider",
   "guid": "67de1daa-c9fe-497a-9ca2-dc303abb717b",
   "version": "1.0.0.1",
-  "targetAbi": "12.1.0.0",
+  "targetAbi": "12.2.0.0",
   "framework": "net10.0",
   "project": "plugins/SpotifyProvider/SpotifyProvider.csproj",
   "packagePrefix": "SpotifyProvider",
@@ -15,5 +15,6 @@
   "description": "Provides metadata and high-resolution cover art for music albums, artists, songs, audiobooks and podcasts via the Spotify Web API using Client Credentials authentication.",
   "artifacts": [
     "Jellyfin.Plugin.SpotifyProvider.dll"
-  ]
+  ],
+  "runtimeDependencies": []
 }

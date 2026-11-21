@@ -1,140 +1,140 @@
-/**
- * MusicSuite Spotify UI Interceptor & Router
- * Seamlessly overrides native Jellyfin music pages and redirects to the 3-column Spotify experience.
- */
+/** Optional MusicSuite dashboard navigation. Native album routes always remain available. */
 (function () {
     'use strict';
+    if (window.MusicSuiteNavigation) return;
+    const DASHBOARD_HASH = '#!/configurationpage?name=spotify-dashboard';
+    const state = { enabled: false, force: false, ready: false, observer: null, serial: 0, returnRoute: '' };
 
-    var ASSET_BASE = '/Plugins/MusicSuite/Assets/';
-    var DASHBOARD_ROUTE = '/pages/spotify-music';
-    var STANDALONE_URL = ASSET_BASE + 'spotify-dashboard.html';
-    var state = { cssLoaded: false, observer: null };
+    function assetUrl(name) {
+        if (window.ApiClient && window.ApiClient.getUrl) return window.ApiClient.getUrl('Plugins/MusicSuite/Assets/' + name);
+        const path = window.location.pathname;
+        const index = path.toLowerCase().indexOf('/web');
+        return (index >= 0 ? path.slice(0, index) : '') + '/Plugins/MusicSuite/Assets/' + name;
+    }
+
+    function isAlbumRoute() {
+        const hash = String(window.location.hash || '').toLowerCase();
+        if (hash.includes('album') || hash.includes('musicalbum')) return true;
+        return Array.from(document.querySelectorAll('[aria-selected="true"], .emby-tab-button-active')).some(function (node) {
+            return /^(albums|alben)$/i.test(String(node.textContent || '').trim());
+        });
+    }
 
     function ensureThemeCss() {
-        if (state.cssLoaded) return;
-        if (document.querySelector('link[href*="spotify-theme.css"]')) {
-            state.cssLoaded = true;
-            return;
-        }
-        state.cssLoaded = true;
-        var link = document.createElement('link');
+        if (document.querySelector('link[data-musicsuite-theme]')) return;
+        const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = ASSET_BASE + 'spotify-theme.css';
+        link.dataset.musicsuiteTheme = 'true';
+        link.href = assetUrl('spotify-theme.css');
         document.head.appendChild(link);
     }
 
-    function navigateToSpotifyDashboard() {
+    function navigate() {
+        if (!state.enabled || !state.ready) return false;
+        state.returnRoute = window.location.hash;
         ensureThemeCss();
-
-        // 1. If inside Jellyfin web router, try Emby.Page.show
-        if (window.Emby && window.Emby.Page && typeof window.Emby.Page.show === 'function') {
-            try {
-                window.Emby.Page.show(DASHBOARD_ROUTE);
-                return;
-            } catch (e) {
-                // Fallback to hash navigation
-            }
-        }
-
-        // 2. Fragment router (Paradox PluginPages or Fallback)
-        var targetHash = '#!' + DASHBOARD_ROUTE;
-        if (window.location.hash !== targetHash) {
-            window.location.hash = targetHash;
-        }
+        window.location.hash = DASHBOARD_HASH;
+        return true;
     }
 
-    function isMusicElement(node) {
-        if (!node || !node.closest) return false;
-
-        // Music tab, drawer item, home screen music card, or link to music.html
-        var hit = node.closest([
-            '[data-type="music"]',
-            '[data-type="Music"]',
-            '[data-collectiontype="music"]',
-            'a[href*="music.html"]',
-            'a[href*="item?id="][data-type="music"]',
-            'button[data-type="music"]',
-            '.musicPageLink'
-        ].join(','));
-
-        return !!hit;
+    function checkRoute() {
+        if (!state.enabled || !state.force || !state.ready || isAlbumRoute()) return;
+        const hash = String(window.location.hash || '');
+        if (hash.includes('spotify-dashboard')) return;
+        if (/music\.html|musicPage/.test(hash)) navigate();
     }
 
-    // Intercept clicks globally
-    document.addEventListener('click', function (ev) {
-        var target = ev.target;
-        if (!isMusicElement(target)) return;
-
-        // Don't intercept if clicking inside the Spotify dashboard itself
-        if (target.closest('#MusicSuiteRoot') || target.closest('#spotify-dashboard-root')) {
+    function syncSidebar() {
+        if (!window.document) return;
+        const existing = document.querySelector('.musicsuite-nav-item');
+        if (!state.enabled) {
+            if (existing) existing.remove();
             return;
         }
+        const drawer = document.querySelector('.mainDrawer-scrollContainer, .sidebarLinks');
+        if (!drawer || existing) return;
+        const link = document.createElement('a');
+        link.className = 'listItem listItem-border emby-button musicsuite-nav-item';
+        link.href = DASHBOARD_HASH;
+        link.textContent = 'Musik · Spotify-Dashboard';
+        link.addEventListener('click', function (event) {
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            if (state.ready) {
+                event.preventDefault();
+                navigate();
+            }
+        });
+        drawer.appendChild(link);
+    }
 
-        ev.preventDefault();
-        ev.stopPropagation();
-        navigateToSpotifyDashboard();
+    function refresh() {
+        const serial = ++state.serial;
+        const api = window.ApiClient;
+        if (!api || !api.getJSON || !api.getUrl || !api.getCurrentUserId || !api.getCurrentUserId()) {
+            state.enabled = false;
+            state.force = false;
+            syncSidebar();
+            return Promise.resolve();
+        }
+        return Promise.resolve().then(function () {
+            return api.getJSON(api.getUrl('Plugins/MusicSuite/Status'));
+        }).then(function (status) {
+            if (serial !== state.serial) return;
+            state.enabled = status.enabled === true || status.Enabled === true;
+            state.force = status.forceForAllUsers === true || status.ForceForAllUsers === true;
+            syncSidebar();
+            if (!state.enabled) {
+                if (state.returnRoute && window.location.hash === DASHBOARD_HASH) window.location.hash = state.returnRoute;
+                if (window.BetterMusicDisplayAlbums) window.BetterMusicDisplayAlbums.refresh();
+                return;
+            }
+            if (state.ready) { checkRoute(); return; }
+            // A missing dependency/asset keeps native navigation usable.
+            return Promise.all(['spotify-dashboard.html', 'spotify-dashboard.js', 'spotify-theme.css'].map(function (name) {
+                return window.fetch(assetUrl(name), { credentials: 'same-origin' }).then(function (response) {
+                    if (!response.ok) throw new Error('Dashboard asset unavailable.');
+                });
+            })).then(function () {
+                if (serial !== state.serial) return;
+                state.ready = true;
+                checkRoute();
+            });
+        }).catch(function () {
+            if (serial !== state.serial) return;
+            state.enabled = false;
+            state.force = false;
+            state.ready = false;
+            syncSidebar();
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!state.enabled || !state.force || !state.ready || event.button !== 0
+            || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || isAlbumRoute()) return;
+        const target = event.target && event.target.closest ? event.target : null;
+        if (!target || target.closest('#spotify-dashboard-root, #better-music-display-albums')) return;
+        if (!target.closest('[data-type="music"], [data-type="Music"], [data-collectiontype="music"], a[href*="music.html"], .musicPageLink')) return;
+        event.preventDefault();
+        navigate();
     }, true);
 
-    function checkAndRedirectNativePage() {
-        var hash = window.location.hash || '';
-
-        // Check if currently on native music views
-        if (hash.indexOf('music.html') !== -1 ||
-            hash.indexOf('musicPage') !== -1 ||
-            (hash.indexOf('serverId=') !== -1 && hash.indexOf('parentId=') !== -1 && document.querySelector('div[data-role="page"].musicPage'))) {
-
-            // Prevent redirect loop if already on spotify-music
-            if (hash.indexOf('spotify-music') === -1 && hash.indexOf('MusicSuite') === -1) {
-                navigateToSpotifyDashboard();
-            }
-        }
-    }
-
-    function injectSidebarItem() {
-        // Ensure "Musik (Spotify)" link exists in the main drawer/nav if not already present
-        var navDrawer = document.querySelector('.mainDrawer-scrollContainer') || document.querySelector('.sidebarLinks');
-        if (!navDrawer || navDrawer.querySelector('.musicsuite-nav-item')) return;
-
-        var musicBtn = document.createElement('a');
-        musicBtn.className = 'listItem listItem-border emby-button musicsuite-nav-item';
-        musicBtn.href = '#!' + DASHBOARD_ROUTE;
-        musicBtn.innerHTML = `
-            <div class="listItemIcon" style="display:flex;align-items:center;color:#1db954;">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-            </div>
-            <div class="listItemBody">
-                <div class="listItemBodyText">Musik</div>
-            </div>
-        `;
-        musicBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            navigateToSpotifyDashboard();
-        });
-
-        navDrawer.appendChild(musicBtn);
-    }
-
     function boot() {
-        ensureThemeCss();
-        checkAndRedirectNativePage();
-        injectSidebarItem();
-
-        // Observer for dynamic UI updates and drawer rendering
-        if (!state.observer && typeof MutationObserver !== 'undefined') {
-            state.observer = new MutationObserver(function () {
-                checkAndRedirectNativePage();
-                injectSidebarItem();
-            });
+        refresh();
+        if (!state.observer && document.body) {
+            state.observer = new MutationObserver(syncSidebar);
             state.observer.observe(document.body, { childList: true, subtree: true });
         }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', boot);
-    } else {
-        boot();
-    }
-
-    document.addEventListener('viewshow', checkAndRedirectNativePage);
-    window.addEventListener('hashchange', checkAndRedirectNativePage);
+    window.MusicSuiteNavigation = { refresh: refresh };
+    document.addEventListener('viewshow', refresh);
+    window.addEventListener('hashchange', refresh);
+    window.addEventListener('pageshow', boot);
+    window.addEventListener('pagehide', function () {
+        state.serial += 1;
+        if (state.observer) state.observer.disconnect();
+        state.observer = null;
+    });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+    else boot();
 })();
