@@ -45,8 +45,8 @@ jobs:
       - name: Validate curated manifest, legacy ABI and stage-only aggregation
         run: |
           python -m unittest discover -s tests -p 'test_manifest_aggregator.py' -v
-          python scripts/aggregate_jellyfin_manifests.py --offline \\
-            --output "$RUNNER_TEMP/aggregated-jellyfin-manifest.json" \\
+          python scripts/aggregate_jellyfin_manifests.py --offline \
+            --output "$RUNNER_TEMP/aggregated-jellyfin-manifest.json" \
             --report "$RUNNER_TEMP/aggregated-jellyfin-report.json"
       - name: Restore repository solution
         run: dotnet restore Jellyfin.Plugins.sln
