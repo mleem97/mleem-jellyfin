@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import pathlib
 import unittest
 
@@ -40,6 +41,31 @@ class AggregatorTests(unittest.TestCase):
         x["versions"].append(dict(x["versions"][0]))
         with self.assertRaises(module.ManifestError):
             module.validate_manifest([x],"feed")
+
+
+    def test_accepts_published_manifest_with_legacy_target_abi(self):
+        # Regression: the published manifest contains an existing 12.0 ABI.
+        manifest_path = pathlib.Path(__file__).resolve().parents[1] / "manifest.json"
+        published = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(len(published), 18)
+        self.assertTrue(any(v.get("targetAbi") == "12.0" for p in published for v in p.get("versions", [])))
+        self.assertEqual(module.validate_manifest(published, "published"), published)
+
+    def test_accepts_two_part_target_abi_without_relaxing_plugin_version(self):
+        x = entry(ONE, "Legacy")
+        x["versions"][0]["targetAbi"] = "12.0"
+        self.assertEqual(module.validate_manifest([x], "feed"), [x])
+        x["versions"][0]["version"] = "1.0"
+        with self.assertRaises(module.ManifestError):
+            module.validate_manifest([x], "feed")
+
+    def test_rejects_invalid_target_abi(self):
+        for invalid in ("12", "12.0.", "12.0.0.0.0", "a.b", "12.-1"):
+            with self.subTest(invalid=invalid):
+                x = entry(ONE, "Legacy")
+                x["versions"][0]["targetAbi"] = invalid
+                with self.assertRaises(module.ManifestError):
+                    module.validate_manifest([x], "feed")
 
 if __name__=="__main__":
     unittest.main()

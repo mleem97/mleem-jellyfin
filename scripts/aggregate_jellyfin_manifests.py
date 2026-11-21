@@ -19,6 +19,9 @@ MAX_ENTRIES = 1000
 MAX_VERSIONS = 100
 GUID_RE = re.compile(r"^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")
 VERSION_RE = re.compile(r"^\d+(\.\d+){2,3}$")
+# Jellyfin has published legacy manifests with a two-part targetAbi (e.g. 12.0).
+# ABI validation is intentionally separate from four-part plugin release versions.
+ABI_VERSION_RE = re.compile(r"^\d+(\.\d+){1,3}$")
 CHECKSUM_RE = re.compile(r"^[0-9a-fA-F]{32}$")
 
 
@@ -85,7 +88,7 @@ def validate_manifest(data, source: str):
             name, abi = version.get("version"), version.get("targetAbi")
             if not isinstance(name, str) or not VERSION_RE.fullmatch(name):
                 raise ManifestError(f"{source}: invalid version for {guid}")
-            if not isinstance(abi, str) or not VERSION_RE.fullmatch(abi):
+            if not isinstance(abi, str) or not ABI_VERSION_RE.fullmatch(abi):
                 raise ManifestError(f"{source}: invalid targetAbi for {guid}")
             identity = (name, abi)
             if identity in version_keys:
