@@ -31,7 +31,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ManifestError("Redirects require separate review")
 
 
-def checked_https(url: str) -> str:
+def checked_https(url: str, *, download: bool = False) -> str:
     if not isinstance(url, str):
         raise ManifestError("URL must be a string")
     parsed = urllib.parse.urlsplit(url)
@@ -41,7 +41,7 @@ def checked_https(url: str) -> str:
     if parsed.hostname in {"localhost"} or parsed.hostname.endswith(".local"):
         raise ManifestError("Local hosts are prohibited")
     # Only explicitly trusted upstream publication hosts. Add new hosts after review.
-    if parsed.hostname not in {"raw.githubusercontent.com", "www.iamparadox.dev"}:
+    if parsed.hostname not in ({"raw.githubusercontent.com", "www.iamparadox.dev", "github.com"} if download else {"raw.githubusercontent.com", "www.iamparadox.dev"}):
         raise ManifestError(f"Host not allowed: {parsed.hostname}")
     return url
 
@@ -91,7 +91,7 @@ def validate_manifest(data, source: str):
             if identity in version_keys:
                 raise ManifestError(f"{source}: duplicate version/ABI for {guid}")
             version_keys.add(identity)
-            checked_https(version.get("sourceUrl", ""))
+            checked_https(version.get("sourceUrl", ""), download=True)
             checksum = version.get("checksum", "")
             if not isinstance(checksum, str) or not CHECKSUM_RE.fullmatch(checksum):
                 raise ManifestError(f"{source}: invalid checksum for {guid} {name}")
